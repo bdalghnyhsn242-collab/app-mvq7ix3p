@@ -378,6 +378,7 @@ export function makeSoldier(
 export type SoldierMotion = {
   time: number;
   speed01: number;
+  sprinting?: boolean;
   swimming?: boolean;
   driving?: boolean;
   downed?: boolean;
