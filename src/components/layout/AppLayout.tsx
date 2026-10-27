@@ -102,7 +102,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                     <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
                   </Button>
                 </TooltipTrigger>
-                    <TooltipContent>تبديل المظهر</TooltipContent>
+                <TooltipContent>تبديل المظهر</TooltipContent>
               </Tooltip>
 
               <DropdownMenu>
