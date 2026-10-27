@@ -150,6 +150,42 @@ export function steerAround(
   return steerAroundObstacles(x, z, angle, desiredTurn, OBSTACLES);
 }
 
+export const PLAYER_COLLISION_RADIUS = 0.55;
+export const VEHICLE_COLLISION_RADIUS = 1.6;
+
+/**
+ * Pushes a circular body out of every overlapping obstacle. Mutates the
+ * given point in place and returns true when at least one obstacle was
+ * hit. Used for player and vehicle collision against the shared
+ * obstacle list (buildings, rocks, ruins, camp/airport props).
+ */
+export function resolveCircleCollisions(
+  point: { x: number; z: number },
+  obstacles: Obstacle[],
+  radius: number,
+): boolean {
+  let hit = false;
+  for (const obstacle of obstacles) {
+    const dx = point.x - obstacle.x;
+    const dz = point.z - obstacle.z;
+    const min = obstacle.r + radius;
+    const dist = Math.hypot(dx, dz);
+    if (dist >= min) {
+      continue;
+    }
+    if (dist < 1e-6) {
+      point.x = obstacle.x + min;
+      hit = true;
+      continue;
+    }
+    const push = (min - dist) / dist;
+    point.x += dx * push;
+    point.z += dz * push;
+    hit = true;
+  }
+  return hit;
+}
+
 export function blastDamage(bx: number, bz: number, x: number, z: number): number {
   const dist = Math.hypot(x - bx, z - bz);
   return dist < EXPLOSION_RADIUS ? EXPLOSION_DAMAGE * (1 - dist / EXPLOSION_RADIUS) : 0;
