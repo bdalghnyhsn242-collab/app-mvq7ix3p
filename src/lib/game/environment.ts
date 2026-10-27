@@ -331,11 +331,14 @@ export async function upgradeForestWithRealTrees(
   upgraded.forEach((lod, index) => {
     const template = treeTemplates[index % treeTemplates.length];
     const clone = fitModelToSize(template.clone(true), 6.5 + (index % 4), "height");
-    const previous = lod.levels[0]?.object;
-    if (previous) {
-      lod.remove(previous);
+    const level = lod.levels[0];
+    if (level) {
+      if (level.object.parent === lod) {
+        lod.remove(level.object);
+      }
+      level.object = clone;
+      lod.add(clone);
     }
-    lod.addLevel(clone, 0);
   });
   const bushTemplate = bush ? bush.scene : null;
   const grassTemplate = grass ? grass.scene : null;
