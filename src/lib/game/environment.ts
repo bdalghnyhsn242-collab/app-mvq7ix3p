@@ -5,6 +5,7 @@ import {
   forestDensity,
   terrainHeight,
 } from "./battleRoyale";
+import { AIRPORT_POSITION, CAMP_POSITION } from "./worldExpansion";
 
 export function createTerrain(): THREE.Mesh {
   const size = ISLAND_RADIUS * 2.6;
@@ -281,5 +282,124 @@ export function createBuildings(): THREE.Group {
     building.rotation.y = index * 0.9;
     group.add(building);
   });
+  return group;
+}
+
+export function createMilitaryCamp(): THREE.Group {
+  const group = new THREE.Group();
+  const random = seededRandom(555);
+  const tentMat = new THREE.MeshLambertMaterial({ color: 0x4d5d43 });
+  const barracksMat = new THREE.MeshLambertMaterial({ color: 0x6b6255 });
+  const sandbagMat = new THREE.MeshLambertMaterial({ color: 0x9b8b5e });
+  const padMat = new THREE.MeshLambertMaterial({ color: 0x55554e });
+  const metalMat = new THREE.MeshLambertMaterial({ color: 0x6e4a2f });
+  const { x: cx, z: cz } = CAMP_POSITION;
+  const base = terrainHeight(cx, cz);
+  for (let b = 0; b < 2; b += 1) {
+    const barracks = new THREE.Mesh(new THREE.BoxGeometry(9, 3, 4.5), barracksMat);
+    barracks.position.set(cx - 7 + b * 14, base + 1.5, cz - 7);
+    barracks.rotation.y = b * 0.25;
+    group.add(barracks);
+    const roof = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 2.4, 9.4, 3, 1), tentMat);
+    roof.rotation.z = Math.PI / 2;
+    roof.rotation.y = Math.PI / 2 + b * 0.25;
+    roof.position.set(cx - 7 + b * 14, base + 3.6, cz - 7);
+    group.add(roof);
+  }
+  for (let t = 0; t < 3; t += 1) {
+    const angle = (t / 3) * Math.PI * 2 + 0.6;
+    const tx = cx + Math.cos(angle) * 11;
+    const tz = cz + Math.sin(angle) * 11;
+    const tent = new THREE.Mesh(new THREE.ConeGeometry(2.6, 2.8, 6), tentMat);
+    tent.position.set(tx, terrainHeight(tx, tz) + 1.4, tz);
+    tent.rotation.y = random() * Math.PI;
+    group.add(tent);
+  }
+  for (let s = 0; s < 14; s += 1) {
+    const angle = (s / 14) * Math.PI * 2;
+    const sx = cx + Math.cos(angle) * 16;
+    const sz = cz + Math.sin(angle) * 16;
+    const bag = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1, 0.8), sandbagMat);
+    bag.position.set(sx, terrainHeight(sx, sz) + 0.5, sz);
+    bag.rotation.y = -angle;
+    group.add(bag);
+  }
+  const pad = new THREE.Mesh(new THREE.CircleGeometry(5, 24), padMat);
+  pad.rotation.x = -Math.PI / 2;
+  pad.position.set(cx + 4, base + 0.06, cz + 8);
+  group.add(pad);
+  const tower = new THREE.Group();
+  for (let leg = 0; leg < 4; leg += 1) {
+    const legMesh = new THREE.Mesh(new THREE.BoxGeometry(0.2, 5.5, 0.2), metalMat);
+    legMesh.position.set((leg % 2 === 0 ? -1 : 1) * 0.9, 2.75, (leg < 2 ? -1 : 1) * 0.9);
+    tower.add(legMesh);
+  }
+  const cabin = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.6, 2.4), barracksMat);
+  cabin.position.y = 6;
+  tower.add(cabin);
+  tower.position.set(cx - 12, base, cz + 10);
+  group.add(tower);
+  const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.1, 9, 5), metalMat);
+  mast.position.set(cx + 13, base + 4.5, cz - 2);
+  group.add(mast);
+  return group;
+}
+
+export function createAirport(): THREE.Group {
+  const group = new THREE.Group();
+  const random = seededRandom(8080);
+  const runwayMat = new THREE.MeshLambertMaterial({ color: 0x3c3c40 });
+  const stripeMat = new THREE.MeshLambertMaterial({ color: 0xd8d8d0 });
+  const hangarMat = new THREE.MeshLambertMaterial({ color: 0x7d7468 });
+  const rustMat = new THREE.MeshLambertMaterial({ color: 0x6e4a2f });
+  const wreckMat = new THREE.MeshLambertMaterial({ color: 0x9a9186 });
+  const { x: cx, z: cz } = AIRPORT_POSITION;
+  const base = terrainHeight(cx, cz);
+  const runway = new THREE.Mesh(new THREE.BoxGeometry(52, 0.2, 8), runwayMat);
+  runway.position.set(cx, base + 0.12, cz);
+  runway.receiveShadow = true;
+  group.add(runway);
+  for (let s = -5; s <= 5; s += 1) {
+    const stripe = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.22, 0.5), stripeMat);
+    stripe.position.set(cx + s * 4.6, base + 0.24, cz);
+    group.add(stripe);
+  }
+  const hangar = new THREE.Mesh(new THREE.BoxGeometry(16, 6, 12), hangarMat);
+  hangar.position.set(cx - 6, base + 3, cz - 14);
+  group.add(hangar);
+  const hangarRoof = new THREE.Mesh(new THREE.CylinderGeometry(6, 6, 16.4, 12, 1, false, 0, Math.PI), hangarMat);
+  hangarRoof.rotation.z = Math.PI / 2;
+  hangarRoof.rotation.y = Math.PI / 2;
+  hangarRoof.position.set(cx - 6, base + 6, cz - 14);
+  group.add(hangarRoof);
+  const towerBase = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 2, 10, 8), hangarMat);
+  towerBase.position.set(cx + 18, base + 5, cz + 12);
+  group.add(towerBase);
+  const towerCab = new THREE.Mesh(new THREE.BoxGeometry(4, 1.8, 4), rustMat);
+  towerCab.position.set(cx + 18, base + 10.8, cz + 12);
+  group.add(towerCab);
+  const fuselage = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.1, 14, 10), wreckMat);
+  fuselage.rotation.z = Math.PI / 2;
+  fuselage.rotation.x = 0.18;
+  fuselage.position.set(cx + 8, base + 1.2, cz + 3);
+  group.add(fuselage);
+  const brokenWing = new THREE.Mesh(new THREE.BoxGeometry(7, 0.25, 2.2), wreckMat);
+  brokenWing.position.set(cx + 6, base + 0.7, cz + 6);
+  brokenWing.rotation.z = 0.5;
+  brokenWing.rotation.y = 0.4;
+  group.add(brokenWing);
+  for (let d = 0; d < 6; d += 1) {
+    const debris = new THREE.Mesh(
+      new THREE.DodecahedronGeometry(0.5 + random() * 0.8, 0),
+      wreckMat,
+    );
+    debris.position.set(
+      cx + (random() - 0.5) * 30,
+      base + 0.4,
+      cz + (random() - 0.5) * 20,
+    );
+    debris.rotation.set(random() * 3, random() * 3, random() * 3);
+    group.add(debris);
+  }
   return group;
 }
