@@ -8,6 +8,45 @@ export const BOT_SPEED = 5;
 export const BOT_COUNT = 6;
 export const ZONE_DAMAGE_PER_SECOND = 8;
 export const CONTACT_DAMAGE_PER_SECOND = 25;
+export const WATER_LEVEL = 0;
+export const WATER_SPEED_FACTOR = 0.55;
+export const SHALLOW_DEPTH = 0.35;
+
+function hash2(x: number, z: number): number {
+  const s = Math.sin(x * 127.1 + z * 311.7) * 43758.5453;
+  return s - Math.floor(s);
+}
+
+function valueNoise(x: number, z: number): number {
+  const xi = Math.floor(x);
+  const zi = Math.floor(z);
+  const xf = x - xi;
+  const zf = z - zi;
+  const u = xf * xf * (3 - 2 * xf);
+  const v = zf * zf * (3 - 2 * zf);
+  const a = hash2(xi, zi);
+  const b = hash2(xi + 1, zi);
+  const c = hash2(xi, zi + 1);
+  const d = hash2(xi + 1, zi + 1);
+  return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+}
+
+export function terrainHeight(x: number, z: number): number {
+  const dist = Math.hypot(x, z);
+  const island = Math.max(0, 1 - dist / ISLAND_RADIUS);
+  const base = island * island * 6;
+  const hills = valueNoise(x * 0.08, z * 0.08) * 4 * island;
+  const detail = valueNoise(x * 0.25, z * 0.25) * 1.2 * island;
+  return base + hills + detail - 1.2;
+}
+
+export function movementSpeed(x: number, z: number): number {
+  const height = terrainHeight(x, z);
+  if (height < WATER_LEVEL + SHALLOW_DEPTH) {
+    return PLAYER_SPEED * WATER_SPEED_FACTOR;
+  }
+  return PLAYER_SPEED;
+}
 
 export type WeaponId = "pistol" | "rifle" | "shotgun";
 export type Weapon = {
