@@ -2,8 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   BOT_COUNT,
   LOOT_COUNT,
+  ISLAND_RADIUS,
   ZONE_START_RADIUS,
   createMatchState,
+  movementSpeed,
+  terrainHeight,
   shoot,
   stepMatch,
   type MatchState,
@@ -97,5 +100,15 @@ describe("battle royale core logic", () => {
   it("ends the match as lost when health is depleted", () => {
     const state = withState({ player: { x: 39, z: 0, angle: 0, health: 1, alive: true } });
     expect(stepMatch(state, 1, { forward: 0, turn: 0 }).status).toBe("lost");
+  });
+
+  it("raises terrain toward the island center deterministically", () => {
+    expect(terrainHeight(0, 0)).toBe(terrainHeight(0, 0));
+    expect(terrainHeight(0, 0)).toBeGreaterThan(terrainHeight(ISLAND_RADIUS - 2, 0));
+    expect(terrainHeight(ISLAND_RADIUS + 10, 0)).toBeLessThan(0);
+  });
+
+  it("slows movement in shallow water near the shore", () => {
+    expect(movementSpeed(0, 0)).toBeGreaterThan(movementSpeed(ISLAND_RADIUS - 1, 0));
   });
 });
