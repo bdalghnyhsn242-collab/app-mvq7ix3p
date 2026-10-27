@@ -50,6 +50,23 @@ export const OPERATOR_CDN_SOURCES: Record<OperatorVariant, string> = {
   ghillie: ANIMATION_LIBRARY_URL,
 };
 
+/**
+ * Real textured soldier humanoid (green military fatigues, face, hands,
+ * boots, PBR-baked textures) with an embedded skeleton and Idle/Walk/Run
+ * clips — the primary CDN body for the male operator. Sourced from the
+ * three.js example assets (origin: Mixamo character). Referenced at
+ * runtime only; drop a locally licensed file at
+ * `public/models/operator-male.glb` to take precedence.
+ */
+const SOLDIER_CDN_URL =
+  "https://cdn.jsdelivr.net/gh/mrdoob/three.js@r169/examples/models/gltf/Soldier.glb";
+
+export const SOLDIER_CDN_SOURCES: Record<OperatorVariant, string | null> = {
+  male: SOLDIER_CDN_URL,
+  female: null,
+  ghillie: null,
+};
+
 export const CHARACTER_CDN_SOURCES: Record<OperatorVariant, string | null> = {
   male: "https://cdn.jsdelivr.net/gh/trebeljahr/quaternius-showcase@main/public/glb/modular_men/Adventurer.glb",
   female: "https://cdn.jsdelivr.net/gh/trebeljahr/quaternius-showcase@main/public/glb/modular_women/Adventurer.glb",
