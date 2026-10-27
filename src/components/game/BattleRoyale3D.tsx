@@ -402,6 +402,73 @@ export default function BattleRoyale3D() {
     droneMesh.visible = false;
     scene.add(droneMesh);
 
+    const towerMesh = new THREE.Group();
+    const towerMetal = new THREE.MeshLambertMaterial({ color: 0x5a5f66 });
+    for (const [lx, lz] of [[-1.2, -1.2], [1.2, -1.2], [-1.2, 1.2], [1.2, 1.2]] as const) {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.3, 14, 0.3), towerMetal);
+      leg.position.set(lx, 7, lz);
+      towerMesh.add(leg);
+    }
+    const towerPlatform = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.3, 3.4), towerMetal);
+    towerPlatform.position.y = 14;
+    const towerMast = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.18, 6, 6), towerMetal);
+    towerMast.position.y = 17;
+    const towerDish = new THREE.Mesh(
+      new THREE.SphereGeometry(1.1, 10, 8, 0, Math.PI * 2, 0, Math.PI / 2),
+      new THREE.MeshLambertMaterial({ color: 0xd8d8d0, side: THREE.DoubleSide }),
+    );
+    towerDish.position.y = 20;
+    towerDish.rotation.x = Math.PI;
+    const towerWarn = new THREE.Mesh(
+      new THREE.SphereGeometry(0.22, 8, 8),
+      new THREE.MeshBasicMaterial({ color: 0xff3b30 }),
+    );
+    towerWarn.position.y = 20.2;
+    towerWarn.name = "towerWarn";
+    const towerTerminal = new THREE.Mesh(
+      new THREE.BoxGeometry(1.2, 1.1, 0.7),
+      new THREE.MeshLambertMaterial({ color: 0x2b2f33 }),
+    );
+    towerTerminal.position.set(0, 0.55, 1.6);
+    towerMesh.add(towerPlatform, towerMast, towerDish, towerWarn, towerTerminal);
+    towerMesh.position.set(TOWER_TERMINAL.x, terrainHeight(TOWER_TERMINAL.x, TOWER_TERMINAL.z), TOWER_TERMINAL.z);
+    scene.add(towerMesh);
+
+    const beaconSmoke = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.9, 1.6, 26, 10, 1, true),
+      new THREE.MeshBasicMaterial({
+        color: 0xff4422,
+        transparent: true,
+        opacity: 0.4,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+      }),
+    );
+    beaconSmoke.visible = false;
+    scene.add(beaconSmoke);
+    const beaconCrateMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(1.5, 1.5, 1.5),
+      new THREE.MeshLambertMaterial({ color: 0x22c55e }),
+    );
+    const beaconChute = new THREE.Mesh(
+      new THREE.ConeGeometry(2.6, 2, 8, 1, true),
+      new THREE.MeshLambertMaterial({ color: 0xe2e8f0, side: THREE.DoubleSide }),
+    );
+    beaconChute.position.y = 3.2;
+    const beaconCrateGroup = new THREE.Group();
+    beaconCrateGroup.add(beaconCrateMesh, beaconChute);
+    beaconCrateGroup.visible = false;
+    scene.add(beaconCrateGroup);
+
+    const revivalRing = new THREE.Mesh(
+      new THREE.TorusGeometry(1, 0.12, 8, 64),
+      new THREE.MeshBasicMaterial({ color: 0xf59e0b, transparent: true, opacity: 0.85 }),
+    );
+    revivalRing.rotation.x = -Math.PI / 2;
+    revivalRing.visible = false;
+    scene.add(revivalRing);
+
     const playerRigMale = new OperatorRig("woodland", "male");
     const playerRigFemale = new OperatorRig("woodland", "female");
     scene.add(playerRigMale.group, playerRigFemale.group);
