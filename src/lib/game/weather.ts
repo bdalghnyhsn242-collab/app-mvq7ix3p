@@ -1,4 +1,4 @@
-export type WeatherKind = "clear" | "rain" | "fog" | "storm";
+export type WeatherKind = "clear" | "rain" | "fog" | "storm" | "dust";
 export type DayPhase = "dawn" | "day" | "dusk" | "night";
 
 export const DAY_LENGTH = 240;
@@ -20,6 +20,7 @@ const TARGETS: Record<WeatherKind, { rain: number; fog: number }> = {
   rain: { rain: 0.7, fog: 0.28 },
   fog: { rain: 0, fog: 0.75 },
   storm: { rain: 1, fog: 0.42 },
+  dust: { rain: 0, fog: 0.95 },
 };
 
 export function timeOfDay(time: number): number {
@@ -54,7 +55,7 @@ export function createWeatherState(): WeatherState {
 }
 
 function pickNext(kind: WeatherKind): WeatherKind {
-  const options: WeatherKind[] = ["clear", "rain", "fog", "storm"];
+  const options: WeatherKind[] = ["clear", "rain", "fog", "storm", "dust"];
   const filtered = options.filter((option) => option !== kind);
   return filtered[Math.floor(Math.random() * filtered.length)];
 }
@@ -90,5 +91,6 @@ export function weatherEffects(state: WeatherState): {
   return {
     speedFactor: 1 - state.rain * 0.2,
     botSightFactor: Math.max(0.25, 1 - state.fog * 0.5 - nightFactor * 0.3),
+    rangeFactor: Math.max(0.3, 1 - state.fog * 0.65),
   };
 }
