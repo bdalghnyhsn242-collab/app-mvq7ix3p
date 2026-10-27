@@ -638,10 +638,7 @@ export default function BattleRoyale3D() {
         });
         for (let i = current.explosions.length; i < blastPool.length; i += 1) {
           blastPool[i].visible = false;
-        });
-        if (false) {
-          // unreachable guard kept for pool symmetry
-        });
+        }
         planeMesh.position.set(
           current.airdrop.plane.x,
           current.airdrop.plane.altitude,
