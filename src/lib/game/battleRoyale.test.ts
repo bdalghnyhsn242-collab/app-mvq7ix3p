@@ -105,7 +105,17 @@ describe("battle royale core logic", () => {
     expect(second.state.status).toBe("won");
   });
 
-  it("auto-reloads when firing an empty magazine", () => {
+  it("auto-reloads when firing an empty magazine with reserve ammo", () => {
+    const state = withState({
+      magazine: { pistol: 0, smg: 0, ar: 0, dmr: 0, lmg: 0, shotgun: 0 },
+      bots: [{ x: 0, z: 10, angle: 0, health: 100, alive: true }],
+    });
+    const result = shoot(state);
+    expect(result.hit).toBe(false);
+    expect(result.state.reloadTimer).toBe(RELOAD_TIME);
+  });
+
+  it("does not start a reload without reserve ammo", () => {
     const state = withState({
       ammo: { pistol: 0, smg: 0, ar: 0, dmr: 0, lmg: 0, shotgun: 0 },
       magazine: { pistol: 0, smg: 0, ar: 0, dmr: 0, lmg: 0, shotgun: 0 },
@@ -113,7 +123,7 @@ describe("battle royale core logic", () => {
     });
     const result = shoot(state);
     expect(result.hit).toBe(false);
-    expect(result.state.reloadTimer).toBe(RELOAD_TIME);
+    expect(result.state.reloadTimer).toBe(0);
   });
 
   it("cannot shoot during cooldown", () => {
