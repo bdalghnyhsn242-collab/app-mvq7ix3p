@@ -1313,6 +1313,13 @@ export default function BattleRoyale3D() {
           zone: Math.round(current.zone.radius),
           weapon: WEAPONS[current.weapon].name,
           ammo: current.ammo[current.weapon],
+          magazine: current.magazine[current.weapon],
+          reserve: current.ammo[current.weapon],
+          reloading: current.reloadTimer > 0,
+          armor: Math.round(current.playerArmor),
+          owned: [...current.owned],
+          crouching: current.crouching,
+          jumping: current.jumpAir > 0.05,
           crates: current.loot.filter((crate) => !crate.taken).length,
           vehicle:
             current.playerVehicle >= 0
