@@ -334,6 +334,12 @@ export async function upgradeForestWithRealTrees(
   upgraded.forEach((lod, index) => {
     const template = treeTemplates[index % treeTemplates.length];
     const clone = fitModelToSize(template.clone(true), 6.5 + (index % 4), "height");
+    clone.traverse((child) => {
+      const meshChild = child as THREE.Mesh;
+      if (meshChild.isMesh) {
+        meshChild.castShadow = true;
+      }
+    });
     const level = lod.levels[0];
     if (level) {
       if (level.object.parent === lod) {
@@ -434,6 +440,13 @@ export async function upgradeBuildingsWithRealModels(
       buildings.remove(tagged);
     }
     const clone = fitModelToSize(template.clone(true), 9);
+    clone.traverse((child) => {
+      const meshChild = child as THREE.Mesh;
+      if (meshChild.isMesh) {
+        meshChild.castShadow = true;
+        meshChild.receiveShadow = true;
+      }
+    });
     clone.position.set(position.x, terrainHeight(position.x, position.z), position.z);
     clone.rotation.y = index * 0.9;
     buildings.add(clone);
