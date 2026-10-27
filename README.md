@@ -74,6 +74,10 @@ src/
   lib/game/arsenal.ts                  الملحقات الميدانية (سكوبات وغيرها)
   lib/game/drones.ts                   طائرات الاستطلاع
   lib/game/worldExpansion.ts           المعسكر العسكري والمطار المهجور
+  lib/game/radioTowerSystem.ts         برج الاتصالات والحجب الراداري
+  lib/game/beaconDropSystem.ts         منارة الإمدادات والصندوق المدرّع
+  lib/game/weatherSystem.ts            العواصف الرملية والكوارث البيئية
+  lib/game/squadRevivalSystem.ts       فرصة القائد الأخيرة وإحياء الفرقة
   components/game/weatherFx.ts         مطر جزيئي وإضاءة الطقس والوقت
   lib/game/vehicles.ts                 المركبات والأبراج والانفجارات
   lib/game/battleRoyale.test.ts        اختبارات المنطق
