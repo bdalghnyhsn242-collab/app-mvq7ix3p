@@ -1462,6 +1462,17 @@ export default function BattleRoyale3D() {
     <div className="mx-auto w-full max-w-3xl space-y-4">
       <div className="relative overflow-hidden rounded-xl border-2 border-slate-800 bg-slate-950 shadow-soft">
         <div ref={mountRef} className="h-[320px] w-full sm:h-[440px]" />
+        {mode === "match" && hud.status === "running" && hud.deployPhase === "landed" ? (
+          <div className="pointer-events-none absolute left-1/2 top-1/2 z-[5] -translate-x-1/2 -translate-y-1/2">
+            <div className="relative h-7 w-7">
+              <span className="absolute left-1/2 top-0 h-2 w-0.5 -translate-x-1/2 bg-white/85" />
+              <span className="absolute bottom-0 left-1/2 h-2 w-0.5 -translate-x-1/2 bg-white/85" />
+              <span className="absolute left-0 top-1/2 h-0.5 w-2 -translate-y-1/2 bg-white/85" />
+              <span className="absolute right-0 top-1/2 h-0.5 w-2 -translate-y-1/2 bg-white/85" />
+              <span className="absolute left-1/2 top-1/2 h-1 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full bg-rose-400" />
+            </div>
+          </div>
+        ) : null}
         <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-3">
           <div className="w-36 space-y-1">
             <p className="text-xs font-medium text-white drop-shadow">الصحة: {hud.health}</p>
@@ -1472,6 +1483,13 @@ export default function BattleRoyale3D() {
                   hud.health > 40 ? "bg-emerald-500" : "bg-rose-500",
                 )}
                 style={{ width: `${hud.health}%` }}
+              />
+            </div>
+            <p className="text-[10px] font-medium text-sky-200 drop-shadow">الدرع: {hud.armor}</p>
+            <div className="h-1.5 overflow-hidden rounded-full bg-slate-800">
+              <div
+                className="h-full bg-sky-400 transition-all"
+                style={{ width: `${Math.min(100, (hud.armor / MAX_ARMOR) * 100)}%` }}
               />
             </div>
             {hud.squad.map((mate, index) => (
@@ -1565,7 +1583,11 @@ export default function BattleRoyale3D() {
         <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center p-3">
           <Badge className="bg-slate-900/80 text-white">
             {hud.weapon}
-            {hud.attachment ? ` + ${hud.attachment}` : ""}: {hud.ammo} ذخيرة
+            {hud.attachment ? ` + ${hud.attachment}` : ""}:{" "}
+            {hud.reloading ? "⟳ إعادة تلقيم…" : `${hud.magazine}/${hud.reserve}`}
+          </Badge>
+          <Badge className="bg-slate-900/80 text-white">
+            {hud.crouching ? "🦵 منحنٍ" : hud.jumping ? "🦘 في الهواء" : "🚶 واقف"}
           </Badge>
           <Badge className="mx-2 bg-slate-900/80 text-white">صناديق: {hud.crates}</Badge>
           {hud.vehicle ? (
@@ -1624,6 +1646,36 @@ export default function BattleRoyale3D() {
             <Button size="lg" onClick={deployNow}>
               🪂 انزل الآن
             </Button>
+          </div>
+        ) : null}
+        {mode === "match" && hud.status === "running" ? (
+          <div className="pointer-events-none absolute bottom-12 right-3 z-[5] max-w-[240px] rounded-lg border border-slate-700/70 bg-slate-950/70 p-2 text-right text-[10px] leading-5 text-slate-200 backdrop-blur-sm">
+            <p className="font-bold text-amber-300">التحكم:</p>
+            <p>🖱 اضغط على الشاشة لتفعيل الماوس وتدوير الكاميرا</p>
+            <p>زر الماوس الأيسر: إطلاق النار</p>
+            <p>W/S تقدم وتراجع — A/D تحرك جانبي</p>
+            <p>Shift جري — Ctrl انحناء — مسافة قفز</p>
+            <p>R إعادة تلقيم — 1-6 تبديل السلاح</p>
+            <p>E ركوب/نزول — F قفز بالمظلة</p>
+          </div>
+        ) : null}
+        {mode === "match" && hud.status === "running" ? (
+          <div className="pointer-events-none absolute left-3 top-24 z-[5] flex flex-col gap-1">
+            {(["pistol", "smg", "ar", "dmr", "lmg", "shotgun"] as WeaponId[]).map((id, index) => (
+              <span
+                key={id}
+                className={cn(
+                  "rounded px-1.5 py-0.5 text-[10px]",
+                  hud.weapon === id
+                    ? "bg-amber-500 font-bold text-slate-950"
+                    : hud.owned.includes(id)
+                      ? "bg-slate-900/80 text-white"
+                      : "bg-slate-900/40 text-slate-500",
+                )}
+              >
+                {index + 1}· {WEAPONS[id].name}
+              </span>
+            ))}
           </div>
         ) : null}
         {mode === "match" && hud.status !== "running" ? (
