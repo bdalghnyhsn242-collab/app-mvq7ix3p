@@ -13,6 +13,21 @@ import {
   terrainHeight,
 } from "./battleRoyale";
 import { AIRPORT_POSITION, CAMP_POSITION } from "./worldExpansion";
+import {
+  concreteTexture,
+  groundDetailTexture,
+  plasterTexture,
+  roofTileTexture,
+  rustTexture,
+  sandbagTexture,
+  woodPlankTexture,
+} from "./textures";
+
+/** Deterministic per-point variation for grass color mottling. */
+function groundVary(x: number, z: number): number {
+  const s = Math.sin(x * 12.9898 + z * 78.233) * 43758.5453;
+  return s - Math.floor(s);
+}
 
 export function createTerrain(): THREE.Mesh {
   const size = ISLAND_RADIUS * 2.6;
@@ -21,9 +36,12 @@ export function createTerrain(): THREE.Mesh {
   const position = geometry.attributes.position as THREE.BufferAttribute;
   const colors = new Float32Array(position.count * 3);
   const sand = new THREE.Color(0xd9c08a);
-  const grass = new THREE.Color(0x4d8f4d);
+  const grassLush = new THREE.Color(0x3f7a3a);
+  const grassDry = new THREE.Color(0x5c8f46);
+  const grassPatch = new THREE.Color(0x9aa054);
   const rock = new THREE.Color(0x8a8378);
   const mud = new THREE.Color(0x6b5a3e);
+  const seabed = new THREE.Color(0x5e5642);
   const snow = new THREE.Color(0xf2f5f7);
   const color = new THREE.Color();
   for (let i = 0; i < position.count; i += 1) {
@@ -32,14 +50,28 @@ export function createTerrain(): THREE.Mesh {
     const h = terrainHeight(x, z);
     position.setY(i, h);
     const dist = Math.hypot(x, z);
-    if (h < 0.15 && dist < ISLAND_RADIUS - 2) {
-      color.copy(mud);
-    } else if (h < 0.6) {
+    const shoreline = dist > ISLAND_RADIUS - 30;
+    if (h < -0.5) {
+      // Seabed darkens with depth so the water never glows yellow.
+      color.copy(sand).lerp(seabed, Math.min(1, -h / 3));
+    } else if (h < 0.9 && shoreline) {
+      // Sand is a shoreline band, not the default for all low ground.
       color.copy(sand);
-    } else if (h < 9) {
-      color.copy(grass).lerp(sand, Math.max(0, (0.6 - h) / 0.6 + 0.1));
+    } else if (h < 0.2) {
+      // Inland riverbeds and hollows stay mud.
+      color.copy(mud);
+    } else if (h < 12) {
+      // Varied grass: two greens mottled with dry patches, blending into
+      // the beach right at the waterline.
+      color.copy(grassLush).lerp(grassDry, groundVary(x, z));
+      if (groundVary(x + 31.7, z - 17.3) > 0.86) {
+        color.lerp(grassPatch, 0.6);
+      }
+      if (h < 1.6) {
+        color.lerp(sand, 0.35 * ((1.6 - h) / 1.4));
+      }
     } else {
-      color.copy(rock).lerp(grass, Math.max(0, (14 - h) / 5));
+      color.copy(rock).lerp(grassLush, Math.max(0, (16 - h) / 6));
       if (h > 26) {
         color.lerp(snow, Math.min(1, (h - 26) / 8));
       }
@@ -50,7 +82,12 @@ export function createTerrain(): THREE.Mesh {
   }
   geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
   geometry.computeVertexNormals();
-  const material = new THREE.MeshLambertMaterial({ vertexColors: true });
+  // The grayscale detail map multiplies the vertex colors, adding ground
+  // texture without a second draw call or any asset download.
+  const material = new THREE.MeshLambertMaterial({
+    vertexColors: true,
+    map: groundDetailTexture() ?? undefined,
+  });
   return new THREE.Mesh(geometry, material);
 }
 
