@@ -1042,12 +1042,24 @@ export default function BattleRoyale3D() {
           swimming: isSwimming(current.player.x, current.player.z),
           driving: current.playerVehicle >= 0,
           aiming: aimTimer > 0,
+          reloading: current.reloadTimer > 0,
+          jumping: current.jumpAir > 0,
           },
           dt,
         );
         playerRig.group.userData.px = current.player.x;
         playerRig.group.userData.pz = current.player.z;
         playerRig.group.visible = current.status !== "lost" && deployment.phase !== "plane";
+        flashTimer = Math.max(0, flashTimer - dt);
+        playerFlash.visible = flashTimer > 0 && playerRig.group.visible;
+        if (playerFlash.visible) {
+          playerFlash.position.set(
+            current.player.x + Math.sin(current.player.angle) * 0.9,
+            playerY + (current.crouching ? 1.15 : 1.45),
+            current.player.z + Math.cos(current.player.angle) * 0.9,
+          );
+          playerFlash.scale.setScalar(0.8 + Math.random() * 0.5);
+        }
         playerChute.visible = deployment.phase === "falling" && deployment.chute;
         playerChute.position.set(current.player.x, playerY + 2.6, current.player.z);
         squadMeshes.forEach((squadRig, index) => {
