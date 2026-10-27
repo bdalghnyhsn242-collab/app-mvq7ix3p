@@ -126,6 +126,45 @@ const VEHICLE_COLORS: Record<VehicleKind, number> = {
   buggy: 0xb45309,
 };
 
+function createInitialHud(status: MatchStatus): Hud {
+  return {
+    health: 100,
+    alive: BOT_COUNT,
+    zone: ZONE_START_RADIUS,
+    weapon: WEAPONS.pistol.name,
+    ammo: 24,
+    crates: LOOT_COUNT,
+    vehicle: null,
+    speed: 0,
+    airdrop: false,
+    swimming: false,
+    deployPhase: "plane",
+    altitude: DEPLOY_PLANE_ALTITUDE,
+    squad: [],
+    status,
+    weather: "clear",
+    phase: "day",
+    droneAlert: false,
+    attachment: null,
+    radioCapture: 0,
+    radioJam: false,
+    beaconHeld: 0,
+    beaconActive: false,
+    dustStorm: false,
+    revivalActive: false,
+    revivalProgress: 0,
+    revivalTimer: 0,
+    dome: null,
+    sentryDeployed: false,
+    sentryHealth: 0,
+    medevacActive: false,
+    fortressBuff: false,
+    fortressHold: 0,
+    chopperIncoming: false,
+    gadgets: { shield: 0, sentry: 0, medevac: 0 },
+  };
+}
+
 function makeVehicleMesh(kind: VehicleKind): THREE.Group {
   const group = new THREE.Group();
   const bodyMat = new THREE.MeshLambertMaterial({ color: VEHICLE_COLORS[kind] });
@@ -220,64 +259,14 @@ export default function BattleRoyale3D() {
     weapon: WEAPONS.pistol.name,
     ammo: LOBBY_START_AMMO,
   });
-  const [hud, setHud] = useState<Hud>({
-    health: 100,
-    alive: BOT_COUNT,
-    zone: ZONE_START_RADIUS,
-    weapon: WEAPONS.pistol.name,
-    ammo: 24,
-    crates: LOOT_COUNT,
-    vehicle: null,
-    speed: 0,
-    airdrop: false,
-    swimming: false,
-    deployPhase: "plane",
-    altitude: DEPLOY_PLANE_ALTITUDE,
-    squad: [],
-    status: "idle",
-    weather: "clear",
-    phase: "day",
-    droneAlert: false,
-    attachment: null,
-    radioCapture: 0,
-    radioJam: false,
-    beaconHeld: 0,
-    beaconActive: false,
-    dustStorm: false,
-    revivalActive: false,
-    revivalProgress: 0,
-    revivalTimer: 0,
-    dome: null,
-    sentryDeployed: false,
-    sentryHealth: 0,
-    medevacActive: false,
-    fortressBuff: false,
-    fortressHold: 0,
-    chopperIncoming: false,
-    gadgets: { shield: 0, sentry: 0, medevac: 0 },
-  });
+  const [hud, setHud] = useState<Hud>(() => createInitialHud("idle"));
 
   const start = useCallback((size: SquadSize, operatorGender: OperatorGender) => {
     stateRef.current = createMatchState(size);
     genderRef.current = operatorGender;
     modeRef.current = "match";
     setMode("match");
-    setHud({
-      health: 100,
-      alive: BOT_COUNT,
-      zone: ZONE_START_RADIUS,
-      weapon: WEAPONS.pistol.name,
-      ammo: 24,
-      crates: LOOT_COUNT,
-      vehicle: null,
-      speed: 0,
-      airdrop: false,
-      swimming: false,
-      deployPhase: "plane",
-      altitude: DEPLOY_PLANE_ALTITUDE,
-      squad: [],
-      status: "running",
-    });
+    setHud(createInitialHud("running"));
   }, []);
 
   const startRef = useRef(start);
