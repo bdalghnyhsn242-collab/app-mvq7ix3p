@@ -302,6 +302,8 @@ export default function BattleRoyale3D() {
           (keys.has("a") || keys.has("arrowleft") ? 1 : 0) -
           (keys.has("d") || keys.has("arrowright") ? 1 : 0),
         enter: enterRef.current,
+        drop: dropRef.current,
+        revive: reviveRef.current,
       };
       let state = stateRef.current;
       if (state && state.status === "running") {
@@ -313,15 +315,49 @@ export default function BattleRoyale3D() {
         stateRef.current = state;
       }
       enterRef.current = false;
+      dropRef.current = false;
       const current = state;
       if (current) {
+        const deployment = current.deployment;
+        let playerY = terrainHeight(current.player.x, current.player.z);
+        if (deployment.phase === "plane") {
+          playerY = DEPLOY_PLANE_ALTITUDE;
+        } else if (deployment.phase === "falling") {
+          playerY = terrainHeight(current.player.x, current.player.z) + deployment.altitude;
+        } else if (isSwimming(current.player.x, current.player.z)) {
+          playerY = -0.5;
+        }
         playerMesh.position.set(
           current.player.x,
-          terrainHeight(current.player.x, current.player.z),
+          playerY,
           current.player.z,
         );
         playerMesh.rotation.y = current.player.angle;
-        playerMesh.visible = current.status !== "lost";
+        playerMesh.visible = current.status !== "lost" && deployment.phase !== "plane";
+        playerChute.visible = deployment.phase === "falling" && deployment.chute;
+        playerChute.position.set(current.player.x, playerY + 2.6, current.player.z);
+        squadMeshes.forEach((mesh, index) => {
+          const mate = current.squad[index];
+          const showMate = Boolean(
+            mate && mate.state !== "out" && current.deployment.phase === "landed",
+          );
+          mesh.visible = showMate;
+          if (showMate && mate) {
+            const mateY = isSwimming(mate.x, mate.z) ? -0.5 : terrainHeight(mate.x, mate.z);
+            mesh.position.set(mate.x, mateY, mate.z);
+            mesh.rotation.y = mate.angle;
+            mesh.rotation.z = mate.state === "downed" ? Math.PI / 2.2 : 0;
+          }
+        });
+        deployPlane.visible = deployment.phase === "plane";
+        if (deployPlane.visible) {
+          deployPlane.position.set(
+            deployment.plane.x,
+            DEPLOY_PLANE_ALTITUDE,
+            deployment.plane.z,
+          );
+          deployPlane.rotation.y = deployment.plane.angle;
+        }
         botMeshes.forEach((mesh, index) => {
           const bot = current.bots[index];
           mesh.visible = Boolean(bot?.alive);
@@ -383,6 +419,11 @@ export default function BattleRoyale3D() {
         camera.lookAt(0, 0, 0);
         planeMesh.visible = false;
         airdropGroup.visible = false;
+        deployPlane.visible = false;
+        playerChute.visible = false;
+        squadMeshes.forEach((mesh) => {
+          mesh.visible = false;
+        });
       }
       forest.update(now / 1000, camera);
       dust.rotation.y = now * 0.004;
@@ -407,6 +448,10 @@ export default function BattleRoyale3D() {
               ? Math.round(Math.abs(current.vehicles[current.playerVehicle].speed))
               : 0,
           airdrop: Boolean(current.airdrop.crate && !current.airdrop.crate.taken),
+          swimming: isSwimming(current.player.x, current.player.z),
+          deployPhase: current.deployment.phase,
+          altitude: Math.round(current.deployment.altitude),
+          squad: current.squad.map((mate) => ({ ...mate })),
           status: current.status,
         });
       }
