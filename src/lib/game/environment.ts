@@ -313,7 +313,7 @@ export type ForestChunk = {
 export async function upgradeForestWithRealTrees(
   forest: ForestChunk,
   maxTrees = 70,
-
+): Promise<boolean> {
   const [common, pine, birch, bush, grass] = await Promise.all([
     loadEnvironmentGltf("nature", NATURE_FILES.treeCommon),
     loadEnvironmentGltf("nature", NATURE_FILES.treePine),
