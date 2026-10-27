@@ -210,7 +210,7 @@ describe("battle royale core logic", () => {
 
   it("swims slower than walking in deep water", () => {
     let foundDeep = false;
-  });
+    let deepSpeed = Infinity;
     for (let x = -ISLAND_RADIUS; x <= ISLAND_RADIUS && !foundDeep; x += 4) {
       for (let z = -ISLAND_RADIUS; z <= ISLAND_RADIUS; z += 4) {
         if (isSwimming(x, z)) {
@@ -222,6 +222,7 @@ describe("battle royale core logic", () => {
     }
     expect(foundDeep).toBe(true);
     expect(deepSpeed).toBeLessThan(PLAYER_SPEED);
+  });
 
   it("knocks down teammates instead of killing them", () => {
     const squad = createSquad(2);
