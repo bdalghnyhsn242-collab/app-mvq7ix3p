@@ -1885,6 +1885,10 @@ export default function BattleRoyale3D() {
                   المصدر: {modelDiag.source ?? "؟"} — meshes نموذج اللاعب المُركّب:{" "}
                   {modelDiag.rigged}
                 </span>
+                <span className="w-fit rounded bg-slate-900/80 px-1.5 py-0.5 text-[10px] text-slate-200">
+                  🎬 الحركة الحالية: {modelDiag.clipName ?? "لا شيء"} — Mixer يُحدَّث:{" "}
+                  {modelDiag.mixerUpdating ? "نعم" : "لا"}
+                </span>
               </>
             ) : null}
             {modelStatus === "fallback" && modelStatusReason ? (
