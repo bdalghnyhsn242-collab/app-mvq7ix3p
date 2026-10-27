@@ -102,7 +102,7 @@ export class SoldierFactory {
 }
 
 /**
- One animated actor: an AnimationMixer bound to its own clone, with
+ * One animated actor: an AnimationMixer bound to its own clone, with
  * Idle/Walk/Run cross-fading. update() must be called every frame with the
  * real frame delta — that is the whole contract.
  */
