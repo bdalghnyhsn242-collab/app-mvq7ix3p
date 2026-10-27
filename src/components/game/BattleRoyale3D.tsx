@@ -199,6 +199,7 @@ export default function BattleRoyale3D() {
     const forest = createForest();
     scene.add(forest.group);
     scene.add(createCheckpoints());
+    scene.add(createBuildings());
 
     const dustCount = 500;
     const dustPositions = new Float32Array(dustCount * 3);
@@ -230,6 +231,11 @@ export default function BattleRoyale3D() {
       scene.add(bot);
       return bot;
     });
+    const squadMeshes = Array.from({ length: 4 }, (_, index) => {
+      const mate = makeSoldier(0x16a34a, index % 2 === 0 ? "woodland" : "desert");
+      scene.add(mate);
+      return mate;
+    });
     const vehicleMeshes = Array.from({ length: 3 }, (_, index) => {
       const kinds: VehicleKind[] = ["uaz", "pickup", "buggy"];
       const mesh = makeVehicleMesh(kinds[index]);
@@ -237,17 +243,16 @@ export default function BattleRoyale3D() {
       return mesh;
     });
 
-    const planeMaterial = new THREE.MeshLambertMaterial({ color: 0x5b6b78 });
-    const planeMesh = new THREE.Group();
-    const fuselage = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 12, 10), planeMaterial);
-    fuselage.rotation.x = Math.PI / 2;
-    const wing = new THREE.Mesh(new THREE.BoxGeometry(16, 0.25, 2.4), planeMaterial);
-    const tail = new THREE.Mesh(new THREE.BoxGeometry(5, 0.2, 1.2), planeMaterial);
-    tail.position.set(0, 1.2, 5.4);
-    const fin = new THREE.Mesh(new THREE.BoxGeometry(0.2, 2, 1.4), planeMaterial);
-    fin.position.set(0, 1.4, 5.4);
-    planeMesh.add(fuselage, wing, tail, fin);
+    const planeMesh = makePlaneMesh();
     scene.add(planeMesh);
+    const deployPlane = makePlaneMesh();
+    scene.add(deployPlane);
+
+    const playerChute = new THREE.Mesh(
+      new THREE.ConeGeometry(2.2, 1.6, 8, 1, true),
+      new THREE.MeshLambertMaterial({ color: 0x22c55e, side: THREE.DoubleSide }),
+    );
+    scene.add(playerChute);
 
     const airdropCrate = new THREE.Mesh(
       new THREE.BoxGeometry(1.4, 1.4, 1.4),
