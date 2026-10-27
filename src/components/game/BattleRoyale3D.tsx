@@ -483,6 +483,9 @@ export default function BattleRoyale3D() {
       const current = state;
       if (current) {
         const deployment = current.deployment;
+        const playerMesh = genderRef.current === "female" ? playerMeshFemale : playerMeshMale;
+        playerMeshMale.visible = false;
+        playerMeshFemale.visible = false;
         let playerY = terrainHeight(current.player.x, current.player.z);
         if (deployment.phase === "plane") {
           playerY = DEPLOY_PLANE_ALTITUDE;
@@ -522,12 +525,20 @@ export default function BattleRoyale3D() {
           );
           deployPlane.rotation.y = deployment.plane.angle;
         }
-        botMeshes.forEach((mesh, index) => {
+        botMeshes.forEach((lod, index) => {
           const bot = current.bots[index];
-          mesh.visible = Boolean(bot?.alive);
-          if (bot) {
-            mesh.position.set(bot.x, terrainHeight(bot.x, bot.z), bot.z);
-            mesh.rotation.y = bot.angle;
+          if (!bot) {
+            lod.visible = false;
+            return;
+          }
+          const dx = bot.x - current.player.x;
+          const dz = bot.z - current.player.z;
+          const far = dx * dx + dz * dz > BOT_CULL_DISTANCE * BOT_CULL_DISTANCE;
+          lod.visible = bot.alive && !far;
+          if (lod.visible) {
+            lod.position.set(bot.x, terrainHeight(bot.x, bot.z), bot.z);
+            lod.rotation.y = bot.angle;
+            lod.update(camera);
           }
         });
         lootMeshes.forEach((mesh, index) => {
