@@ -430,6 +430,7 @@ export function createMatchState(squadSize: SquadSize = 1): MatchState {
       ammo: weapon === "shotgun" ? 8 : weapon === "dmr" ? 10 : weapon === "lmg" ? 60 : 30,
       taken: false,
       attachment: attachmentForIndex(i + 4),
+      medevac: i === 1,
     });
   });
   expansionLootSpots().forEach((spot, i) => {
