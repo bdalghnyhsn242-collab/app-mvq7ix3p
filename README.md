@@ -112,6 +112,30 @@ npm test
 
 للتفعيل: اضبط `VITE_SUPABASE_URL` و`VITE_SUPABASE_ANON_KEY` في `.env.local` ثم طبّق الترحيل (`supabase db push` أو تشغيل ملف SQL في لوحة Supabase). عند انتهاء أي جولة تظهر رسالة «☁️ حُفظت النتيجة» عند النجاح.
 
+## الأصول ثلاثية الأبعاد (CC0 — استخدام تجاري مسموح)
+
+المجسّمات الحقيقية تُحمَّل وقت التشغيل من GitHub عبر jsdelivr CDN، مع أسبقية
+لأي ملف محلي توضع في `public/models/`:
+
+| الأصل | الملف/المصدر | الترخيص | الاستخدام |
+| --- | --- | --- | --- |
+| هيكل عظمي + 120+ حركة حقيقية (وقوف/مشي/جري/إطلاق نار/زحف/سباحة/جلوس) | `AnimationLibrary_Godot_Standard.gltf` — [J-Ponzo/gltf-universal-animation-library](https://github.com/J-Ponzo/gltf-universal-animation-library) (Quaternius) | CC0 1.0 | حركات كل المشغّلين عبر `AnimationMixer` |
+| شخصية مكسوّة (ذكر) | `modular_men/Adventurer.glb` — [trebeljahr/quaternius-showcase](https://github.com/trebeljahr/quaternius-showcase) (Quaternius, Ultimate Modular Men) | CC0 1. | جسم المشغّل الذكر |
+| شخصية مكسوّة (أنثى) | `modular_women/Adventurer.glb` — نفس المستودع (Ultimate Modular Women) | CC0 1.0 | جسم المشغّلة الأنثى |
+| بندقية هجومية بخامات PBR | `modular_sci_fi_guns_pack/AR_1.glb` — نفس المستودع (Sci-Fi Modular Gun Pack) | CC0 1.0 | سلاح مثبّت على عظام اليد |
+
+**حالة التنزيل إلى ملفات المشروع:** بيئة التنفيذ في هذه الجلسة محجوبة
+بخطة الحساب (تعذّر تشغيل أي أمر)، لذا لم يُمكن نسخ ملفات GLB الثنائية إلى
+المستودع؛ الحل المُنفَّذ فعليًا هو التحميل وقت التشغيل من CDN (روابط
+موثّقة أعلاه وتعمل في المعاينة)، مع أوامر `curl` جاهزة في
+`public/models/README.md` لنسخها محليًا لاحقًا فتأخذ الأسبقية تلقائيًا.
+إذا فشل تحميل أي أصل أو لم تطابق حركاته العظام، يبقى النموذج الإجرائي
+المفصّل بديلًا ظاهرًا — دون أي ادعاء بنجاح غير حقيقي.
+
+**الأداء (ابتوب 4GB RAM):** تخزين مؤقت لكل GLTF مرة واحدة، استنساخ هيكلي
+مشترك (`SkeletonUtils.clone`)، ترقية هيكلية كسولة للأعداء فقط عند ظهورهم
+قرب اللاعب، ومستويات LOD تبديل المجسّمات البعيدة بمجسّمات مبسّطة.
+
 ## Validation Checklist
 
 - `npm install`
