@@ -675,8 +675,11 @@ export default function BattleRoyale3D() {
     let femaleReal = false;
     // Mounted = the real body is loaded, a verified child of the player's
     // rig group, the procedural fallback is hidden, and it has meshes.
+    // NOTE: the field on OperatorRigStatus is `addedToScene` — reading a
+    // nonexistent `.added` silently evaluated to undefined and made this
+    // check permanently false (the "mounted: no / meshes: 0" false alarm).
     const isPlayerMounted = (status: OperatorRigStatus) =>
-      status.loaded && status.added && status.proceduralHidden && status.meshes > 0;
+      status.loaded && status.addedToScene && status.proceduralHidden && status.meshes > 0;
     const reportModelStatus = () => {
       const male = playerRigMale.status;
       const female = playerRigFemale.status;
@@ -693,10 +696,13 @@ export default function BattleRoyale3D() {
       const bodyKey = genderRef.current === "female" ? "body:female" : "body:male";
       setModelDiag({
         loaded: male.loaded || female.loaded,
-        added: best.added,
+        added: best.addedToScene,
         hidden: best.proceduralHidden,
-        meshes: best.meshes,
-        bones: best.bones,
+        // Mesh/bone counts describe the model that is actually MOUNTED on
+        // the player — a loaded-but-unmounted body reports 0 so the HUD
+        // can never dress a failed mount as a successful one.
+        meshes: playerMounted ? best.meshes : 0,
+        bones: playerMounted ? best.bones : 0,
         source:
           loadedSourceFor(bodyKey) ??
           loadedSourceFor("body:male") ??
