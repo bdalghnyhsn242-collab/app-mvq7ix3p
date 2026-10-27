@@ -43,6 +43,10 @@ export type OperatorRigStatus = {
   clipName: string | null;
   /** True while the AnimationMixer received updates recently (<0.5s). */
   mixerUpdating: boolean;
+  /** How the visible body is animated: clips, direct bones, or procedural. */
+  animationMode: "clips" | "bone-driver" | "procedural";
+  /** Mapped clips as "state=ClipName" — empty when no clips are bound. */
+  clipNames: string[];
 };
 
 export function operatorVariantFor(camo: string, gender: SoldierGender): OperatorVariant {
@@ -142,6 +146,10 @@ export class OperatorRig {
       mixerUpdating: this.animator
         ? performance.now() - this.animator.stats.lastUpdateAt < 500
         : false,
+      animationMode: this.animationMode,
+      clipNames: this.animator
+        ? this.animator.availableClips.map((clip) => `${clip.state}=${clip.name}`)
+        : [],
     };
   }
 
