@@ -159,6 +159,23 @@ function rotate(record: BoneRecord, axis: THREE.Vector3, angle: number): void {
   record.bone.quaternion.copy(record.rest).multiply(delta);
 }
 
+/**
+ * Snapshots the current quaternions as the rig's rest pose. Call this
+ * right after cloning a GLTF body — BEFORE any AnimationMixer runs — so
+ * the driver's "restore rest" step can never inherit a mid-animation
+ * pose (which would permanently distort every later direct pose).
+ */
+export function captureHumanoidRestPose(root: THREE.Object3D): boolean {
+  const cache = collectHumanoidBones(root);
+  if (!cache || cache.records.length === 0) {
+    return false;
+  }
+  for (const record of cache.records) {
+    record.rest.copy(record.bone.quaternion);
+  }
+  return true;
+}
+
 export type HumanoidMotion = {
   time: number;
   speed01: number;
