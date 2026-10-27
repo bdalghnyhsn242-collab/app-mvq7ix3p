@@ -1383,7 +1383,9 @@ export default function BattleRoyale3D() {
                   ? "⛈"
                   : hud.weather === "fog"
                     ? "🌫"
-                    : "☀️"}
+                    : hud.weather === "dust"
+                      ? "🌪"
+                      : "☀️"}
             </Badge>
             {hud.droneAlert ? (
               <Badge className="bg-rose-700/90 text-white">🚨 استطلاع! إنك مكشوف</Badge>
