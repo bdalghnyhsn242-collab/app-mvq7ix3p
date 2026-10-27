@@ -711,44 +711,176 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
   return next;
 }
 
-export function shoot(state: MatchState): { state: MatchState; hit: boolean; killed: boolean } {
-  if (state.status !== "running") {
-    return { state, hit: false, killed: false };
-  }
-  const weapon = WEAPONS[state.weapon];
-  if (state.cooldown > 0 || state.ammo[state.weapon] <= 0) {
-    return { state, hit: false, killed: false };
-  }
+function findTargetIndex(
+  bots: Soldier[],
+  player: Soldier,
+  range: number,
+  arc: number,
+): number {
   let targetIndex = -1;
   let targetDist = Infinity;
-  state.bots.forEach((bot, index) => {
+  bots.forEach((bot, index) => {
     if (!bot.alive) {
       return;
     }
-    const dx = bot.x - state.player.x;
-    const dz = bot.z - state.player.z;
+    const dx = bot.x - player.x;
+    const dz = bot.z - player.z;
     const dist = Math.hypot(dx, dz);
-    if (dist > weapon.range) {
+    if (dist > range) {
       return;
     }
-    let diff = Math.abs(Math.atan2(dx, dz) - state.player.angle);
+    let diff = Math.abs(Math.atan2(dx, dz) - player.angle);
     if (diff > Math.PI) {
       diff = Math.PI * 2 - diff;
     }
-    if (diff <= weapon.arc && dist < targetDist) {
+    if (diff <= arc && dist < targetDist) {
       targetIndex = index;
       targetDist = dist;
     }
   });
+  return targetIndex;
+}
+
+function pushTracer(tracers: Tracer[], tracer: Tracer): Tracer[] {
+  const next = [...tracers, tracer];
+  return next.length > 24 ? next.slice(next.length - 24) : next;
+}
+
+export function shoot(state: MatchState): { state: MatchState; hit: boolean; killed: boolean } {
+  if (state.status !== "running") {
+    return { state, hit: false, killed: false };
+  }
+
+  const turretVehicle = state.playerVehicle >= 0 ? state.vehicles[state.playerVehicle] : null;
+  if (turretVehicle && hasTurret(turretVehicle.kind) && !turretVehicle.wreck) {
+    if (turretVehicle.turretCooldown > 0) {
+      return { state, hit: false, killed: false };
+    }
+    const targetIndex = findTargetIndex(state.bots, state.player, PLAYER_TURRET_RANGE, 0.35);
+    const aimX =
+      targetIndex >= 0
+        ? state.bots[targetIndex].x
+        : state.player.x + Math.sin(state.player.angle) * PLAYER_TURRET_RANGE;
+    const aimZ =
+      targetIndex >= 0
+        ? state.bots[targetIndex].z
+        : state.player.z + Math.cos(state.player.angle) * PLAYER_TURRET_RANGE;
+    const tracers = pushTracer(state.tracers, {
+      x1: state.player.x,
+      z1: state.player.z,
+      x2: aimX,
+      z2: aimZ,
+      life: TRACER_LIFE,
+    });
+    let vehicles = state.vehicles.map((v, i) =>
+      i === state.playerVehicle
+        ? { ...v, turretCooldown: PLAYER_TURRET_COOLDOWN, turretFlash: 0.12 }
+        : v,
+    );
+    if (targetIndex === -1) {
+      return { state: { ...state, vehicles, tracers }, hit: false, killed: false };
+    }
+    const driverIndex = vehicles.findIndex((v) => v.driverBot === targetIndex);
+    let bots = state.bots;
+    let squad = state.squad;
+    let explosions = state.explosions;
+    let playerDamage = 0;
+    if (driverIndex >= 0) {
+      const damaged = damageVehicle(vehicles[driverIndex], PLAYER_TURRET_DAMAGE);
+      vehicles = vehicles.map((v, i) => (i === driverIndex ? damaged : v));
+      if (damaged.health <= 0) {
+        const result = applyVehicleDestruction(vehicles, driverIndex, state.player, bots, squad);
+        vehicles = result.vehicles;
+        bots = result.bots;
+        squad = result.squad;
+        explosions = [...explosions, result.explosion];
+        playerDamage = result.playerDamage;
+      }
+    } else {
+      bots = state.bots.map((bot, i) => {
+        if (i !== targetIndex) {
+          return bot;
+        }
+        const health = bot.health - PLAYER_TURRET_DAMAGE;
+        return { ...bot, health, alive: health > 0 };
+      });
+    }
+    return {
+      state: {
+        ...state,
+        vehicles,
+        bots,
+        squad,
+        tracers,
+        explosions,
+        player: { ...state.player, health: state.player.health - playerDamage },
+        cooldown: PLAYER_TURRET_COOLDOWN,
+        status: bots.every((bot) => !bot.alive) ? "won" : state.status,
+      },
+      hit: true,
+      killed: driverIndex < 0 && !bots[targetIndex].alive,
+    };
+  }
+
+  const weapon = WEAPONS[state.weapon];
+  if (state.cooldown > 0 || state.ammo[state.weapon] <= 0) {
+    return { state, hit: false, killed: false };
+  }
+  const targetIndex = findTargetIndex(state.bots, state.player, weapon.range, weapon.arc);
   const ammo = { ...state.ammo, [state.weapon]: state.ammo[state.weapon] - 1 };
+  const aimX =
+    targetIndex >= 0
+      ? state.bots[targetIndex].x
+      : state.player.x + Math.sin(state.player.angle) * weapon.range;
+  const aimZ =
+    targetIndex >= 0
+      ? state.bots[targetIndex].z
+      : state.player.z + Math.cos(state.player.angle) * weapon.range;
+  const tracers = pushTracer(state.tracers, {
+    x1: state.player.x,
+    z1: state.player.z,
+    x2: aimX,
+    z2: aimZ,
+    life: TRACER_LIFE,
+  });
   const base = {
     ...state,
     ammo,
     cooldown: weapon.cooldown,
+    tracers,
     player: { ...state.player, angle: state.player.angle + weapon.recoil },
   };
   if (targetIndex === -1) {
     return { state: base, hit: false, killed: false };
+  }
+  const driverIndex = state.vehicles.findIndex((v) => v.driverBot === targetIndex);
+  if (driverIndex >= 0) {
+    const damaged = damageVehicle(state.vehicles[driverIndex], weapon.damage);
+    let vehicles = state.vehicles.map((v, i) => (i === driverIndex ? damaged : v));
+    let bots = state.bots;
+    let squad = state.squad;
+    let explosions = state.explosions;
+    let playerDamage = 0;
+    if (damaged.health <= 0) {
+      const result = applyVehicleDestruction(vehicles, driverIndex, base.player, bots, squad);
+      vehicles = result.vehicles;
+      bots = result.bots;
+      squad = result.squad;
+      explosions = [...explosions, result.explosion];
+      playerDamage = result.playerDamage;
+    }
+    return {
+      state: {
+        ...base,
+        vehicles,
+        bots,
+        squad,
+        explosions,
+        player: { ...base.player, health: base.player.health - playerDamage },
+      },
+      hit: true,
+      killed: false,
+    };
   }
   const falloff = Math.max(0.35, 1 - (weapon.bulletDrop * Math.max(0, targetDist - 12)) / 10);
   const bots = state.bots.map((bot, i) => {
