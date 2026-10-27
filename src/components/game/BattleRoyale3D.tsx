@@ -44,6 +44,7 @@ import {
 import { SENTRY_MAX_HEALTH } from "@/lib/game/sentryTurretSystem";
 import { FORTRESS_HOLD_TIME } from "@/lib/game/squadFortressSystem";
 import { saveMatchResult, type MatchSummary } from "@/lib/matchCloud";
+import { playGunshot, playHitMarker, playReload } from "@/lib/game/sfx";
 import {
   BOT_COUNT,
   LOOT_COUNT,
@@ -292,6 +293,7 @@ export default function BattleRoyale3D() {
     ammo: LOBBY_START_AMMO,
   });
   const [hud, setHud] = useState<Hud>(() => createInitialHud("idle"));
+  const [modelStatus, setModelStatus] = useState<"loading" | "real" | "fallback">("loading");
 
   const start = useCallback((size: SquadSize, operatorGender: OperatorGender) => {
     stateRef.current = createMatchState(size);
@@ -642,8 +644,27 @@ export default function BattleRoyale3D() {
     const playerRigMale = new OperatorRig("woodland", "male");
     const playerRigFemale = new OperatorRig("woodland", "female");
     scene.add(playerRigMale.group, playerRigFemale.group);
-    void playerRigMale.upgrade();
-    void playerRigFemale.upgrade();
+    let maleReal = false;
+    let femaleReal = false;
+    const reportModelStatus = () => {
+      setModelStatus(maleReal || femaleReal ? "real" : "fallback");
+    };
+    void playerRigMale.upgrade().then((ok) => {
+      maleReal = ok;
+      reportModelStatus();
+    });
+    void playerRigFemale.upgrade().then((ok) => {
+      femaleReal = ok;
+      reportModelStatus();
+    });
+    // Muzzle flash for the player's weapon.
+    const playerFlash = new THREE.Mesh(
+      new THREE.SphereGeometry(0.16, 8, 8),
+      new THREE.MeshBasicMaterial({ color: 0xffd27a, transparent: true, opacity: 0.9 }),
+    );
+    playerFlash.visible = false;
+    scene.add(playerFlash);
+    let flashTimer = 0;
     const botMeshes = Array.from({ length: BOT_COUNT }, (_, index) => {
       const variant = index % 3 === 0 ? "ghillie" : index % 3 === 1 ? "desert" : "woodland";
       const botGender: SoldierGender = index % 2 === 0 ? "male" : "female";
