@@ -2,6 +2,7 @@ import * as THREE from "three";
 import {
   createOperatorInstance,
   attachWeaponToHand,
+  bodyFacingYaw,
   loadOperatorGltf,
   loadOperatorClipsGltf,
   loadWeaponGltf,
@@ -171,6 +172,8 @@ export class OperatorRig {
       // fallback. When no clip matches its skeleton, the generic bone
       // driver animates it instead of leaving a static T-pose.
       normalizeHumanoidHeight(instance.root, 1.8);
+      // Some packs face -Z while the game's forward is +Z.
+      instance.root.rotation.y = bodyFacingYaw(`body:${this.variant}`);
       this.gltfRoot = instance.root;
       if (instance.hasMappedClips) {
         this.animator = new OperatorAnimator(instance.root, instance.clips);
@@ -236,8 +239,9 @@ export class OperatorRig {
 
   update(motion: SoldierMotion, dt: number, tier: LodTier = 0): void {
     this.lastMotion = motion;
-    if (this.animator && !this.usesBoneDriver) {
-      this.animator.setState(selectOperatorState(motion));
+    const state = selectOperatorState(motion);
+    if (this.animator && this.animator.canPlay(state)) {
+      this.animator.setState(state);
       this.tick += 1;
       if (this.tick % mixerUpdateInterval(tier) === 0) {
         this.animator.update(dt * mixerUpdateInterval(tier));
@@ -245,6 +249,10 @@ export class OperatorRig {
       return;
     }
     if (this.gltfRoot) {
+      // Clips exist but not for this state (aim/crawl/swim/drive): pose
+      // the skeleton directly so those states still read correctly.
+      this.animator?.pause();
+      this.usesBoneDriver = false;
       driveHumanoidBones(this.gltfRoot, motion);
       return;
     }
