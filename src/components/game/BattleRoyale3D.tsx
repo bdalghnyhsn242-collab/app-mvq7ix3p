@@ -405,12 +405,12 @@ export default function BattleRoyale3D() {
         zoneRing.scale.setScalar(current.zone.radius);
         camera.position.set(
           current.player.x - Math.sin(current.player.angle) * 22,
-          terrainHeight(current.player.x, current.player.z) + 13,
+          playerY + (deployment.phase === "landed" ? 13 : 9),
           current.player.z - Math.cos(current.player.angle) * 22,
         );
         camera.lookAt(
           current.player.x,
-          terrainHeight(current.player.x, current.player.z) + 1,
+          playerY + 1,
           current.player.z,
         );
       } else {
@@ -481,10 +481,19 @@ export default function BattleRoyale3D() {
       if (key === "e") {
         enterRef.current = true;
       }
+      if (key === "f") {
+        dropRef.current = true;
+      }
+      if (key === "r") {
+        reviveRef.current = true;
+      }
       keysRef.current.add(key);
     };
     const onKeyUp = (event: KeyboardEvent) => {
       keysRef.current.delete(event.key.toLowerCase());
+      if (event.key.toLowerCase() === "r") {
+        reviveRef.current = false;
+      }
     };
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);
