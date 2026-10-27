@@ -28,8 +28,20 @@ describe("operator animation state machine", () => {
     expect(selectOperatorState({ speed01: 1, swimming: true })).toBe("swim");
     expect(selectOperatorState({ speed01: 0, downed: true })).toBe("crawl");
     expect(selectOperatorState({ speed01: 0.1, aiming: true })).toBe("aim");
-    expect(selectOperatorState({ speed01: 0.9 })).toBe("sprint");
     expect(selectOperatorState({ speed01: 0.1 })).toBe("idle");
+  });
+
+  it("separates idle, walk, and sprint locomotion tiers", () => {
+    expect(selectOperatorState({ speed01: 0 })).toBe("idle");
+    expect(selectOperatorState({ speed01: 0.05 })).toBe("idle");
+    // Walking pace (~0.74 after sprint normalization) must be walk, not
+    // sprint — the soldier may never run in place while strolling.
+    expect(selectOperatorState({ speed01: 0.74 })).toBe("walk");
+    expect(selectOperatorState({ speed01: 0.5 })).toBe("walk");
+    // Sprint requires Shift (sprinting flag) or an unmistakable run speed.
+    expect(selectOperatorState({ speed01: 0.74, sprinting: true })).toBe("sprint");
+    expect(selectOperatorState({ speed01: 1 })).toBe("sprint");
+    expect(selectOperatorState({ speed01: 0.9 })).toBe("sprint");
   });
 
   it("throttles mixer updates by LOD tier", () => {
@@ -48,6 +60,7 @@ describe("operator animation state machine", () => {
     root.add(child);
     const clips: Record<OperatorClipName, THREE.AnimationClip | null> = {
       idle: makeClip("Idle", child),
+      walk: null,
       sprint: makeClip("Sprint", child),
       aim: null,
       crawl: null,
@@ -76,6 +89,7 @@ describe("operator animation state machine", () => {
     root.add(child);
     const clips: Record<OperatorClipName, THREE.AnimationClip | null> = {
       idle: makeClip("Idle", child),
+      walk: null,
       sprint: null,
       aim: null,
       crawl: null,
