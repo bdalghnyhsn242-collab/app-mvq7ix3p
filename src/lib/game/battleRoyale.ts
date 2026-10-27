@@ -9,6 +9,7 @@ export const BOT_COUNT = 99;
 export const BOT_CULL_DISTANCE = 170;
 export const BOT_LOD_DISTANCE = 70;
 export const ZONE_DAMAGE_PER_SECOND = 8;
+export const ZONE_WALL_DAMAGE_PER_SECOND = 15;
 export const CONTACT_DAMAGE_PER_SECOND = 25;
 export const WATER_LEVEL = 0;
 export const WATER_SPEED_FACTOR = 0.55;
@@ -104,7 +105,7 @@ export const OBSTACLES: Obstacle[] = (() => {
       r: 1.6 + hash2(i + 0.5, i + 2.5) * 1.6,
     });
   }
-  return list;
+  return [...list, ...expansionObstacles()];
 })();
 
 export function steerAroundObstacles(
@@ -200,6 +201,15 @@ import {
 } from "./vehicles";
 import { createAirdropState, stepAirdrops, type AirdropState } from "./airdrops";
 import { createSquad, knockDown, stepSquad, type SquadSize, type Teammate } from "./squad";
+import { createWeatherState, stepWeather, weatherEffects, type WeatherState } from "./weather";
+import { createDroneState, stepDrone, droneSpotBonus, type DroneState } from "./drones";
+import { applyAttachment, attachmentForIndex, type AttachmentId } from "./arsenal";
+import {
+  CAMP_LOOT_SPOTS,
+  AIRPORT_LOOT_SPOTS,
+  expansionLootSpots,
+  expansionObstacles,
+} from "./worldExpansion";
 
 export type WeaponId = "pistol" | "smg" | "ar" | "dmr" | "lmg" | "shotgun";
 export type Weapon = {
@@ -242,7 +252,14 @@ export const WEAPONS: Record<WeaponId, Weapon> = {
 };
 export const LOOT_COUNT = 8;
 export const PICKUP_RADIUS = 1.8;
-export type Loot = { x: number; z: number; weapon: WeaponId; ammo: number; taken: boolean };
+export type Loot = {
+  x: number;
+  z: number;
+  weapon: WeaponId;
+  ammo: number;
+  taken: boolean;
+  attachment?: AttachmentId;
+};
 
 export function lootWeaponForIndex(index: number): WeaponId {
   const cycle: WeaponId[] = ["ar", "smg", "shotgun", "dmr", "lmg", "pistol"];
@@ -271,6 +288,9 @@ export type MatchState = {
   vehicles: Vehicle[];
   playerVehicle: number;
   airdrop: AirdropState;
+  weather: WeatherState;
+  drone: DroneState;
+  attachments: Partial<Record<WeaponId, AttachmentId>>;
   squadSize: SquadSize;
   squad: Teammate[];
   deployment: Deployment;
