@@ -827,6 +827,13 @@ export function shoot(state: MatchState): { state: MatchState; hit: boolean; kil
     return { state, hit: false, killed: false };
   }
   const targetIndex = findTargetIndex(state.bots, state.player, weapon.range, weapon.arc);
+  const targetDist =
+    targetIndex >= 0
+      ? Math.hypot(
+          state.bots[targetIndex].x - state.player.x,
+          state.bots[targetIndex].z - state.player.z,
+        )
+      : 0;
   const ammo = { ...state.ammo, [state.weapon]: state.ammo[state.weapon] - 1 };
   const aimX =
     targetIndex >= 0
