@@ -100,6 +100,16 @@ npm test
 
 تغطي الاختبارات الحركة، والدوران، وانكماش المنطقة، والضرر خارجها، والإطلاق والإقصاء، وشروط الفوز والخسارة.
 
+## الربط السحابي (Supabase)
+
+حفظ نتائج الجيم ولوحة المتصدرين وأداء الفرق يعمل تلقائيًا فور انتهاء كل جولة عبر `@supabase/supabase-js`:
+
+1. `src/lib/supabase.ts` — عميل آمن يدعم `VITE_SUPABASE_ANON_KEY` أو `VITE_SUPABASE_PUBLISHABLE_KEY`؛ عند غيابهما تبقى اللعبة تعمل كاملة دون سحابة (الحفظ يتحول إلى no-op آمن).
+2. `src/lib/matchCloud.ts` — بناء صفوف الإحصاءات، حساب نقاط المتصدرين الحتمية، حفظ أداء كل رفيق، وقراءة لوحة المتصدرين.
+3. `supabase/migrations/20260504000000_game_cloud_tables.sql` — جداول `match_stats` و`leaderboard` و`squad_performances` مع سياسات RLS للزوار.
+
+للتفعيل: اضبط `VITE_SUPABASE_URL` و`VITE_SUPABASE_ANON_KEY` في `.env.local` ثم طبّق الترحيل (`supabase db push` أو تشغيل ملف SQL في لوحة Supabase). عند انتهاء أي جولة تظهر رسالة «☁️ حُفظت النتيجة» عند النجاح.
+
 ## Validation Checklist
 
 - `npm install`
