@@ -152,6 +152,7 @@ describe("battle royale core logic", () => {
   it("captures the radio tower and activates radar jamming", () => {
     const state = withState({
       player: { x: TOWER_TERMINAL.x, z: TOWER_TERMINAL.z, angle: 0, health: 100, alive: true },
+      bots: [{ x: 0, z: 150, angle: 0, health: 100, alive: true }],
     });
     let next = state;
     for (let i = 0; i < (TOWER_CAPTURE_TIME + 1) * 10; i += 1) {
@@ -162,7 +163,11 @@ describe("battle royale core logic", () => {
   });
 
   it("deploys a beacon and delivers the supply crate", () => {
-    let state = withState({ beacon: { held: 1, drop: null } });
+    let state = withState({
+      beacon: { held: 1, drop: null },
+      player: { x: 0, z: 0, angle: 0, health: 60, alive: true },
+      bots: [{ x: 0, z: 150, angle: 0, health: 100, alive: true }],
+    });
     state = stepMatch(state, 0.1, { forward: 0, turn: 0, beacon: true });
     expect(state.beacon.held).toBe(0);
     expect(state.beacon.drop).not.toBe(null);
