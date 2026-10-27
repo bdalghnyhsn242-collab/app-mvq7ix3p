@@ -959,10 +959,11 @@ export function shoot(state: MatchState): { state: MatchState; hit: boolean; kil
   }
 
   const weapon = applyAttachment(WEAPONS[state.weapon], state.attachments[state.weapon]);
+  const stormRange = weapon.range * weatherEffects(state.weather).rangeFactor;
   if (state.cooldown > 0 || state.ammo[state.weapon] <= 0) {
     return { state, hit: false, killed: false };
   }
-  const targetIndex = findTargetIndex(state.bots, state.player, weapon.range, weapon.arc);
+  const targetIndex = findTargetIndex(state.bots, state.player, stormRange, weapon.arc);
   const targetDist =
     targetIndex >= 0
       ? Math.hypot(
@@ -974,11 +975,11 @@ export function shoot(state: MatchState): { state: MatchState; hit: boolean; kil
   const aimX =
     targetIndex >= 0
       ? state.bots[targetIndex].x
-      : state.player.x + Math.sin(state.player.angle) * weapon.range;
+      : state.player.x + Math.sin(state.player.angle) * stormRange;
   const aimZ =
     targetIndex >= 0
       ? state.bots[targetIndex].z
-      : state.player.z + Math.cos(state.player.angle) * weapon.range;
+      : state.player.z + Math.cos(state.player.angle) * stormRange;
   const tracers = pushTracer(state.tracers, {
     x1: state.player.x,
     z1: state.player.z,
@@ -1034,7 +1035,14 @@ export function shoot(state: MatchState): { state: MatchState; hit: boolean; kil
     return { ...bot, health, alive: health > 0 };
   });
   return {
-    state: { ...base, bots, status: bots.every((bot) => !bot.alive) ? "won" : state.status },
+    state: {
+      ...base,
+      bots,
+      revival: !bots[targetIndex].alive
+        ? registerRevivalKill(state.revival)
+        : state.revival,
+      status: bots.every((bot) => !bot.alive) ? "won" : state.status,
+    },
     hit: true,
     killed: !bots[targetIndex].alive,
   };
