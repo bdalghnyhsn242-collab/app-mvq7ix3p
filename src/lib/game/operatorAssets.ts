@@ -274,7 +274,6 @@ function cachedOrLoad(
     logAsset("warn", `مصادر «${key}» فشلت مؤخرًا — إعادة المحاولة بعد فترة تهدئة قصيرة`);
     return Promise.resolve(null);
   }
-  const promise = loadFirstAvailable(urls, loader);
   const promise = loadFirstAvailable(urls, loader, key);
   void promise.then((result) => {
     if (result) {
