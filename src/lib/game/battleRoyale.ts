@@ -158,7 +158,7 @@ export function createMatchState(): MatchState {
       x: Math.cos(angle) * radius,
       z: Math.sin(angle) * radius,
       weapon,
-      ammo: weapon === "rifle" ? 30 : weapon === "shotgun" ? 8 : 24,
+      ammo: weapon === "shotgun" ? 8 : weapon === "dmr" ? 10 : weapon === "lmg" ? 60 : 30,
       taken: false,
     });
   }
@@ -167,9 +167,12 @@ export function createMatchState(): MatchState {
     bots,
     zone: { x: 0, z: 0, radius: ZONE_START_RADIUS },
     weapon: "pistol",
-    ammo: { pistol: 24, rifle: 0, shotgun: 0 },
+    ammo: { pistol: 24, smg: 0, ar: 0, dmr: 0, lmg: 0, shotgun: 0 },
     cooldown: 0,
     loot,
+    vehicles: createVehicles(),
+    playerVehicle: -1,
+    airdrop: createAirdropState(),
     time: 0,
     status: "running",
   };
@@ -180,12 +183,39 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
     return state;
   }
   const player = { ...state.player };
-  player.angle += input.turn * TURN_SPEED * dt;
-  if (input.forward !== 0) {
-    const speed = movementSpeed(player.x, player.z);
-    player.x += Math.sin(player.angle) * input.forward * speed * dt;
-    player.z += Math.cos(player.angle) * input.forward * speed * dt;
+  let vehicles = state.vehicles;
+  let playerVehicle = state.playerVehicle;
+
+  if (input.enter) {
+    if (playerVehicle >= 0) {
+      vehicles = vehicles.map((v, i) => (i === playerVehicle ? { ...v, occupied: false } : v));
+      playerVehicle = -1;
+    } else {
+      const idx = vehicles.findIndex(
+        (v) => !v.occupied && v.health > 0 && Math.hypot(v.x - player.x, v.z - player.z) < 5,
+      );
+      if (idx >= 0) {
+        playerVehicle = idx;
+        vehicles = vehicles.map((v, i) => (i === idx ? { ...v, occupied: true } : v));
+      }
+    }
+  }
+
+  if (playerVehicle >= 0) {
+    const driven = stepVehicle(vehicles[playerVehicle], dt, input);
+    vehicles = vehicles.map((v, i) => (i === playerVehicle ? driven : v));
+    player.x = driven.x;
+    player.z = driven.z;
+    player.angle = driven.angle;
     clampToIsland(player);
+  } else {
+    player.angle += input.turn * TURN_SPEED * dt;
+    if (input.forward !== 0) {
+      const speed = movementSpeed(player.x, player.z);
+      player.x += Math.sin(player.angle) * input.forward * speed * dt;
+      player.z += Math.cos(player.angle) * input.forward * speed * dt;
+      clampToIsland(player);
+    }
   }
 
   const zone = {
@@ -226,8 +256,29 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
     health -= ZONE_DAMAGE_PER_SECOND * dt;
   }
   for (const bot of bots) {
-    if (bot.alive && Math.hypot(bot.x - player.x, bot.z - player.z) < 1.6) {
+    if (!bot.alive || Math.hypot(bot.x - player.x, bot.z - player.z) >= 1.6) {
+      continue;
+    }
+    if (playerVehicle >= 0) {
+      const damaged = damageVehicle(vehicles[playerVehicle], CONTACT_DAMAGE_PER_SECOND * dt * 2);
+      vehicles = vehicles.map((v, i) => (i === playerVehicle ? damaged : v));
+      if (damaged.health <= 0) {
+        playerVehicle = -1;
+        health -= 15;
+      }
+    } else {
       health -= CONTACT_DAMAGE_PER_SECOND * dt;
+    }
+  }
+
+  const airdrop = stepAirdrops(state.airdrop, dt);
+  if (airdrop.crate && airdrop.crate.landed && !airdrop.crate.taken) {
+    const crate = airdrop.crate;
+    if (Math.hypot(crate.x - player.x, crate.z - player.z) < PICKUP_RADIUS + 0.6) {
+      weapon = crate.weapon;
+      ammo[crate.weapon] += crate.ammo;
+      health = Math.min(100, health + 25);
+      airdrop.crate = { ...crate, taken: true };
     }
   }
 
@@ -239,6 +290,9 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
     ammo,
     cooldown,
     loot,
+    vehicles,
+    playerVehicle,
+    airdrop,
     time: state.time + dt,
     status: "running",
   };
