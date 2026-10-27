@@ -193,7 +193,7 @@ npm test
 | --- | --- | --- | --- |
 | هيكل عظمي + 120+ حركة حقيقية (وقوف/مشي/جري/إطلاق نار/زحف/سباحة/جلوس) | `AnimationLibrary_Godot_Standard.gltf` — [J-Ponzo/gltf-universal-animation-library](https://github.com/J-Ponzo/gltf-universal-animation-library) (Quaternius) | CC0 1.0 | حركات كل المشغّلين عبر `AnimationMixer` |
 | **جندي بشري حقيقي مكسوّ** (زي عسكري أخضر، وجه، أيدٍ، أحذية، خامات مدمجة، هيكل عظمي + حركات Idle/Walk/Run مدمجة) | `Soldier.glb` — [mrdoob/three.js@r169 examples](https://github.com/mrdoob/three.js/blob/r169/examples/models/gltf/Soldier.glb) (أصل الشخصية: Mixamo) | أصل Mixamo (استخدام مشروع حر؛ إعادة التوزيع مقيدة) — **يُحمَّل وقت التشغيل كمرجع CDN فقط**؛ لترخيص تجاري كامل ضع ملفك المحلي في `public/models/operator-male.glb` وسيأخذ الأسبقية | **الجسم الأساسي للمشغّل الذكر** |
-| شخصية مكسوّة (ذكر) | `modular_men/Adventurer.glb` — [trebeljahr/quaternius-showcase](https://github.com/trebeljahr/quaternius-showcase) (Quaternius, Ultimate Modular Men) | CC0 1.0 | جسم المشغّل الذكر |
+| شخصية مكسوّة (ذكر) | `modular_men/Adventurer.glb` — [trebeljahr/quaternius-showcase](https://github.com/trebeljahr/quaternius-showcase) (Quaternius, Ultimate Modular Men) | CC0 1.0 | بديل احتياطي لجسم المشغّل الذكر |
 | شخصية مكسوّة (أنثى) | `modular_women/Adventurer.glb` — نفس المستودع (Ultimate Modular Women) | CC0 1.0 | جسم المشغّلة الأنثى |
 | بندقية هجومية بخامات PBR | `modular_sci_fi_guns_pack/AR_1.glb` — نفس المستودع (Sci-Fi Modular Gun Pack) | CC0 1.0 | سلاح مثبّت على عظام اليد |
 | أشجار (CommonTree/PineTree/BirchTree) وشجيرات وعشب | `nature_pack/CommonTree_1.glb` و`PineTree_1.glb` و`BirchTree_1.glb` و`Bush_1.glb` و`Grass.glb` — نفس المستودع (Ultimate Nature Pack) | CC0 1.0 | مستوى التفاصيل العالي للغابة + عشب وشجيرات تحت الأشجار |
