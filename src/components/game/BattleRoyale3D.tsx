@@ -1413,7 +1413,7 @@ export default function BattleRoyale3D() {
             ) : null}
             {hud.sentryDeployed ? (
               <Badge className="bg-cyan-900/90 text-white">
-                🔫 البرج الآلي: {Math.round(hud.sentryHealth)}%
+                🔫 البرج الآلي: {Math.round(hud.sentryHealth * 100)}%
               </Badge>
             ) : null}
             {hud.medevacActive ? (
@@ -1421,6 +1421,11 @@ export default function BattleRoyale3D() {
             ) : null}
             {hud.fortressBuff ? (
               <Badge className="bg-violet-800/90 text-white">🏰 حصن الصمود (+30% مقاومة)</Badge>
+            ) : null}
+            {hud.fortressBuff && hud.fortressHold > 0 ? (
+              <Badge className="bg-violet-900/90 text-white">
+                🏰 الصمود: {Math.round(hud.fortressHold * 100)}% — مروحة الإنقاذ عند 100%
+              </Badge>
             ) : null}
             {hud.chopperIncoming ? (
               <Badge className="bg-violet-700/90 text-white">🚁 مروحة الإنقاذ قادمة!</Badge>
