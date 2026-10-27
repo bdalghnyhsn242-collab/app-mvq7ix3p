@@ -1806,19 +1806,30 @@ export default function BattleRoyale3D() {
             <span
               className={cn(
                 "w-fit rounded px-1.5 py-0.5 text-[10px] font-semibold",
-                modelStatus === "real"
+                modelDiag?.loaded && modelDiag.added && modelDiag.hidden && modelDiag.meshes > 0
                   ? "bg-emerald-900/85 text-emerald-200"
                   : modelStatus === "loading"
                     ? "bg-slate-900/80 text-slate-300"
                     : "bg-amber-900/85 text-amber-200",
               )}
             >
-              {modelStatus === "real"
-                ? "🧍 نموذج GLB بشري حقيقي مُحمّل"
+              {modelDiag?.loaded && modelDiag.added && modelDiag.hidden && modelDiag.meshes > 0
+                ? `🧍 GLB بشري مُركّب على اللاعب — ${modelDiag.meshes} meshes / ${modelDiag.bones} عظمة`
                 : modelStatus === "loading"
                   ? "⏳ جارٍ تحميل نموذج الشخصية…"
-                  : "⚠️ تعذر تحميل GLB — النموذج الإجرائي البديل"}
+                  : "⚠️ لم يُركَّب نموذج بشري — المجسم الإجرائي البديل ظاهر"}
             </span>
+            {modelDiag?.loaded ? (
+              <>
+                <span className="w-fit rounded bg-slate-900/80 px-1.5 py-0.5 text-[10px] text-slate-200">
+                  ✅ أُضيف للمشهد: {modelDiag.added ? "نعم" : "لا"} — المجسم البدائي مخفي:{" "}
+                  {modelDiag.hidden ? "نعم" : "لا"}
+                </span>
+                <span className="w-fit max-w-72 truncate rounded bg-slate-900/80 px-1.5 py-0.5 text-[10px] text-slate-200">
+                  المصدر: {modelDiag.source ?? "؟"} — مجسمات بشرية مُركّبة: {modelDiag.rigged}
+                </span>
+              </>
+            ) : null}
             {modelStatus === "fallback" && modelStatusReason ? (
               <span className="w-fit max-w-72 rounded bg-amber-950/90 px-1.5 py-0.5 text-[10px] leading-snug text-amber-100">
                 {modelStatusReason}
