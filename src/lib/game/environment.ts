@@ -133,7 +133,9 @@ export function createForest(): {
   const foliage: THREE.Mesh[] = [];
   const treeLods: THREE.LOD[] = [];
   const trunkMat = new THREE.MeshLambertMaterial({ color: 0x5b4630 });
-  const leafMat = new THREE.MeshLambertMaterial({ color: 0x2f6b34, flatShading: true });
+  const leafMats = [0x2f6b34, 0x3a7a3c, 0x2a5f2e].map(
+    (color) => new THREE.MeshLambertMaterial({ color, flatShading: true }),
+  );
   const leafMatLow = new THREE.MeshLambertMaterial({ color: 0x356e38 });
   let placed = 0;
   let attempts = 0;
@@ -146,6 +148,7 @@ export function createForest(): {
       continue;
     }
     const lod = new THREE.LOD();
+    const leafMat = leafMats[placed % leafMats.length]!;
     const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.34, 3.2, 6), trunkMat);
     trunk.position.y = 1.6;
     const crown = new THREE.Group();
@@ -154,6 +157,18 @@ export function createForest(): {
       cone.position.y = 3.2 + c * 1.5;
       crown.add(cone);
       foliage.push(cone);
+    }
+    // Irregular foliage blobs break the perfect-cone silhouette so trees
+    // read as organic canopies even before the CC0 model upgrade lands.
+    for (let b = 0; b < 2; b += 1) {
+      const blob = new THREE.Mesh(
+        new THREE.IcosahedronGeometry(1.05 - b * 0.2, 0),
+        leafMat,
+      );
+      blob.position.set((b - 0.5) * 0.9, 4.4 + b * 1.1, ((b % 2) - 0.5) * 0.8);
+      blob.rotation.set(b * 0.7, b * 1.3, b * 0.4);
+      crown.add(blob);
+      foliage.push(blob);
     }
     const high = new THREE.Group();
     high.add(trunk, crown);
@@ -526,11 +541,26 @@ export async function upgradeBuildingsWithRealModels(
 export function createMilitaryCamp(): THREE.Group {
   const group = new THREE.Group();
   const random = seededRandom(555);
-  const tentMat = new THREE.MeshLambertMaterial({ color: 0x4d5d43 });
-  const barracksMat = new THREE.MeshLambertMaterial({ color: 0x6b6255 });
-  const sandbagMat = new THREE.MeshLambertMaterial({ color: 0x9b8b5e });
-  const padMat = new THREE.MeshLambertMaterial({ color: 0x55554e });
-  const metalMat = new THREE.MeshLambertMaterial({ color: 0x6e4a2f });
+  const tentMat = new THREE.MeshLambertMaterial({
+    color: 0x4d5d43,
+    map: sandbagTexture() ?? undefined,
+  });
+  const barracksMat = new THREE.MeshLambertMaterial({
+    color: 0x6b6255,
+    map: plasterTexture() ?? undefined,
+  });
+  const sandbagMat = new THREE.MeshLambertMaterial({
+    color: 0x9b8b5e,
+    map: sandbagTexture() ?? undefined,
+  });
+  const padMat = new THREE.MeshLambertMaterial({
+    color: 0x55554e,
+    map: concreteTexture() ?? undefined,
+  });
+  const metalMat = new THREE.MeshLambertMaterial({
+    color: 0x6e4a2f,
+    map: rustTexture() ?? undefined,
+  });
   const { x: cx, z: cz } = CAMP_POSITION;
   const base = terrainHeight(cx, cz);
   for (let b = 0; b < 2; b += 1) {
@@ -586,11 +616,23 @@ export function createMilitaryCamp(): THREE.Group {
 export function createAirport(): THREE.Group {
   const group = new THREE.Group();
   const random = seededRandom(8080);
-  const runwayMat = new THREE.MeshLambertMaterial({ color: 0x3c3c40 });
+  const runwayMat = new THREE.MeshLambertMaterial({
+    color: 0x3c3c40,
+    map: concreteTexture() ?? undefined,
+  });
   const stripeMat = new THREE.MeshLambertMaterial({ color: 0xd8d8d0 });
-  const hangarMat = new THREE.MeshLambertMaterial({ color: 0x7d7468 });
-  const rustMat = new THREE.MeshLambertMaterial({ color: 0x6e4a2f });
-  const wreckMat = new THREE.MeshLambertMaterial({ color: 0x9a9186 });
+  const hangarMat = new THREE.MeshLambertMaterial({
+    color: 0x7d7468,
+    map: rustTexture() ?? undefined,
+  });
+  const rustMat = new THREE.MeshLambertMaterial({
+    color: 0x6e4a2f,
+    map: rustTexture() ?? undefined,
+  });
+  const wreckMat = new THREE.MeshLambertMaterial({
+    color: 0x9a9186,
+    map: concreteTexture() ?? undefined,
+  });
   const { x: cx, z: cz } = AIRPORT_POSITION;
   const base = terrainHeight(cx, cz);
   const runway = new THREE.Mesh(new THREE.BoxGeometry(52, 0.2, 8), runwayMat);
