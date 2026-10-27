@@ -188,8 +188,14 @@ export function createForest(): {
 export function createRuins(): THREE.Group {
   const group = new THREE.Group();
   const random = seededRandom(4242);
-  const wallMaterial = new THREE.MeshLambertMaterial({ color: 0x9a9186 });
-  const rustMaterial = new THREE.MeshLambertMaterial({ color: 0x7a4a32 });
+  const wallMaterial = new THREE.MeshLambertMaterial({
+    color: 0x9a9186,
+    map: concreteTexture() ?? undefined,
+  });
+  const rustMaterial = new THREE.MeshLambertMaterial({
+    color: 0x7a4a32,
+    map: rustTexture() ?? undefined,
+  });
   const center = 14;
   for (let i = 0; i < 10; i += 1) {
     const angle = (i / 10) * Math.PI * 2;
@@ -241,9 +247,18 @@ export function createSunShafts(): THREE.Group {
 export function createCheckpoints(): THREE.Group {
   const group = new THREE.Group();
   const random = seededRandom(777);
-  const concrete = new THREE.MeshLambertMaterial({ color: 0x8d8d85 });
-  const sandbag = new THREE.MeshLambertMaterial({ color: 0x9b8b5e });
-  const rust = new THREE.MeshLambertMaterial({ color: 0x6e4a2f });
+  const concrete = new THREE.MeshLambertMaterial({
+    color: 0x8d8d85,
+    map: concreteTexture() ?? undefined,
+  });
+  const sandbag = new THREE.MeshLambertMaterial({
+    color: 0x9b8b5e,
+    map: sandbagTexture() ?? undefined,
+  });
+  const rust = new THREE.MeshLambertMaterial({
+    color: 0x6e4a2f,
+    map: rustTexture() ?? undefined,
+  });
   for (let c = 0; c < 3; c += 1) {
     const angle = (c / 3) * Math.PI * 2 + 0.7;
     const cx = Math.cos(angle) * 95;
@@ -286,15 +301,33 @@ export function createCheckpoints(): THREE.Group {
 
 export function createBuildings(): THREE.Group {
   const group = new THREE.Group();
-  const wallMat = new THREE.MeshLambertMaterial({ color: 0xa89f8d });
-  const roofMat = new THREE.MeshLambertMaterial({ color: 0x6e4a2f });
-  const crateMat = new THREE.MeshLambertMaterial({ color: 0x8a6b3e });
+  const wallMat = new THREE.MeshLambertMaterial({
+    color: 0xa89f8d,
+    map: plasterTexture() ?? undefined,
+  });
+  const roofMat = new THREE.MeshLambertMaterial({
+    color: 0x8a5a3a,
+    map: roofTileTexture() ?? undefined,
+  });
+  const crateMat = new THREE.MeshLambertMaterial({
+    color: 0x8a6b3e,
+    map: woodPlankTexture() ?? undefined,
+  });
+  const interiorMat = new THREE.MeshLambertMaterial({ color: 0x1c1a16 });
   const width = 10;
   const depth = 8;
   const height = 3.2;
   BUILDING_POSITIONS.forEach(({ x: cx, z: cz }, index) => {
     const base = terrainHeight(cx, cz);
     const building = new THREE.Group();
+    // Dark interior shell: door/window gaps reveal a shaded inside instead
+    // of see-through boxes, so buildings read as real structures.
+    const interior = new THREE.Mesh(
+      new THREE.BoxGeometry(width - 1, height, depth - 1),
+      interiorMat,
+    );
+    interior.position.set(cx, base + height / 2, cz);
+    building.add(interior);
     const addWall = (x: number, z: number, w: number, h: number, y: number, rotY = 0) => {
       const wall = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.4), wallMat);
       wall.position.set(x, base + y + h / 2, z);
