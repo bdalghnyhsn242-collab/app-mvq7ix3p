@@ -205,8 +205,6 @@ import { createWeatherState, stepWeather, weatherEffects, type WeatherState } fr
 import { createDroneState, stepDrone, droneSpotBonus, type DroneState } from "./drones";
 import { applyAttachment, attachmentForIndex, type AttachmentId } from "./arsenal";
 import {
-  CAMP_LOOT_SPOTS,
-  AIRPORT_LOOT_SPOTS,
   expansionLootSpots,
   expansionObstacles,
 } from "./worldExpansion";
@@ -476,6 +474,11 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
     .map((explosion) => ({ ...explosion, timer: explosion.timer - dt }))
     .filter((explosion) => explosion.timer > 0);
 
+  const weather = stepWeather(state.weather, dt);
+  const effects = weatherEffects(weather);
+  const drone = stepDrone(state.drone, dt, player);
+  const droneBonus = droneSpotBonus(drone.spottedTimer > 0);
+
   let vehicles = state.vehicles;
   let playerVehicle = state.playerVehicle;
 
@@ -508,7 +511,7 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
   } else {
     player.angle += input.turn * TURN_SPEED * dt;
     if (input.forward !== 0) {
-      const speed = movementSpeed(player.x, player.z);
+      const speed = movementSpeed(player.x, player.z) * effects.speedFactor;
       player.x += Math.sin(player.angle) * input.forward * speed * dt;
       player.z += Math.cos(player.angle) * input.forward * speed * dt;
       clampToIsland(player);
@@ -523,12 +526,16 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
   const cooldown = Math.max(0, state.cooldown - dt);
   let weapon = state.weapon;
   const ammo = { ...state.ammo };
+  const attachments = { ...state.attachments };
   const loot = state.loot.map((crate) => {
     if (crate.taken || Math.hypot(crate.x - player.x, crate.z - player.z) > PICKUP_RADIUS) {
       return crate;
     }
     weapon = crate.weapon;
     ammo[crate.weapon] += crate.ammo;
+    if (crate.attachment) {
+      attachments[crate.weapon] = crate.attachment;
+    }
     return { ...crate, taken: true };
   });
 
@@ -633,7 +640,8 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
     const dx = player.x - next.x;
     const dz = player.z - next.z;
     const dist = Math.hypot(dx, dz) || 1;
-    const speed = movementSpeed(next.x, next.z) * (BOT_SPEED / PLAYER_SPEED);
+    const speed =
+      movementSpeed(next.x, next.z) * (BOT_SPEED / PLAYER_SPEED) * effects.speedFactor * droneBonus;
     next.x += (dx / dist) * speed * dt;
     next.z += (dz / dist) * speed * dt;
     next.angle = Math.atan2(dx, dz);
@@ -657,6 +665,10 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
 
   if (Math.hypot(player.x - zone.x, player.z - zone.z) > zone.radius) {
     health -= ZONE_DAMAGE_PER_SECOND * dt;
+  }
+  const playerCenterDist = Math.hypot(player.x - zone.x, player.z - zone.z);
+  if (playerCenterDist <= zone.radius && zone.radius - playerCenterDist < 2.5) {
+    health -= ZONE_WALL_DAMAGE_PER_SECOND * dt;
   }
   for (const bot of bots) {
     if (!bot.alive || Math.hypot(bot.x - player.x, bot.z - player.z) >= 1.6) {
@@ -731,6 +743,9 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
     vehicles,
     playerVehicle,
     airdrop,
+    weather,
+    drone,
+    attachments,
     squadSize: state.squadSize,
     squad,
     deployment: state.deployment,
