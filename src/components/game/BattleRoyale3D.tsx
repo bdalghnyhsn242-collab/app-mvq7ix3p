@@ -414,6 +414,49 @@ export default function BattleRoyale3D() {
       frame = window.requestAnimationFrame(loop);
       const dt = Math.min((now - last) / 1000, 0.05);
       last = now;
+      if (modeRef.current === "lobby") {
+        let lobby = stepLobby(lobbyRef.current, dt);
+        if (shootRef.current) {
+          shootRef.current = false;
+          lobby = lobbyShoot(lobby).state;
+        }
+        lobbyRef.current = lobby;
+        const showFemale = lobby.gender === "female";
+        lobbyMale.visible = !showFemale;
+        lobbyFemale.visible = showFemale;
+        const inspect = Math.sin(now / 2400) * 0.5;
+        lobbyMale.rotation.y = inspect;
+        lobbyFemale.rotation.y = inspect;
+        lobbyTargets.forEach((mesh, index) => {
+          const target = lobby.targets[index];
+          if (!target) {
+            return;
+          }
+          mesh.position.x = target.x;
+          (mesh.material as THREE.MeshLambertMaterial).color.setHex(
+            target.hitFlash > 0 ? 0xfefefe : 0xd9a13b,
+          );
+        });
+        lobbyCamera.position.set(0, 4.4, -9.5);
+        lobbyCamera.lookAt(0, 1.5, 10);
+        renderer.render(lobbyScene, lobbyCamera);
+        lobbyHudTimer += dt;
+        if (lobbyHudTimer > 0.1) {
+          lobbyHudTimer = 0;
+          setLobbyHud({
+            countdown: lobby.countdown,
+            hits: lobby.hits,
+            shots: lobby.shots,
+            weaponId: lobby.weapon,
+            weapon: WEAPONS[lobby.weapon].name,
+            ammo: lobby.ammo,
+          });
+        }
+        if (lobby.status === "launching") {
+          startRef.current(lobby.squadSize, lobby.gender);
+        }
+        return;
+      }
       const keys = keysRef.current;
       const input = {
         forward:
