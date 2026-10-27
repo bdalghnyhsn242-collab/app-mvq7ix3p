@@ -1,0 +1,92 @@
+import * as THREE from "three";
+import { ISLAND_RADIUS, terrainHeight } from "./battleRoyale";
+
+export function createTerrain(): THREE.Mesh {
+  const size = ISLAND_RADIUS * 2.6;
+  const geometry = new THREE.PlaneGeometry(size, size, 110, 110);
+  geometry.rotateX(-Math.PI / 2);
+  const position = geometry.attributes.position as THREE.BufferAttribute;
+  const colors = new Float32Array(position.count * 3);
+  const sand = new THREE.Color(0xd9c08a);
+  const grass = new THREE.Color(0x4d8f4d);
+  const rock = new THREE.Color(0x8a8378);
+  const color = new THREE.Color();
+  for (let i = 0; i < position.count; i += 1) {
+    const x = position.getX(i);
+    const z = position.getZ(i);
+    const h = terrainHeight(x, z);
+    position.setY(i, h);
+    if (h < 0.3) {
+      color.copy(sand);
+    } else if (h < 4.2) {
+      color.copy(grass).lerp(sand, Math.max(0, (0.3 - h) / 0.3 + 0.15));
+    } else {
+      color.copy(rock).lerp(grass, Math.max(0, (6.5 - h) / 2.3));
+    }
+    colors[i * 3] = color.r;
+    colors[i * 3 + 1] = color.g;
+    colors[i * 3 + 2] = color.b;
+  }
+  geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+  geometry.computeVertexNormals();
+  const material = new THREE.MeshLambertMaterial({ vertexColors: true });
+  return new THREE.Mesh(geometry, material);
+}
+
+function seededRandom(seed: number) {
+  let value = seed;
+  return () => {
+    value = (value * 16807) % 2147483647;
+    return (value - 1) / 2147483646;
+  };
+}
+
+export function createRocks(count = 26): THREE.Group {
+  const group = new THREE.Group();
+  const random = seededRandom(1337);
+  for (let i = 0; i < count; i += 1) {
+    const angle = random() * Math.PI * 2;
+    const radius = 6 + random() * (ISLAND_RADIUS - 9);
+    const x = Math.cos(angle) * radius;
+    const z = Math.sin(angle) * radius;
+    const scale = 0.8 + random() * 2.4;
+    const rock = new THREE.Mesh(
+      new THREE.DodecahedronGeometry(scale, 1),
+      new THREE.MeshLambertMaterial({
+        color: new THREE.Color().setHSL(0.08, 0.08, 0.28 + random() * 0.18),
+        flatShading: true,
+      }),
+    );
+    rock.position.set(x, terrainHeight(x, z) + scale * 0.35, z);
+    rock.rotation.set(random() * 0.6, random() * Math.PI * 2, random() * 0.6);
+    rock.scale.y = 0.6 + random() * 0.5;
+    group.add(rock);
+  }
+  return group;
+}
+
+export function createRuins(): THREE.Group {
+  const group = new THREE.Group();
+  const random = seededRandom(4242);
+  const wallMaterial = new THREE.MeshLambertMaterial({ color: 0x9a9186 });
+  const rustMaterial = new THREE.MeshLambertMaterial({ color: 0x7a4a32 });
+  const center = 14;
+  for (let i = 0; i < 10; i += 1) {
+    const angle = (i / 10) * Math.PI * 2;
+    const x = Math.cos(angle) * center;
+    const z = Math.sin(angle) * center;
+    const height = 1.2 + random() * 2.6;
+    const wall = new THREE.Mesh(new THREE.BoxGeometry(2.4, height, 0.5), wallMaterial);
+    wall.position.set(x, terrainHeight(x, z) + height / 2, z);
+    wall.rotation.y = angle + (random() - 0.5) * 0.4;
+    wall.rotation.z = (random() - 0.5) * 0.12;
+    group.add(wall);
+    if (random() > 0.5) {
+      const beam = new THREE.Mesh(new THREE.BoxGeometry(0.18, 3.2, 0.18), rustMaterial);
+      beam.position.set(x + 1.4, terrainHeight(x, z) + 1.4, z + 0.6);
+      beam.rotation.z = 0.5 + random() * 0.5;
+      group.add(beam);
+    }
+  }
+  return group;
+}
