@@ -760,35 +760,64 @@ export default function BattleRoyale3D() {
             </Badge>
           ) : null}
         </div>
-        {hud.status !== "running" ? (
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-slate-950/70 p-6 text-center backdrop-blur-sm">
-            {hud.status === "idle" ? (
-              <>
-                <p className="text-2xl font-bold text-white">باتل رويال 3D 🏝️</p>
-                <p className="max-w-sm text-sm text-slate-300">
-                  انزل إلى الجزيرة، أقصِ كل الأعداء، وابقَ داخل المنطقة الآمنة قبل أن تنكمش!
-                </p>
-                <div className="flex flex-wrap justify-center gap-2">
-                  {SQUAD_SIZES.map((size) => (
-                    <Button
-                      key={size}
-                      variant={size === squadSize ? "default" : "outline"}
-                      onClick={() => setSquadSize(size)}
-                    >
-                      {size === 1 ? "منفرد" : size === 2 ? "ثنائي" : size === 3 ? "ثلاثي" : "فرقة 5"}
-                    </Button>
-                  ))}
-                </div>
-                <Button size="lg" onClick={() => start(squadSize)}>
-                  <Play />
-                  ابدأ المعركة
+        {mode === "lobby" ? (
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2.5 overflow-y-auto bg-slate-950/60 p-4 text-center backdrop-blur-sm">
+            <p className="text-2xl font-bold text-white">ساحة الانتظار 🏕️</p>
+            <p className="text-sm font-medium text-amber-300">
+              الإقلاع خلال {Math.ceil(lobbyHud.countdown)} ثانية — 100 لاعب في الجيم
+            </p>
+            <div className="flex flex-wrap justify-center gap-2">
+              <Button
+                variant={gender === "male" ? "default" : "outline"}
+                onClick={() => pickGender("male")}
+              >
+                ♂ جندي
+              </Button>
+              <Button
+                variant={gender === "female" ? "default" : "outline"}
+                onClick={() => pickGender("female")}
+              >
+                ♀ جنديّة
+              </Button>
+            </div>
+            <div className="flex flex-wrap justify-center gap-2">
+              {SQUAD_SIZES.map((size) => (
+                <Button
+                  key={size}
+                  variant={size === squadSize ? "default" : "outline"}
+                  onClick={() => pickSquad(size)}
+                >
+                  {size === 1 ? "منفرد" : size === 2 ? "ثنائي" : size === 3 ? "ثلاثي" : "فرقة 5"}
                 </Button>
-              </>
-            ) : null}
+              ))}
+            </div>
+            <div className="flex max-w-md flex-wrap justify-center gap-1.5">
+              {(Object.keys(WEAPONS) as WeaponId[]).map((id) => (
+                <Button
+                  key={id}
+                  variant={lobbyHud.weaponId === id ? "default" : "outline"}
+                  className="h-8 px-2 text-xs"
+                  onClick={() => pickWeapon(id)}
+                >
+                  {WEAPONS[id].name}
+                </Button>
+              ))}
+            </div>
+            <p className="text-xs text-slate-300">
+              اختبر سلاحك على الأهداف (مسافة أو 1-6 لتبديل السلاح) — إصابات:{" "}
+              {lobbyHud.hits}/{lobbyHud.shots} — ذخيرة: {lobbyHud.ammo}
+            </p>
+            <Button size="lg" onClick={deployNow}>
+              🪂 انزل الآن
+            </Button>
+          </div>
+        ) : null}
+        {mode === "match" && hud.status !== "running" ? (
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-slate-950/70 p-6 text-center backdrop-blur-sm">
             {hud.status === "won" ? (
               <>
                 <p className="text-2xl font-bold text-white">الفوز! 🏆</p>
-                <Button size="lg" onClick={() => start(squadSize)}>
+                <Button size="lg" onClick={() => start(squadSize, gender)}>
                   <RotateCcw />
                   جولة جديدة
                 </Button>
@@ -797,7 +826,7 @@ export default function BattleRoyale3D() {
             {hud.status === "lost" ? (
               <>
                 <p className="text-2xl font-bold text-white">تمت إقصاؤك 💀</p>
-                <Button size="lg" onClick={() => start(squadSize)}>
+                <Button size="lg" onClick={() => start(squadSize, gender)}>
                   <RotateCcw />
                   حاول مرة أخرى
                 </Button>
