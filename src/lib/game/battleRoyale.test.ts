@@ -20,6 +20,7 @@ import {
   EXPANSION_LOOT_COUNT,
   type MatchState,
 } from "./battleRoyale";
+import { TOWER_TERMINAL, TOWER_CAPTURE_TIME } from "./radioTowerSystem";
 import {
   blowTire,
   createVehicles,
@@ -146,6 +147,59 @@ describe("battle royale core logic", () => {
     });
     const result = shoot(state);
     expect(result.hit).toBe(true);
+  });
+
+  it("captures the radio tower and activates radar jamming", () => {
+    const state = withState({
+      player: { x: TOWER_TERMINAL.x, z: TOWER_TERMINAL.z, angle: 0, health: 100, alive: true },
+    });
+    let next = state;
+    for (let i = 0; i < (TOWER_CAPTURE_TIME + 1) * 10; i += 1) {
+      next = stepMatch(next, 0.1, { forward: 0, turn: 0 });
+    }
+    expect(next.radio.captured).toBe(true);
+    expect(next.radio.jamTimer).toBeGreaterThan(0);
+  });
+
+  it("deploys a beacon and delivers the supply crate", () => {
+    let state = withState({ beacon: { held: 1, drop: null } });
+    state = stepMatch(state, 0.1, { forward: 0, turn: 0, beacon: true });
+    expect(state.beacon.held).toBe(0);
+    expect(state.beacon.drop).not.toBe(null);
+    for (let i = 0; i < 120 && !state.beacon.drop?.crate?.landed; i += 1) {
+      state = stepMatch(state, 0.5, { forward: 0, turn: 0 });
+    }
+    expect(state.beacon.drop?.crate?.landed).toBe(true);
+    const before = state.player.health;
+    const picked = stepMatch(state, 0.1, { forward: 0, turn: 0 });
+    expect(picked.beacon.drop?.crate?.taken).toBe(true);
+    expect(picked.player.health).toBeGreaterThan(before);
+  });
+
+  it("forces amber dust weather while the storm is active", () => {
+    const state = withState({ dust: { active: true, timer: 30, duration: 50 } });
+    const next = stepMatch(state, 0.1, { forward: 0, turn: 0 });
+    expect(next.weather.kind).toBe("dust");
+  });
+
+  it("runs the last-stand challenge and revives the squad on a kill", () => {
+    const wiped = createSquad(2).map((mate) => ({
+      ...knockDown(mate),
+      state: "out" as const,
+    }));
+    let state = withState({
+      squadSize: 2,
+      squad: wiped,
+      bots: [{ x: 0, z: 10, angle: 0, health: 100, alive: true }],
+    });
+    state = stepMatch(state, 0.1, { forward: 0, turn: 0 });
+    expect(state.revival.active).toBe(true);
+    const shot = shoot(state);
+    expect(shot.killed).toBe(true);
+    expect(shot.state.revival.succeeded).toBe(true);
+    const revived = stepMatch(shot.state, 0.1, { forward: 0, turn: 0 });
+    expect(revived.squad[0].state).toBe("active");
+    expect(revived.squad[0].health).toBe(50);
   });
 
   it("picks up a nearby crate and switches weapon", () => {
