@@ -1,5 +1,10 @@
 import * as THREE from "three";
-import { ISLAND_RADIUS, forestDensity, terrainHeight } from "./battleRoyale";
+import {
+  BUILDING_POSITIONS,
+  ISLAND_RADIUS,
+  forestDensity,
+  terrainHeight,
+} from "./battleRoyale";
 
 export function createTerrain(): THREE.Mesh {
   const size = ISLAND_RADIUS * 2.6;
@@ -197,5 +202,57 @@ export function createCheckpoints(): THREE.Group {
       group.add(barrier);
     }
   }
+  return group;
+}
+
+export function createBuildings(): THREE.Group {
+  const group = new THREE.Group();
+  const wallMat = new THREE.MeshLambertMaterial({ color: 0xa89f8d });
+  const roofMat = new THREE.MeshLambertMaterial({ color: 0x6e4a2f });
+  const crateMat = new THREE.MeshLambertMaterial({ color: 0x8a6b3e });
+  const width = 10;
+  const depth = 8;
+  const height = 3.2;
+  BUILDING_POSITIONS.forEach(({ x: cx, z: cz }, index) => {
+    const base = terrainHeight(cx, cz);
+    const building = new THREE.Group();
+    const addWall = (x: number, z: number, w: number, h: number, y: number, rotY = 0) => {
+      const wall = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.4), wallMat);
+      wall.position.set(x, base + y + h / 2, z);
+      wall.rotation.y = rotY;
+      building.add(wall);
+    };
+    // South wall with a door gap (entry 1)
+    addWall(cx - (width / 4 + 0.5), cz - depth / 2, width / 2 - 1, height, 0);
+    addWall(cx + (width / 4 + 0.5), cz - depth / 2, width / 2 - 1, height, 0);
+    // North wall with shattered windows (sill + top strip)
+    addWall(cx, cz + depth / 2, width, 1, 0);
+    addWall(cx, cz + depth / 2, width, height - 2.2, 2.2);
+    // West wall with a door gap (entry 2)
+    addWall(cx - width / 2, cz - (depth / 4 + 0.5), 0.4, height, 0, Math.PI / 2);
+    addWall(cx - width / 2, cz + (depth / 4 + 0.5), 0.4, height, 0, Math.PI / 2);
+    // East wall with windows
+    const eastX = cx + width / 2;
+    addWall(eastX, cz, 0.4, 1, 0, Math.PI / 2);
+    addWall(eastX, cz, 0.4, height - 2.2, 2.2, Math.PI / 2);
+    // Roof
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(width + 0.6, 0.25, depth + 0.6), roofMat);
+    roof.position.set(cx, base + height + 0.12, cz);
+    building.add(roof);
+    // Interior cover crates + partition
+    for (let c = 0; c < 3; c += 1) {
+      const crate = new THREE.Mesh(new THREE.BoxGeometry(1.1, 1.1, 1.1), crateMat);
+      const ox = ((c % 2) - 0.5) * 4;
+      const oz = (c - 1) * 2.2;
+      crate.position.set(cx + ox, base + 0.55, cz + oz);
+      crate.rotation.y = c * 0.7;
+      building.add(crate);
+    }
+    const partition = new THREE.Mesh(new THREE.BoxGeometry(0.3, height * 0.8, 3), wallMat);
+    partition.position.set(cx + 1.5, base + (height * 0.8) / 2, cz);
+    building.add(partition);
+    building.rotation.y = index * 0.9;
+    group.add(building);
+  });
   return group;
 }
