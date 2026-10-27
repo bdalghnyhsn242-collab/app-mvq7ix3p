@@ -1,24 +1,25 @@
 import AppLayout from "@/components/layout/AppLayout";
-import SnakeGame from "@/components/game/SnakeGame";
+import BattleRoyale3D from "@/components/game/BattleRoyale3D";
 
 export default function HomePage() {
   return (
     <AppLayout>
       <div className="page-shell space-y-6">
         <div className="space-y-1 text-center">
-          <h1 className="text-3xl font-bold sm:text-4xl">لعبة الثعبان 🐍</h1>
+          <h1 className="text-3xl font-bold sm:text-4xl">باتل رويال 3D 🏝️</h1>
           <p className="mx-auto max-w-xl text-sm text-muted-foreground">
-            تحكّم بالثعبان، اجمع أكبر عدد من التفاحات، وحاول تحطيم رقمك القياسي!
+            انزل إلى الجزيرة، واجه الأعداء، وابقَ داخل المنطقة الآمنة حتى النهاية!
           </p>
         </div>
-        <SnakeGame />
+        <BattleRoyale3D />
         <div className="mx-auto max-w-xl rounded-lg border bg-card p-4 text-sm text-muted-foreground">
           <p className="font-medium text-foreground">كيف تلعب؟</p>
           <ul className="mt-2 list-inside list-disc space-y-1">
-            <li>استخدم أسهم لوحة المفاتيح أو حروف WASD لتغيير الاتجاه.</li>
-            <li>على الجوال: اسحب بإصبعك على اللوحة أو استخدم أزرار الاتجاه.</li>
-            <li>اضغط مسافة للإيقاف المؤقت والمتابعة، وEnter لبدء جولة جديدة بعد النهاية.</li>
-            <li>كل تفاحة = 10 نقاط، وتزداد السرعة تدريجيًا كلما جمعت المزيد.</li>
+            <li>W/S للتقدم والتراجع، وA/D للدوران (تعمل الأسهم أيضًا).</li>
+            <li>اضغط مسافة أو زر «إطلاق النار» لإقصاء الأعداء أمامك.</li>
+            <li>على الجوال: استخدم أزرار التحكم أسفل اللعبة.</li>
+            <li>المنطقة الآمنة تنكمش باستمرار، والبقاء خارجها يستهلك صحتك.</li>
+            <li>اقضِ على كل الأعداء للفوز، وتنتهي الجولة عند نفاد الصحة.</li>
           </ul>
         </div>
       </div>
