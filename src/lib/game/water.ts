@@ -1,7 +1,7 @@
 import * as THREE from "three";
 
 export function createWater(): { mesh: THREE.Mesh; update: (time: number) => void } {
-  const geometry = new THREE.PlaneGeometry(500, 500, 80, 80);
+  const geometry = new THREE.PlaneGeometry(1400, 1400, 110, 110);
   geometry.rotateX(-Math.PI / 2);
   const material = new THREE.ShaderMaterial({
     transparent: true,
@@ -33,7 +33,7 @@ export function createWater(): { mesh: THREE.Mesh; update: (time: number) => voi
       varying float vHeight;
       varying float vDist;
       void main() {
-        float shore = smoothstep(52.0, 40.0, vDist);
+        float shore = smoothstep(215.0, 150.0, vDist);
         vec3 color = mix(uDeep, uShallow, shore);
         float crest = smoothstep(0.28, 0.42, vHeight);
         color = mix(color, uFoam, crest * 0.65 + shore * 0.25);
