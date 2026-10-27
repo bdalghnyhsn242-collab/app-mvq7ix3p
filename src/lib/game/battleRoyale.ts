@@ -167,31 +167,55 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
   return next;
 }
 
-export function shoot(state: MatchState): { state: MatchState; hit: boolean } {
+export function shoot(state: MatchState): { state: MatchState; hit: boolean; killed: boolean } {
   if (state.status !== "running") {
-    return { state, hit: false };
+    return { state, hit: false, killed: false };
   }
-  const index = state.bots.findIndex((bot) => {
+  const weapon = WEAPONS[state.weapon];
+  if (state.cooldown > 0 || state.ammo[state.weapon] <= 0) {
+    return { state, hit: false, killed: false };
+  }
+  let targetIndex = -1;
+  let targetDist = Infinity;
+  state.bots.forEach((bot, index) => {
     if (!bot.alive) {
-      return false;
+      return;
     }
     const dx = bot.x - state.player.x;
     const dz = bot.z - state.player.z;
-    if (Math.hypot(dx, dz) > SHOOT_RANGE) {
-      return false;
+    const dist = Math.hypot(dx, dz);
+    if (dist > weapon.range) {
+      return;
     }
     let diff = Math.abs(Math.atan2(dx, dz) - state.player.angle);
     if (diff > Math.PI) {
       diff = Math.PI * 2 - diff;
     }
-    return diff <= SHOOT_ARC;
+    if (diff <= weapon.arc && dist < targetDist) {
+      targetIndex = index;
+      targetDist = dist;
+    }
   });
-  if (index === -1) {
-    return { state, hit: false };
+  const ammo = { ...state.ammo, [state.weapon]: state.ammo[state.weapon] - 1 };
+  if (targetIndex === -1) {
+    return { state: { ...state, ammo, cooldown: weapon.cooldown }, hit: false, killed: false };
   }
-  const bots = state.bots.map((bot, i) => (i === index ? { ...bot, alive: false } : bot));
+  const bots = state.bots.map((bot, i) => {
+    if (i !== targetIndex) {
+      return bot;
+    }
+    const health = bot.health - weapon.damage;
+    return { ...bot, health, alive: health > 0 };
+  });
   return {
-    state: { ...state, bots, status: bots.every((bot) => !bot.alive) ? "won" : state.status },
+    state: {
+      ...state,
+      ammo,
+      cooldown: weapon.cooldown,
+      bots,
+      status: bots.every((bot) => !bot.alive) ? "won" : state.status,
+    },
     hit: true,
+    killed: !bots[targetIndex].alive,
   };
 }
