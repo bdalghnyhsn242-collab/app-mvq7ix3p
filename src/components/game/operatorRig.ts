@@ -12,6 +12,7 @@ import {
   OperatorAnimator,
   selectOperatorState,
 } from "./operatorAnimator";
+import { driveHumanoidBones } from "./boneDriver";
 import {
   animateSoldier,
   makeSoldier,
@@ -38,6 +39,23 @@ export function lodTierForDistance(distance: number): LodTier {
   return 2;
 }
 
+/**
+ * Scales a loaded humanoid to a consistent metric height and grounds it,
+ * because upstream packs ship at wildly different scales.
+ */
+export function normalizeHumanoidHeight(root: THREE.Object3D, targetHeight = 1.8): void {
+  const box = new THREE.Box3().setFromObject(root);
+  const size = new THREE.Vector3();
+  box.getSize(size);
+  if (size.y > 0.0001 && Math.abs(size.y - targetHeight) / targetHeight > 0.15) {
+    root.scale.multiplyScalar(targetHeight / size.y);
+  }
+  const grounded = new THREE.Box3().setFromObject(root);
+  if (Number.isFinite(grounded.min.y)) {
+    root.position.y -= grounded.min.y;
+  }
+}
+
 export class OperatorRig {
   readonly group = new THREE.Group();
   readonly variant: OperatorVariant;
@@ -46,6 +64,7 @@ export class OperatorRig {
   private procedural: THREE.Group;
   private animator: OperatorAnimator | null = null;
   private gltfRoot: THREE.Object3D | null = null;
+  private usesBoneDriver = false;
   private weaponAttached = false;
   private tick = 0;
   private lastMotion: SoldierMotion | null = null;
@@ -57,11 +76,19 @@ export class OperatorRig {
   }
 
   get skeletal(): boolean {
-    return this.animator !== null;
+    return this.gltfRoot !== null;
+  }
+
+  /** How the visible body is animated right now. */
+  get animationMode(): "clips" | "bone-driver" | "procedural" {
+    if (this.animator) {
+      return "clips";
+    }
+    return this.gltfRoot ? "bone-driver" : "procedural";
   }
 
   async upgrade(): Promise<boolean> {
-    if (this.animator) {
+    if (this.gltfRoot) {
       return true;
     }
     this.upgradeAttempted = true;
@@ -71,18 +98,22 @@ export class OperatorRig {
     }
     const clipsGltf = body.animations.length > 0 ? body : await loadOperatorClipsGltf();
     const instance = createOperatorInstance(this.variant, body, clipsGltf);
-    if (!instance.hasMappedClips) {
-      // No clip animates this skeleton: keep the detailed procedural rig
-      // instead of swapping in a static T-pose model.
-      return false;
-    }
+    // A real textured humanoid is always preferable to the procedural
+    // fallback. When no clip matches its skeleton, the generic bone
+    // driver animates it instead of leaving a static T-pose.
+    normalizeHumanoidHeight(instance.root, 1.8);
     this.gltfRoot = instance.root;
-    this.animator = new OperatorAnimator(instance.root, instance.clips);
+    if (instance.hasMappedClips) {
+      this.animator = new OperatorAnimator(instance.root, instance.clips);
+      if (this.lastMotion) {
+        this.animator.setState(selectOperatorState(this.lastMotion));
+      }
+      this.usesBoneDriver = false;
+    } else {
+      this.usesBoneDriver = true;
+    }
     this.group.add(instance.root);
     this.procedural.visible = false;
-    if (this.lastMotion) {
-      this.animator.setState(selectOperatorState(this.lastMotion));
-    }
     void this.attachWeapon();
     return true;
   }
@@ -95,17 +126,46 @@ export class OperatorRig {
     if (!weapon || !this.gltfRoot) {
       return;
     }
-    this.weaponAttached = attachWeaponToHand(this.gltfRoot, weapon.scene);
+    this.weaponAttached =
+      attachWeaponToHand(this.gltfRoot, weapon.scene) || this.attachWeaponFallback(weapon.scene);
+  }
+
+  /** Hands the weapon when the rig has no recognizable hand bone. */
+  private attachWeaponFallback(weaponScene: THREE.Object3D): boolean {
+    if (!this.gltfRoot || this.gltfRoot.getObjectByName("held-weapon")) {
+      return false;
+    }
+    const holder = new THREE.Group();
+    holder.name = "held-weapon";
+    holder.position.set(0.22, 1.25, 0.3);
+    holder.rotation.set(-0.2, 0, 0);
+    const gun = weaponScene.clone(true);
+    gun.scale.setScalar(0.5);
+    gun.rotation.y = Math.PI / 2;
+    gun.traverse((child) => {
+      const mesh = child as THREE.Mesh;
+      if (mesh.isMesh) {
+        mesh.castShadow = true;
+        mesh.frustumCulled = false;
+      }
+    });
+    holder.add(gun);
+    this.gltfRoot.add(holder);
+    return true;
   }
 
   update(motion: SoldierMotion, dt: number, tier: LodTier = 0): void {
     this.lastMotion = motion;
-    if (this.animator) {
+    if (this.animator && !this.usesBoneDriver) {
       this.animator.setState(selectOperatorState(motion));
       this.tick += 1;
       if (this.tick % mixerUpdateInterval(tier) === 0) {
         this.animator.update(dt * mixerUpdateInterval(tier));
       }
+      return;
+    }
+    if (this.gltfRoot) {
+      driveHumanoidBones(this.gltfRoot, motion);
       return;
     }
     animateSoldier(this.procedural, motion);
