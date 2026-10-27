@@ -58,7 +58,10 @@ export function movementSpeed(x: number, z: number): number {
   return PLAYER_SPEED;
 }
 
-export type WeaponId = "pistol" | "rifle" | "shotgun";
+import { createVehicles, damageVehicle, stepVehicle, type Vehicle } from "./vehicles";
+import { createAirdropState, stepAirdrops, type AirdropState } from "./airdrops";
+
+export type WeaponId = "pistol" | "smg" | "ar" | "dmr" | "lmg" | "shotgun";
 export type Weapon = {
   id: WeaponId;
   name: string;
@@ -66,23 +69,49 @@ export type Weapon = {
   arc: number;
   damage: number;
   cooldown: number;
+  muzzleVelocity: number;
+  bulletDrop: number;
+  recoil: number;
+  magazine: number;
 };
 export const WEAPONS: Record<WeaponId, Weapon> = {
-  pistol: { id: "pistol", name: "مسدس", range: 18, arc: 0.35, damage: 50, cooldown: 0.5 },
-  rifle: { id: "rifle", name: "بندقية", range: 26, arc: 0.25, damage: 34, cooldown: 0.25 },
-  shotgun: { id: "shotgun", name: "خرطوش", range: 10, arc: 0.6, damage: 100, cooldown: 0.8 },
+  pistol: {
+    id: "pistol", name: "مسدس M9", range: 18, arc: 0.35, damage: 50, cooldown: 0.5,
+    muzzleVelocity: 380, bulletDrop: 0.15, recoil: 0.02, magazine: 12,
+  },
+  smg: {
+    id: "smg", name: "MP5", range: 20, arc: 0.3, damage: 26, cooldown: 0.16,
+    muzzleVelocity: 400, bulletDrop: 0.08, recoil: 0.012, magazine: 30,
+  },
+  ar: {
+    id: "ar", name: "M4A1", range: 30, arc: 0.22, damage: 32, cooldown: 0.2,
+    muzzleVelocity: 900, bulletDrop: 0.03, recoil: 0.018, magazine: 30,
+  },
+  dmr: {
+    id: "dmr", name: "Kar98k قنص", range: 65, arc: 0.08, damage: 90, cooldown: 1.3,
+    muzzleVelocity: 890, bulletDrop: 0.006, recoil: 0.05, magazine: 5,
+  },
+  lmg: {
+    id: "lmg", name: "M249", range: 34, arc: 0.3, damage: 28, cooldown: 0.11,
+    muzzleVelocity: 910, bulletDrop: 0.04, recoil: 0.03, magazine: 100,
+  },
+  shotgun: {
+    id: "shotgun", name: "خرطوش S12", range: 10, arc: 0.6, damage: 100, cooldown: 0.8,
+    muzzleVelocity: 300, bulletDrop: 0.2, recoil: 0.06, magazine: 8,
+  },
 };
 export const LOOT_COUNT = 8;
 export const PICKUP_RADIUS = 1.8;
 export type Loot = { x: number; z: number; weapon: WeaponId; ammo: number; taken: boolean };
 
 export function lootWeaponForIndex(index: number): WeaponId {
-  return index % 3 === 0 ? "rifle" : index % 3 === 1 ? "shotgun" : "pistol";
+  const cycle: WeaponId[] = ["ar", "smg", "shotgun", "dmr", "lmg", "pistol"];
+  return cycle[index % cycle.length];
 }
 
 export type Soldier = { x: number; z: number; angle: number; health: number; alive: boolean };
 export type MatchStatus = "idle" | "running" | "won" | "lost";
-export type MatchInput = { forward: number; turn: number };
+export type MatchInput = { forward: number; turn: number; enter?: boolean };
 export type MatchState = {
   player: Soldier;
   bots: Soldier[];
@@ -91,6 +120,9 @@ export type MatchState = {
   ammo: Record<WeaponId, number>;
   cooldown: number;
   loot: Loot[];
+  vehicles: Vehicle[];
+  playerVehicle: number;
+  airdrop: AirdropState;
   time: number;
   status: MatchStatus;
 };
