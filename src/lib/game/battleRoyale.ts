@@ -140,8 +140,9 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
   const player = { ...state.player };
   player.angle += input.turn * TURN_SPEED * dt;
   if (input.forward !== 0) {
-    player.x += Math.sin(player.angle) * input.forward * PLAYER_SPEED * dt;
-    player.z += Math.cos(player.angle) * input.forward * PLAYER_SPEED * dt;
+    const speed = movementSpeed(player.x, player.z);
+    player.x += Math.sin(player.angle) * input.forward * speed * dt;
+    player.z += Math.cos(player.angle) * input.forward * speed * dt;
     clampToIsland(player);
   }
 
@@ -170,8 +171,9 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
     const dx = player.x - next.x;
     const dz = player.z - next.z;
     const dist = Math.hypot(dx, dz) || 1;
-    next.x += (dx / dist) * BOT_SPEED * dt;
-    next.z += (dz / dist) * BOT_SPEED * dt;
+    const speed = movementSpeed(next.x, next.z) * (BOT_SPEED / PLAYER_SPEED);
+    next.x += (dx / dist) * speed * dt;
+    next.z += (dz / dist) * speed * dt;
     next.angle = Math.atan2(dx, dz);
     clampToIsland(next);
     return next;
