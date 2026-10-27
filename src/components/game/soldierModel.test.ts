@@ -53,4 +53,16 @@ describe("tactical operator models", () => {
     });
     expect(casters).toBeGreaterThan(20);
   });
+
+  it("builds a detailed face and merged hands with fingers", () => {
+    const soldier = makeSoldier(0x22c55e, "woodland");
+    const rig = soldier.userData.rig;
+    expect(rig.hands).toHaveLength(2);
+    for (const hand of rig.hands) {
+      expect(hand.isMesh).toBe(true);
+      // Palm + 4 fingers + thumb merged into one geometry.
+      expect(hand.geometry.attributes.position.count).toBeGreaterThan(24);
+    }
+    expect(rig.head.children.length).toBeGreaterThan(15);
+  });
 });
