@@ -56,6 +56,9 @@ import {
   WEAPONS,
   shoot,
   stepMatch,
+  reloadWeapon,
+  switchWeapon,
+  MAX_ARMOR,
   type DeployPhase,
   type MatchState,
   type MatchStatus,
@@ -82,6 +85,13 @@ type Hud = {
   zone: number;
   weapon: string;
   ammo: number;
+  magazine: number;
+  reserve: number;
+  reloading: boolean;
+  armor: number;
+  owned: WeaponId[];
+  crouching: boolean;
+  jumping: boolean;
   crates: number;
   vehicle: string | null;
   speed: number;
@@ -135,6 +145,13 @@ function createInitialHud(status: MatchStatus): Hud {
     zone: ZONE_START_RADIUS,
     weapon: WEAPONS.pistol.name,
     ammo: 24,
+    magazine: WEAPONS.pistol.magazine,
+    reserve: 24,
+    reloading: false,
+    armor: 0,
+    owned: ["pistol"],
+    crouching: false,
+    jumping: false,
     crates: LOOT_COUNT,
     vehicle: null,
     speed: 0,
@@ -247,6 +264,14 @@ export default function BattleRoyale3D() {
   const shieldRef = useRef(false);
   const sentryRef = useRef(false);
   const medevacRef = useRef(false);
+  const reloadRef = useRef(false);
+  const jumpRef = useRef(false);
+  const switchRef = useRef<WeaponId | null>(null);
+  const crouchRef = useRef(false);
+  const sprintRef = useRef(false);
+  const camYawRef = useRef(0);
+  const camPitchRef = useRef(0.3);
+  const pointerLockedRef = useRef(false);
   const cloudSavedRef = useRef(false);
   const [squadSize, setSquadSize] = useState<SquadSize>(1);
   const [mode, setMode] = useState<"lobby" | "match">("lobby");
