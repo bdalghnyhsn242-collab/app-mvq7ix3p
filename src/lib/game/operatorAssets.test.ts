@@ -59,6 +59,27 @@ describe("CC0 asset pipeline guards", () => {
     expect(mapped.drive?.name).toBe("Sit_Chair");
   });
 
+  it("maps the real Soldier.glb clip set (TPose/Idle/Walk/Run)", () => {
+    const clips = [
+      clipNamed("TPose", "Hips"),
+      clipNamed("Idle", "Hips"),
+      clipNamed("Walk", "Hips"),
+      clipNamed("Run", "Hips"),
+    ];
+    const mapped = mapOperatorClips(clips);
+    expect(mapped.idle?.name).toBe("Idle");
+    expect(mapped.walk?.name).toBe("Walk");
+    expect(mapped.sprint?.name).toBe("Run");
+  });
+
+  it("never falls back to a T-pose/A-pose rest clip", () => {
+    const clips = [clipNamed("TPose", "Hips"), clipNamed("Walk", "Hips")];
+    const mapped = mapOperatorClips(clips);
+    expect(mapped.idle?.name).toBe("Walk");
+    expect(mapped.sprint?.name).toBe("Walk");
+    expect(mapped.walk?.name).toBe("Walk");
+  });
+
   it("marks an instance unmapped when no clip matches the skeleton", () => {
     const body = {
       scene: new THREE.Group(),
