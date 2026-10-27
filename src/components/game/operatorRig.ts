@@ -13,7 +13,7 @@ import {
   OperatorAnimator,
   selectOperatorState,
 } from "./operatorAnimator";
-import { driveHumanoidBones } from "./boneDriver";
+import { captureHumanoidRestPose, driveHumanoidBones } from "./boneDriver";
 import {
   animateSoldier,
   makeSoldier,
@@ -174,6 +174,10 @@ export class OperatorRig {
       normalizeHumanoidHeight(instance.root, 1.8);
       // Some packs face -Z while the game's forward is +Z.
       instance.root.rotation.y = bodyFacingYaw(`body:${this.variant}`);
+      // Snapshot the bind pose before any mixer runs so direct posing
+      // (aim/crawl/swim/drive) always restores a clean rest pose instead
+      // of a mid-animation pose captured on the first driver call.
+      captureHumanoidRestPose(instance.root);
       this.gltfRoot = instance.root;
       if (instance.hasMappedClips) {
         this.animator = new OperatorAnimator(instance.root, instance.clips);
