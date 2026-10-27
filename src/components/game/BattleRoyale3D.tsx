@@ -1242,7 +1242,7 @@ export default function BattleRoyale3D() {
           ),
           revivalTimer: Math.max(0, Math.ceil(current.revival.timer)),
           dome: current.shield.active
-            ? Math.max(0, current.shield.integrity / 120)
+            ? Math.max(0, current.shield.integrity / DOME_MAX_INTEGRITY)
             : null,
           sentryDeployed: current.sentry.deployed,
           sentryHealth: current.sentry.health,
