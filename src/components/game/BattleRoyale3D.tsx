@@ -21,6 +21,7 @@ import { createWater } from "@/lib/game/water";
 import { createRain, updateWeatherVisuals } from "@/components/game/weatherFx";
 import { ATTACHMENTS } from "@/lib/game/arsenal";
 import { dayPhase } from "@/lib/game/weather";
+import { EXPANSION_LOOT_COUNT } from "@/lib/game/worldExpansion";
 import {
   BOT_COUNT,
   LOOT_COUNT,
@@ -483,7 +484,9 @@ export default function BattleRoyale3D() {
     const airdropGroup = new THREE.Group();
     airdropGroup.add(airdropCrate, parachute);
     scene.add(airdropGroup);
-    const lootMeshes = Array.from({ length: LOOT_COUNT + BUILDING_POSITIONS.length }, (_, index) => {
+    const lootMeshes = Array.from(
+      { length: LOOT_COUNT + BUILDING_POSITIONS.length + EXPANSION_LOOT_COUNT },
+      (_, index) => {
       const crate = new THREE.Mesh(
         new THREE.BoxGeometry(0.8, 0.8, 0.8),
         new THREE.MeshLambertMaterial({ color: LOOT_COLORS[lootWeaponForIndex(index)] }),
@@ -491,7 +494,8 @@ export default function BattleRoyale3D() {
       crate.position.y = 0.5;
       scene.add(crate);
       return crate;
-    });
+      },
+    );
 
     const lobbyScene = new THREE.Scene();
     lobbyScene.background = new THREE.Color(0x8fb0cf);
