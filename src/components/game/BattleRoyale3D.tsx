@@ -13,6 +13,7 @@ import {
   ZONE_START_RADIUS,
   createMatchState,
   lootWeaponForIndex,
+  terrainHeight,
   WEAPONS,
   shoot,
   stepMatch,
@@ -195,10 +196,14 @@ export default function BattleRoyale3D() {
         zoneRing.scale.setScalar(current.zone.radius);
         camera.position.set(
           current.player.x - Math.sin(current.player.angle) * 13,
-          8,
+          terrainHeight(current.player.x, current.player.z) + 8,
           current.player.z - Math.cos(current.player.angle) * 13,
         );
-        camera.lookAt(current.player.x, 1, current.player.z);
+        camera.lookAt(
+          current.player.x,
+          terrainHeight(current.player.x, current.player.z) + 1,
+          current.player.z,
+        );
       } else {
         const orbit = now / 5000;
         camera.position.set(Math.sin(orbit) * 55, 26, Math.cos(orbit) * 55);
