@@ -1,5 +1,12 @@
 import * as THREE from "three";
 import {
+  BUILDING_FILES,
+  NATURE_FILES,
+  fitModelToSize,
+  instantiateEnvironmentModel,
+  loadEnvironmentGltf,
+} from "./environmentAssets";
+import {
   BUILDING_POSITIONS,
   ISLAND_RADIUS,
   forestDensity,
@@ -82,10 +89,12 @@ export function createRocks(count = 90): THREE.Group {
 export function createForest(): {
   group: THREE.Group;
   update: (time: number, camera: THREE.Camera) => void;
+  treeLods: THREE.LOD[];
 } {
   const group = new THREE.Group();
   const random = seededRandom(9021);
   const foliage: THREE.Mesh[] = [];
+  const treeLods: THREE.LOD[] = [];
   const trunkMat = new THREE.MeshLambertMaterial({ color: 0x5b4630 });
   const leafMat = new THREE.MeshLambertMaterial({ color: 0x2f6b34, flatShading: true });
   const leafMatLow = new THREE.MeshLambertMaterial({ color: 0x356e38 });
@@ -119,10 +128,12 @@ export function createForest(): {
     lod.scale.setScalar(0.8 + random() * 1.6);
     lod.rotation.y = random() * Math.PI * 2;
     group.add(lod);
+    treeLods.push(lod);
     placed += 1;
   }
   return {
     group,
+    treeLods,
     update: (time: number, camera: THREE.Camera) => {
       for (let i = 0; i < foliage.length; i += 1) {
         foliage[i].rotation.z = Math.sin(time * 1.6 + i * 0.7) * 0.05;
@@ -280,11 +291,143 @@ export function createBuildings(): THREE.Group {
     partition.position.set(cx + 1.5, base + (height * 0.8) / 2, cz);
     building.add(partition);
     building.rotation.y = index * 0.9;
+    building.userData.buildingIndex = index;
     group.add(building);
   });
   return group;
 }
 
+export type ForestChunk = {
+  group: THREE.Group;
+  treeLods: THREE.LOD[];
+  update: (time: number, camera: THREE.Camera) => void;
+};
+
+/**
+ * Replaces the high-detail LOD level of up to maxTrees procedural trees
+ * with real CC0 Quaternius tree models, and scatters real grass/bush
+ * props under them. The low-detail cone LOD stays procedural so distant
+ * forests keep the 4GB-RAM budget. Returns false when the assets could
+ * not be loaded (procedural forest remains).
+ */
+export async function upgradeForestWithRealTrees(
+  forest: ForestChunk,
+  maxTrees = 70,
+
+  const [common, pine, birch, bush, grass] = await Promise.all([
+    loadEnvironmentGltf("nature", NATURE_FILES.treeCommon),
+    loadEnvironmentGltf("nature", NATURE_FILES.treePine),
+    loadEnvironmentGltf("nature", NATURE_FILES.treeBirch),
+    loadEnvironmentGltf("nature", NATURE_FILES.bush),
+    loadEnvironmentGltf("nature", NATURE_FILES.grass),
+  ]);
+  const treeTemplates = [common, pine, birch]
+    .filter((gltf): gltf is NonNullable<typeof gltf> => gltf !== null)
+    .map((gltf) => gltf.scene);
+  if (treeTemplates.length === 0) {
+    return false;
+  }
+  const upgraded = forest.treeLods.slice(0, maxTrees);
+  upgraded.forEach((lod, index) => {
+    const template = treeTemplates[index % treeTemplates.length];
+    const clone = fitModelToSize(template.clone(true), 6.5 + (index % 4), "height");
+    const previous = lod.levels[0]?.object;
+    if (previous) {
+      lod.remove(previous);
+    }
+    lod.addLevel(clone, 0);
+  });
+  const bushTemplate = bush ? bush.scene : null;
+  const grassTemplate = grass ? grass.scene : null;
+  upgraded.forEach((lod, index) => {
+    const jitterX = ((index * 37) % 100) / 100 - 0.5;
+    const jitterZ = ((index * 61) % 100) / 100 - 0.5;
+    if (bushTemplate && index % 3 === 0) {
+      const bushClone = fitModelToSize(bushTemplate.clone(true), 1.1);
+      bushClone.position.set(
+        lod.position.x + jitterX * 3,
+        lod.position.y,
+        lod.position.z + jitterZ * 3,
+      );
+      forest.group.add(bushClone);
+    }
+    if (grassTemplate && index % 2 === 0) {
+      const grassClone = fitModelToSize(grassTemplate.clone(true), 0.8);
+      grassClone.position.set(
+        lod.position.x - jitterX * 2.4,
+        lod.position.y,
+        lod.position.z - jitterZ * 2.4,
+      );
+      forest.group.add(grassClone);
+    }
+  });
+  return true;
+}
+
+/**
+ * Replaces procedural dodecahedron rocks with real CC0 rock models
+ * (5-13KB each, negligible memory). Keeps positions/rotations/scales.
+ */
+export async function upgradeRocksWithRealRocks(rocks: THREE.Group): Promise<boolean> {
+  const loaded = await Promise.all([
+    loadEnvironmentGltf("nature", NATURE_FILES.rock1),
+    loadEnvironmentGltf("nature", NATURE_FILES.rock2),
+    loadEnvironmentGltf("nature", NATURE_FILES.rock3),
+    loadEnvironmentGltf("nature", NATURE_FILES.rock4),
+  ]);
+  const templates = loaded
+    .filter((gltf): gltf is NonNullable<typeof gltf> => gltf !== null)
+    .map((gltf) => gltf.scene);
+  if (templates.length === 0) {
+    return false;
+  }
+  const previous = [...rocks.children] as THREE.Mesh[];
+  previous.forEach((rock, index) => {
+    const clone = instantiateEnvironmentModel(templates[index % templates.length]);
+    clone.position.copy(rock.position);
+    clone.rotation.copy(rock.rotation);
+    clone.scale.copy(rock.scale);
+    rocks.remove(rock);
+    rocks.add(clone);
+  });
+  return true;
+}
+
+/**
+ * Replaces the four procedural abandoned houses with real textured CC0
+ * building models at the same positions/rotations. Loot spots, obstacles,
+ * and all gameplay positions stay untouched.
+ */
+export async function upgradeBuildingsWithRealModels(
+  buildings: THREE.Group,
+): Promise<boolean> {
+  const loaded = await Promise.all([
+    loadEnvironmentGltf("buildings", BUILDING_FILES.house1),
+    loadEnvironmentGltf("buildings", BUILDING_FILES.house2),
+    loadEnvironmentGltf("buildings", BUILDING_FILES.building1Small),
+    loadEnvironmentGltf("buildings", BUILDING_FILES.building2Small),
+  ]);
+  const templates = loaded
+    .filter((gltf): gltf is NonNullable<typeof gltf> => gltf !== null)
+    .map((gltf) => gltf.scene);
+  if (templates.length === 0) {
+    return false;
+  }
+  BUILDING_POSITIONS.forEach((position, index) => {
+    const template = templates[index % templates.length];
+    const tagged = buildings.children.find(
+      (child) => child.userData.buildingIndex === index,
+    );
+    if (tagged) {
+      buildings.remove(tagged);
+    }
+    const clone = fitModelToSize(template.clone(true), 9);
+    clone.position.set(position.x, terrainHeight(position.x, position.z), position.z);
+    clone.rotation.y = index * 0.9;
+    buildings.add(clone);
+  });
+  return true;
+}
 export function createMilitaryCamp(): THREE.Group {
   const group = new THREE.Group();
   const random = seededRandom(555);
