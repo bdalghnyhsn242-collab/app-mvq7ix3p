@@ -1743,6 +1743,22 @@ export default function BattleRoyale3D() {
         ) : null}
         {mode === "match" && hud.status === "running" ? (
           <div className="pointer-events-none absolute left-3 top-24 z-[5] flex flex-col gap-1">
+            <span
+              className={cn(
+                "w-fit rounded px-1.5 py-0.5 text-[10px] font-semibold",
+                modelStatus === "real"
+                  ? "bg-emerald-900/85 text-emerald-200"
+                  : modelStatus === "loading"
+                    ? "bg-slate-900/80 text-slate-300"
+                    : "bg-amber-900/85 text-amber-200",
+              )}
+            >
+              {modelStatus === "real"
+                ? "🧍 نموذج GLB بشري حقيقي مُحمّل"
+                : modelStatus === "loading"
+                  ? "⏳ جارٍ تحميل نموذج الشخصية…"
+                  : "⚠️ تعذر تحميل GLB — النموذج الإجرائي البديل"}
+            </span>
             {(["pistol", "smg", "ar", "dmr", "lmg", "shotgun"] as WeaponId[]).map((id, index) => (
               <span
                 key={id}
