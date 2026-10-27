@@ -1,16 +1,61 @@
-# LatchLoop App Base
+# الصمود الأخير — Last Stand 🏝️
 
-Reusable React + Vite application base for small LatchLoop web apps.
+لعبة باتل رويال ثلاثية الأبعاد تعمل في المتصفح: جندي واحد في جزيرة، أعداء يطاردونك، ومنطقة آمنة تنكمش باستمرار. مبنية على قالب LatchLoop باستخدام React وVite وTailwind CSS وThree.js.
+
+## النسخة الأساسية الجديدة (v2) — إعادة بناء نظيفة
+
+مسار `/v2` يضم إعادة بناء أساسية مستقلة (ملفات جديدة بالكامل تحت `src/game/v2/`)
+دون أي تعديل على اللعبة الكاملة القديمة على `/`:
+
+- جزيرة خفيفة منخفضة التفاصيل (أرض، ماء، أشجار، صخور، مبانٍ) بهندسات وخامات
+  مشتركة — مناسبة لجهاز Windows 10 بذاكرة 4GB ورسوميات مدمجة.
+- جندي بشري حقيقي `Soldier.glb` من أمثلة three.js الرسمية (r169) بحركات
+  Idle/Walk/Run مدمجة، يُحمَّل وقت التشغيل مع مرآة احتياطية، ويُستنسخ
+  (`SkeletonUtils.clone`) للاعب والأعداء مع `AnimationMixer` يُحدَّث كل إطار.
+- حركة WASD نسبية للكاميرا، تدوير بالماوس (Pointer Lock)، قفز وجري، اصطدام
+  دائري بالأشجار والصخور والمباني.
+- سلاح واحد (بندقية) بإطلاق Raycast وتلقيم، و3 أعداء تجريبيون يطاردون اللاعب
+  ويضرّونه عند التلامس، وصحة للاعب مع شاشات فوز/خسارة وإعادة جولة.
+- شارة حالة صادقة للنموذج: عدد meshes والعظام وأسماء المقاطع عند النجاح،
+  ورسالة الخطأ الحقيقية عند الفشل — لا مجسمات مكعبة بديلة ولا نجاح كاذب.
+
+المنطق الخالص (اختيار الحركة، اتجاه الحركة، مطاردة الأعداء، الاصطدام) في
+`src/game/v2/logic.ts` مع اختبارات Vitest في `src/game/v2/logic.test.ts`.
+بعد اجتياز اختبارات هذه النسخة تُضاف بقية أنظمة Battle Royale تدريجيًا.
 
 ## Stack
 
-- React, TypeScript, Vite, and React Router.
-- Tailwind CSS with shadcn/Radix-style UI primitives and `lucide-react` icons.
-- Optional Supabase auth, database, Realtime, and Edge Functions.
-- Sonner for toast notifications.
-- React Hook Form and Zod for validated forms.
-- Trigger.dev scaffolding for durable background AI work.
-- Vercel SPA fallback configuration.
+- React, TypeScript, Vite, React Router, Tailwind CSS.
+- Three.js لعالم مفتوح ضخم (نصف قطر 160م): تضاريس إجرائية بجبال ووديان وأنهار طينية، غابات إجرائية كثيفة مع LOD وتأثير رياح، نقاط تفتيش عسكرية مهجورة، صخور غير متكررة، أنقاض صناعية، ماء ديناميكي بموجات ورغوة (shader مخصص)، ضباب أفق وجزيئات غبار متطايرة.
+- مشغّلون تكتيكيون واقعيون: نماذج مفصّلة بأطراف مفصلية (أكتاف/مرفقان/وركان/ركب)، حامل ألواح بالية بمخازن ظاهرة على الصدر، حقائب خصر، حقيبة ظهر بلفّ وأنبوب ماء وراديو بهوائي، خوذة بـNVG وعدسات عاكسة وسماعة تكتيكية وبالاكلافا، أحذية قتال ثقيلة ببقع طين إجرائية، وركب واقية وقفازات.
+- خط أنابيب GLTF + AnimationMixer: محمّل `GLTFLoader` مع تخزين مؤقت أحادي الرحلة واستنساخ هيكلي (`SkeletonUtils.clone`) تشارك فيه الكيانات الـ100 الهندسة والخامات، آلة حالات حركات (Idle/Sprint/Aim/Crawl/Swim/Drive) بتلاشٍ متقاطع ناعم، وميزانية مزج LOD (كل إطار قريبًا، كل 2/4 إطارات بعيدًا) — مع تراجع إجرائي فوري عند غياب ملفات GLB (ضعها في `public/models/`).
+- نظام طقس ديناميكي: دورة ليل/نهار كاملة (فجر/نهار/غسق/ليل) تغيّر السماء والإضاءة والضباب، مع مطر جزيئي وعواصف تُبطئ الحركة وضباب يقلّل مدى رؤية الأعداء — والتحولات تتمزج بسلاسة.
+- ترسانة ملحقات ميدانية: سكوبات 2x/4x/8x تمدّد المدى، كاتم صوت، مخزن ممتد، مقبض أمامي، ومؤشر ليزر — تُلتقط مع صناديق الأسلحة وتُركَّب تلقائيًا.
+- توسعة الخريطة: معسكر عسكري مهجور (ثكنات، خيام، حواجز رملية، منصة هبوط، برج مراقبة) ومطار مهجور (مدرج، حظيرة طائرات، برج مراقبة، حطام طائرة) — مع غنائم حصرية وعوائق يتفاداها ذكاء الأعداء.
+- طائرات استطلاع (Drones) تدور حول الجزيرة: إذا مررت تحتها يُكشف موقعك ويندفع الأعداء أسرع نحوك (تحذير 🚨 في الواجهة)، وجدار أزرق سينمائي نابض للمنطقة الآمنة يضر من يلمسه.
+- برج الاتصالات التكتيكي: احتل الجهاز المركزي (5م لمدة 8ث) لتشغيل «الحجب الراداري» 60ث — يكشف كل الكيانات لفرقتك ويشوّش شاشات الأعداء — مع تهدئة 90ث وضوء تحذير وامض على البرج.
+- منارة الإمدادات التكتيكية: عنصر نادر يُلتقط من الصناديق؛ انشره (Q) لعمود دخان أحمر مرئي بعيدًا، وبعد 10ث تحلّق طائرة شحن وتُسقط صندوقًا مدرّعًا (درع تير-3، سلاح قوي، عدة إسعاف كاملة) — مع تنبيه عام يخلق بؤر قتال ساخنة.
+- عواصف رملية ديناميكية: كارثة بيئية دورية (45-70ث) تخفض الرؤية إلى 15م بلون كهرماني، تخفض نطاق الصوت 60%، وتعطّل القنص بعيد المدى — قتال قريب إجباري.
+- «فرصة القائد» الأخيرة: عند فناء فرقتك كاملة تُطلق تحديًا (30ث): احتل نقطة قريبة (12ث) أو أقصِ عدوًا واحدًا — لتعود الفرقة كلها بالمظلات بصحة 50%!
+- قبة الدرع التكتيكي: أداة نادرة تُلتقط من الصناديق؛ انشرها (Z) لقبة طاقة زرقاء متوهجة (نصف قطر 8م) تمتص رصاص الأبراج والاصطدامات عن فرقتك — شريط سلامة ينضب مع كل ضربة وتتلاشى بلطف عند النفاد.
+- برج الدفاع الآلي: حامل ثلاثي مستقل (X) يمسح نطاق 25م ويطلق سهام EMP صاعقة تُبطئ الأعداء وتكسر تصويبهم 2.5ث — قابل للتفكيك من الأعداء أو الاسترجاع منك ما دام سليمًا.
+- طائرة الإخلاء الطبي: منارة إنقاذ نادرة (C) تُنشر عند سقوط رفيق — كوادكوبتر سريع يحلّق فوقه، ينشر حقل نانو يشفيه (50 صحة خلال 5ث) وستار دخاني للإنعاش الآمن.
+- حصن الصمود: عند تفعيل «فرصة القائد» تحصل فورًا على مقاومة ضرر +30% وسرعة إعادة تلقيم أعلى، ومع صمودك 30ث في المنطقة تصل مروحة إنقاذ تعيد فرقتك كاملة بصحة ودرع قياسي!
+- خامات PBR (MeshStandardMaterial): أنماط تمويه إجرائية (غابات/صحراوي/غِلي) عبر Canvas مع خرائط خشونة نسيج، معادن لامعة على الأسلحة والعدسات، وتباين خشونة القماش.
+- إضاءة سينمائية: ظلال ديناميكية ناعمة 2048 تتبع اللاعب، أشعة شمس حجمية تخترق الغابات (Additive cones)، وشرارات انفجار فيزيائية بجاذبية.
+- حركة عضوية: تأرجح أطراف حسب السرعة، تمايل الحقائب والأحزمة مع الجري، ووضعيات سباحة وقيادة مخصصة.
+- ترسانة أسلحة كاملة (مسدس M9، MP5، M4A1، Kar98k قنص، M249، خرطوش S12) مع سرعة فوهة وهبوط رصاص وارتداد.
+- مركبات عسكرية بفيزياء قيادة: UAZ مدرعة، شاحنة تكتيكية ببرش، وباجي سريع — مع تآكل إطارات يؤثر على القيادة.
+- طائرة نقل تعبر السماء وإسقاطات جوية mid-match بصناديق أسلحة حصرية ومظلات.
+- أنطام فرقة مرنة (منفرد/ثنائي/ثلاثي/فرقة 5) مع حالة السقوط DBNO والإنعاش خلال 5 ثوانٍ.
+- جيم ضخم بـ100 لاعب (لاعبك وفرقته + 99 مقاتل ذكي) موزعين استراتيجيًا مع LOD وإخفاء بعيد للحفاظ على الأداء.
+- ساحة انتظار تفاعلية قبل المعركة: اختبر الأسلحة على الأهداف، افحص عتادك، اختر جنس المقاتل (♂/♀)، وشكّل فرقتك حتى 5 — مع عدّاد إقلاع يطلق الطائرة سينمائيًا.
+- نشر سينمائي من طائرة النقل مع اختيار لحظة القفز والمظلة، وسباحة في المياه العميقة.
+- ذكاء أعداء يقتحمون المركبات ويطاردونك ويصدمن، وبيوت مهجورة متعددة المداخل بغنائم داخلية.
+- أبراج رشاشة على الشاحنة التكتيكية: الأعداء يرشونك بالرصاص المتتبع من البرج، ويمكنك أنت أيضًا إطلاق البرج أثناء القيادة.
+- تفادي عوائق ذكي لسائقي الذكاء الاصطناعي (مسح أمامي حول الأشجار والصخور والمباني) بدل الاصطدام المباشر.
+- انفجارات سينمائية عند تدمير المركبات: موجة صدم تضر المحيطين، كرات نار متوهجة، وحطام دائم يبقى كغطاء على التضاريس.
+- منطق اللعبة دوال نقية في `src/lib/game/battleRoyale.ts` و`vehicles.ts` و`airdrops.ts` مع اختبارات Vitest.
 
 ## Getting Started
 
@@ -20,72 +65,228 @@ cp .env.example .env.local
 npm run dev
 ```
 
-The starter runs in guest mode by default so a new app can be explored before Supabase is configured.
+ثم افتح `http://localhost:8080`. تعمل اللعبة بالكامل دون أي خدمات خارجية.
 
-Turn on Supabase-backed auth when the app needs accounts:
+## معاينة مجانية عبر GitHub Pages (دون أي اشتراك)
 
-```bash
-VITE_AUTH_ENABLED=true
-VITE_SUPABASE_URL=
-VITE_SUPABASE_PUBLISHABLE_KEY=
-```
+المستودع يتضمن سير عمل `.github/workflows/pages.yml` يبني الفرع وينشره
+تلقائيًا على GitHub Pages (مجاني للمستودعات العامة):
 
-For Supabase Edge Functions, configure server-side env vars in Supabase:
+**مهم:** GitHub Pages يعمل فقط مع المستودعات **العامة** (أو خطة مدفوعة).
+إذا كان المستودع **خاصًا** على خطة مجانية، يكتشف سير العمل ذلك من الخطوة
+الأولى وينتهي بنجاح مع تنبيه توضيحي (بدون فشل أحمر) — استخدم أحد
+البديلين المجانيين أدناه لدعم المستودعات الخاصة.
 
-```bash
-SUPABASE_URL=
-SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
-OPENAI_API_KEY=
-OPENAI_MODEL=gpt-4o-mini
-TRIGGER_SECRET_KEY=
-ENCRYPTION_SECRET=
-```
+1. سير العمل يفعّل Pages تلقائيًا بمصدر «GitHub Actions» عبر خطوة
+   `configure-pages` (enablement: true) — لا حاجة لأي إعداد يدوي.
+2. سير العمل يعمل تلقائيًا عند كل push على `main` أو فرع التطوير
+   `build-game-app-LLbPBtxtQCx` (أو شغّله يدويًا من تبويب **Actions** ←
+   «Deploy game preview to GitHub Pages» ← **Run workflow**).
+3. بعد اكتمال التشغيل يظهر الرابط في صفحة الـworkflow بالشكل:
+   `https://<اسم-المستخدم>.github.io/<اسم-المستودع>/`
+
+### بديل مجاني للمستودعات الخاصة: Cloudflare Pages
+
+1. افتح `dash.cloudflare.com` ← **Workers & Pages** ← **Create** ←
+   **Pages** ← **Connect to Git**.
+2. اربط حساب GitHub واختر هذا المستودع (يدعم المستودعات الخاصة مجانًا).
+3. إعدادات البناء: Framework preset = **Vite**، Build command =
+   `npm run build`، Build output directory = `dist`.
+4. (اختياري — للمصادقة السحابية) من **Settings ← Environment variables**
+   أضف `VITE_SUPABASE_URL` و`VITE_SUPABASE_ANON_KEY` و`VITE_AUTH_ENABLED=true`
+   قبل البناء — متغيرات `VITE_*` تُدمج وقت البناء ولا تُقرأ لاحقًا. بدونها
+   تعمل اللعبة كاملة بوضع الزائر دون سحابة. لا تضع أي مفاتيح في الكود أو Git.
+5. اضغط **Save and Deploy** — يظهر الرابط فورًا بالشكل
+   `https://<اسم-المشروع>.pages.dev` ويعاد النشر تلقائيًا مع كل push.
+6. توجيه SPA للمسارات الداخلية جاهز عبر ملف `public/_redirects`
+   المضمّن في المستودع (`/* /index.html 200`).
+
+### بديل مجاني آخر: Vercel
+
+المستودع جاهز لـVercel مسبقًا عبر `vercel.json` (توجيه SPA مُعدّ):
+`vercel.com` ← **Add New Project** ← استيراد المستودع ← **Deploy**
+بالإعدادات الافتراضية (يدعم المستودعات الخاصة مجانًا).
+
+ملاحظات: البناء يستخدم `--base=/<repo>/` تلقائيًا ليعمل تحت المسار الفرعي،
+ونسخة `404.html` تُنشأ لتوجيه روابط SPA. أصول GLB تُحمَّل وقت التشغيل من
+CDN (تعمل من المعاينة مباشرة)؛ لجعلها محلية ضعها في `public/models/env/`
+وفق أوامر `curl` أدناه فتأخذ الأسبقية تلقائيًا.
+
+## الشعار والحسابات (المصادقة)
+
+- **الشعار**: رسم أصلي بالكامل (SVG) — درع معدني بمؤشر تصويب أزرق كهربائي
+  ولمسة برتقالية. الملفات: `public/logo.svg` و`public/favicon.svg`
+  (أيقونة الموقع) ومكوّن `src/components/brand/LastStandLogo.tsx` المستخدم
+  في صفحة الدخول وهيدر اللعبة. لا يوجد أي محتوى من شعارات ألعاب أخرى.
+- **المصادقة**: Supabase Auth (بريد + كلمة مرور) مع جلسة محفوظة وآمنة —
+  لا تُحفظ كلمات المرور في المتصفح إطلاقًا. صفحة الدخول `/auth` عربية
+  بالكامل (RTL) مع إنشاء حساب، إظهار/إخفاء كلمة المرور، حالات تحميل،
+  ورسائل أخطاء عربية واضحة، وخلفية عسكرية بمؤثرات CSS خفيفة جدًا
+  (opacity/transform فقط — مناسبة لـ4GB RAM ورسوميات مدمجة).
+- **الوضع الافتراضي (زائر)**: `VITE_AUTH_ENABLED=false` — تدخل اللعبة
+  مباشرة دون بوابة دخول، وكل أنظمة اللعب كما هي.
+- **لتفعيل الحسابات**: في `.env.local` اضبط `VITE_AUTH_ENABLED=true` مع
+  `VITE_SUPABASE_URL` و`VITE_SUPABASE_PUBLISHABLE_KEY` (مشروع Supabase
+  مجاني). بعد تسجيل الدخول تنتقل مباشرة إلى واجهة اللعبة، وهناك زر
+  «تسجيل الخروج» في قائمة الحساب أعلى الصفحة. لتطبيق جداول الإحصاءات
+  السحابية طبّق `supabase/migrations/20260504000000_game_cloud_tables.sql`.
+
+## كيف تلعب؟
+
+- اضغط على الشاشة لتفعيل الماوس (Pointer Lock): تحريك الماوس يدير كاميرا المنظور الثالث، وزر الماوس الأيسر يطلق النار.
+- `W/S` للتقدم والتراجع، و`A/D` للتحرك الجانبي، و`Shift` للجري، و`Ctrl` للانحناء (يقلل كشف الأعداء وارتداد السلاح)، و`مسافة` للقفز.
+- `R` لإعادة التلقيم (مخزن + احتياطي لكل سلاح)، و`1-6` لتبديل الأسلحة المملوكة.
+- الأعداء يبحثون عنك ويطلقون النار عليك من مدى 40م — الانحناء يقلل كشفك، والضباب والليل يقللان مدى رؤيتهم.
+- لوحات الدرع تُلتقط من الصناديق وتمتص الضرر قبل الصحة (حتى 100).
+- صناديق غنائم ملونة موزعة على الجزيرة؛ الاقتراب منها يلتقط السلاح والذخيرة تلقائيًا.
+- على الجوال: أزرار تحكم لمسية أسفل اللعبة.
+- المنطقة الآمنة (الحلقة الزرقاء) تنكمش تدريجيًا؛ البقاء خارجها يستهلك الصحة، والاحتكاك بالأعداء أيضًا.
+- الفوز بإقصاء كل الأعداء، والخسارة عند نفاد الصحة.
 
 ## Project Structure
 
 ```text
 src/
-  components/ui/        Reusable UI primitives
-  components/auth/      Supabase auth form, enabled by feature flag
-  components/ai/        AI message display and composer primitives
-  components/layout/    App shell and account menu
-  context/              Auth, settings, and Trigger providers
-  hooks/                Reusable app hooks
-  integrations/         Supabase client and generated database types
-  lib/                  API helpers and shared utilities
-  pages/                Starter route pages
-  trigger/              Trigger.dev tasks
-supabase/
-  functions/            Edge Functions
-  migrations/           Base schema and RLS
-docs/
-  internal implementation/
+  components/game/BattleRoyale3D.tsx   مشهد Three.js وواجهة التحكم
+  components/game/soldierModel.ts      نموذج الجندي بالعتاد التكتيكي
+  components/game/operatorAnimator.ts  آلة حالات AnimationMixer بالتلاشي المتقاطع
+  components/game/operatorRig.ts       غلاف المشغّل (GLTF + تراجع إجرائي) وميزانية LOD
+  lib/game/operatorAssets.ts           محمّل GLTF والتخزين المؤقت وربط المقاطع
+  lib/game/textures.ts                 خامات PBR إجرائية (تمويه، طين، معدن)
+  lib/game/environment.ts              التضاريس والصخور والأنقاض
+                                       (غابات LOD، نقاط تفتيش، جبال وثلوج)
+  lib/game/water.ts                    ماء ديناميكي بـ shader مخصص
+  lib/game/battleRoyale.ts             منطق اللعبة (أسلحة، ذخيرة، غنائم، دوال نقية)
+  lib/game/vehicles.ts                 المركبات وفيزياء القيادة
+  lib/game/airdrops.ts                 الطائرة والإسقاطات الجوية
+  lib/game/squad.ts                    الفرقة وDBNO والإنعاش
+  lib/game/lobby.ts                    ساحة الانتظار واختبار الأسلحة
+  lib/game/weather.ts                  الطقس الديناميكي ودورة ليل/نهار
+  lib/game/arsenal.ts                  الملحقات الميدانية (سكوبات وغيرها)
+  lib/game/drones.ts                   طائرات الاستطلاع
+  lib/game/worldExpansion.ts           المعسكر العسكري والمطار المهجور
+  lib/game/radioTowerSystem.ts         برج الاتصالات والحجب الراداري
+  lib/game/beaconDropSystem.ts         منارة الإمدادات والصندوق المدرّع
+  lib/game/weatherSystem.ts            العواصف الرملية والكوارث البيئية
+  lib/game/squadRevivalSystem.ts       فرصة القائد الأخيرة وإحياء الفرقة
+  lib/game/shieldDomeSystem.ts         قبة الدرع التكتيكي
+  lib/game/sentryTurretSystem.ts       برج الدفاع الآلي
+  lib/game/medEvacDroneSystem.ts       طائرة الإخلاء الطبي
+  lib/game/squadFortressSystem.ts      حصن الصمود ومروحة الإنقاذ
+  components/game/weatherFx.ts         مطر جزيئي وإضاءة الطقس والوقت
+  lib/game/vehicles.ts                 المركبات والأبراج والانفجارات
+  lib/game/battleRoyale.test.ts        اختبارات المنطق
+  pages/HomePage.tsx                   الصفحة الرئيسية
 ```
 
-`docs/internal implementation/` contains deeper implementation guides. Update those docs whenever the corresponding primitive changes.
+## الاختبارات
 
-## Extending The Starter
+```bash
+npm test
+```
 
-1. Replace `src/pages/HomePage.tsx` with the first real app screen for `/`.
-2. Add any additional routes in `src/App.tsx`.
-3. Put reusable shell-level UI in `src/components/layout/` and app-specific UI near the feature that owns it.
-4. Turn on auth with `VITE_AUTH_ENABLED=true` only when accounts are needed.
-5. Add product tables through Supabase migrations, then regenerate `src/integrations/supabase/types.ts`.
-6. Use `docs/internal implementation/` for deeper notes on auth, Supabase, AI messages, Trigger.dev, and deployment.
+تغطي الاختبارات الحركة، والدوران، وانكماش المنطقة، والضرر خارجها، والإطلاق والإقصاء، وشروط الفوز والخسارة.
 
-## Routing
+## الربط السحابي (Supabase)
 
-`/` is the primary application route and renders `src/pages/HomePage.tsx`. The starter does not register or redirect to `/dashboard` by default, so new apps can own the root path without deleting dashboard-specific scaffolding first.
+حفظ نتائج الجيم ولوحة المتصدرين وأداء الفرق يعمل تلقائيًا فور انتهاء كل جولة عبر `@supabase/supabase-js`:
 
-If an app needs a dashboard, add it intentionally as a normal route in `src/App.tsx` and link to it from `src/components/layout/AppLayout.tsx`.
+1. `src/lib/supabase.ts` — عميل آمن يدعم `VITE_SUPABASE_ANON_KEY` أو `VITE_SUPABASE_PUBLISHABLE_KEY`؛ عند غيابهما تبقى اللعبة تعمل كاملة دون سحابة (الحفظ يتحول إلى no-op آمن).
+2. `src/lib/matchCloud.ts` — بناء صفوف الإحصاءات، حساب نقاط المتصدرين الحتمية، حفظ أداء كل رفيق، وقراءة لوحة المتصدرين.
+3. `supabase/migrations/20260504000000_game_cloud_tables.sql` — جداول `match_stats` و`leaderboard` و`squad_performances` مع سياسات RLS للزوار.
+
+للتفعيل: اضبط `VITE_SUPABASE_URL` و`VITE_SUPABASE_ANON_KEY` في `.env.local` ثم طبّق الترحيل (`supabase db push` أو تشغيل ملف SQL في لوحة Supabase). عند انتهاء أي جولة تظهر رسالة «☁️ حُفظت النتيجة» عند النجاح فقط.
+
+### الحفظ المحلي (يعمل دائمًا دون حساب)
+
+عند فشل الحفظ السحابي (انقطاع شبكة، مشروع Supabase متوقف مؤقتًا، أو غياب
+الإعداد) تُحفظ نتيجة الجولة تلقائيًا على هذا الجهاز في `localStorage`
+(`last-stand:match-history`، حتى 50 جولة) وتظهر رسالة «💾 حُفظت النتيجة
+محليًا» مع سبب فشل السحابة إن وُجد — دون أي رسالة نجاح كاذبة. الدوال:
+`saveMatchLocally` و`loadLocalMatches` في `src/lib/matchCloud.ts`.
+
+## الأصول ثلاثية الأبعاد (CC0 — استخدام تجاري مسموح)
+
+المجسّمات الحقيقية تُحمَّل وقت التشغيل من GitHub عبر jsdelivr CDN، مع أسبقية
+لأي ملف محلي توضع في `public/models/`:
+
+| الأصل | الملف/المصدر | الترخيص | الاستخدام |
+| --- | --- | --- | --- |
+| هيكل عظمي + 120+ حركة حقيقية (وقوف/مشي/جري/إطلاق نار/زحف/سباحة/جلوس) | `AnimationLibrary_Godot_Standard.gltf` — [J-Ponzo/gltf-universal-animation-library](https://github.com/J-Ponzo/gltf-universal-animation-library) (Quaternius) | CC0 1.0 | حركات كل المشغّلين عبر `AnimationMixer` |
+| **جندي بشري حقيقي مكسوّ** (زي عسكري أخضر، وجه، أيدٍ، أحذية، خامات مدمجة، هيكل عظمي + حركات Idle/Walk/Run مدمجة) | `Soldier.glb` — [mrdoob/three.js@r169 examples](https://github.com/mrdoob/three.js/blob/r169/examples/models/gltf/Soldier.glb) (أصل الشخصية: Mixamo) | أصل Mixamo (استخدام مشروع حر؛ إعادة التوزيع مقيدة) — **يُحمَّل وقت التشغيل كمرجع CDN فقط**؛ لترخيص تجاري كامل ضع ملفك المحلي في `public/models/operator-male.glb` وسيأخذ الأسبقية | **الجسم الأساسي للمشغّل الذكر** |
+| شخصية مكسوّة (ذكر) | `modular_men/Adventurer.glb` — [trebeljahr/quaternius-showcase](https://github.com/trebeljahr/quaternius-showcase) (Quaternius, Ultimate Modular Men) | CC0 1.0 | بديل احتياطي لجسم المشغّل الذكر |
+| شخصية مكسوّة (أنثى) | `modular_women/Adventurer.glb` — نفس المستودع (Ultimate Modular Women) | CC0 1.0 | جسم المشغّلة الأنثى |
+| بندقية هجومية بخامات PBR | `modular_sci_fi_guns_pack/AR_1.glb` — نفس المستودع (Sci-Fi Modular Gun Pack) | CC0 1.0 | سلاح مثبّت على عظام اليد |
+| أشجار (CommonTree/PineTree/BirchTree) وشجيرات وعشب | `nature_pack/CommonTree_1.glb` و`PineTree_1.glb` و`BirchTree_1.glb` و`Bush_1.glb` و`Grass.glb` — نفس المستودع (Ultimate Nature Pack) | CC0 1.0 | مستوى التفاصيل العالي للغابة + عشب وشجيرات تحت الأشجار |
+| صخور | `nature_pack/Rock_1..4.glb` — نفس المستودع | CC0 1.0 | استبدال الصخور الإجرائية (5-13KB لكل صخرة) |
+| منازل ومباني مكسوّة بالنسيج | `buildings_pack_2/House1.glb` و`House2.glb` و`Building1_Small.glb` و`Building2_Small.glb` — نفس المستودع (Ultimate Buildings Pack) | CC0 1.0 | البيوت المهجورة الأربعة بنفس مواقع الغنائم والعوائق |
+| مركبة عسكرية مجنزرة | `tank_pack/Tank.glb` — نفس المستودع (Animated Tanks Pack) | CC0 1.0 | المركبة المسلحة ذات البرش (نفس نظام القيادة والبرش الحالي) |
+
+**التحقق من التراخيص:** جدول `LICENSES.md` في المستودع المصدر يوثّق أن كل
+الحزم المستخدمة CC0-1.0 upstream (آخر فحص 2026-10-10)، مع تنبيه صريح أن
+حزم Quaternius الأحدث أصبحت QAL (لا تسمح بإعادة التوزيع) ولم تُستخدم أي
+حزمة منها. أسماء الملفات تحققت من قوائم GitHub API الفعلية للمستودع.
+
+**ترتيب التحميل البيئي:** ملف محلي في `public/models/env/<category>/` ←
+نسخة CDN ← بقاء المشهد الإجرائي الحالي (لا انهيار عند فشل الشبكة). الترقية
+تجري في الخلفية بعد بناء المشهد، والأداء محفوظ: مستوى LOD البعيد يبقى
+إجرائيًا، والاستنساخ يشارك الهندسة والخامات، وميزانية الذاكرة الإجمالية
+للأصول الجديدة ≈ 5MB.
+
+**ضمان ظهور الشخصية الحقيقية:** لم يعد تحميل الشخصية GLB يعتمد على تطابق
+حركات المكتبة مع عظامها. أي جسم بشري حقيقي يُحمّل يُعرض فورًا ويُوحَّد طوله
+إلى 1.8م، ويُحرَّك بمشغّل عظام عام (`src/components/game/boneDriver.ts`)
+يتعرف على العظام بالأسماء (mixamo/Godot/Quaternius) ويطبّق وقوفًا ومشيًا
+وجريًا وتصويبًا وتلقيمًا وقفزًا وسباحة وقيادة وزحفًا فوق وضعية الراحة
+الأصلية. إن وُجدت مقاطع متوافقة تُستخدم عبر `AnimationMixer` كالمعتاد.
+شارة صغيرة أعلى يسار اللعبة تُظهر الحالة الفعلية: «نموذج GLB بشري حقيقي
+مُحمّل» أو «تعذر تحميل GLB — النموذج الإجرائي البديل» — فلا نجاح كاذب.
+الأصوات (إطلاق/تلقيم/إصابة) مُولّدة عبر WebAudio دون ملفات (`src/lib/game/sfx.ts`).
+
+**تشخيص التحميل (Console):** كل محاولة تحميل لنموذج المشغّل تُسجَّل في
+Console بالوسم `🎮 [LastStand:Model]`: بدء التحميل، المصدر المُجرَّب،
+السبب الحقيقي لأي فشل (شبكة/CORS/مسار/تحليل)، وعند النجاح إحصاءات
+المحتوى (meshes/materials/bones/vertices/الارتفاع). وعند الفشل تظهر
+رسالة الشارة نفسها مع السبب. لكل رابط jsdelivr مصدر احتياطي مطابق على
+`raw.githubusercontent.com`، والمهلة 20ث، والفشل لا يُخزَّن للأبد —
+تُعاد المحاولة تلقائيًا بعد 15ث (أو فورًا عبر
+`window.__LAST_STAND_MODEL_DIAGNOSTICS.clearCache()` من Console).
+
+**سبب «شارة خضراء مع مكعبات» السابق (مُصلح):** كانت مكتبة الحركات
+(`AnimationLibrary_Godot_Standard.gltf`) مُدرجة كمصدر أخير لـ«جسم» المشغّل؛
+عند فشل الشخصية المكسوّة لأي سبب تُحمّل المكتبة بدلًا منها وتُحسب نجاحًا —
+وما يُعرض هو مانيكان المعاينة البدائي الخاص بها. الآن المكتبة مصدر
+حركات فقط (clips-only)، وأي جسم بلا meshes يُرفض صراحة، والشارة الخضراء
+لا تظهر إلا عند: تحميل GLB بمجسّمات + إضافته فعليًا لمجموعة اللاعب +
+إخفاء المجسم الإجرائي — مع سطر يعرض المصدر وعدد meshes/bones وعدد
+المجسمات البشرية المُركّبة فعليًا.
+
+**النموذج الإجرائي البديل (مُرقّى):** وجه تفصيلي (جمجمة/فك/أنف/أذنان/عينان/
+حواجب/دهان تمويه)، أيدٍ بأصابع مدمجة في مجسم واحد لكل يد، أحذية بنعل ومقدمة
+مدمجة، خوذة بغطاء تمويه وحزام ذقن وواقيات أذن، سترة تكتيكية بمجسّات MOLLE
+ومخازن وحزام وخُلاصة مسدس، حقيبة ظهر بجيوب جانبية وأنبوب ماء، وبندقية كاملة
+(قنص/مخزن/قبضة أمامية). الخامات: جلد بنسيج إجرائي، ويبينج nylon بخياطة،
+قماش تمويه بخريطة خشونة. للأداء: دمج الهندسة (`mergeGeometries`) يقلل
+استدعاءات الرسم، وهندسات وخامات مشتركة بين كل الكيانات، وضوء ملء بلا ظلال
+مع ACES ToneMapping.
+
+**حالة التنزيل إلى ملفات المشروع:** بيئة التنفيذ في هذه الجلسة محجوبة
+بخطة الحساب (تعذّر تشغيل أي أمر)، لذا لم يُمكن نسخ ملفات GLB الثنائية إلى
+المستودع؛ الحل المُنفَّذ فعليًا هو التحميل وقت التشغيل من CDN (روابط
+موثّقة أعلاه وتعمل في المعاينة)، مع أوامر `curl` جاهزة في
+`public/models/README.md` لنسخها محليًا لاحقًا فتأخذ الأسبقية تلقائيًا.
+إذا فشل تحميل أي أصل أو لم تطابق حركاته العظام، يبقى النموذج الإجرائي
+المفصّل بديلًا ظاهرًا — دون أي ادعاء بنجاح غير حقيقي.
+
+**الأداء (ابتوب 4GB RAM):** تخزين مؤقت لكل GLTF مرة واحدة، استنساخ هيكلي
+مشترك (`SkeletonUtils.clone`)، ترقية هيكلية كسولة للأعداء فقط عند ظهورهم
+قرب اللاعب، ومستويات LOD تبديل المجسّمات البعيدة بمجسّمات مبسّطة.
 
 ## Validation Checklist
 
 - `npm install`
 - `npm run dev`
 - `npm run build`
-- Auth routes load without product-specific dependencies when `VITE_AUTH_ENABLED=true`.
-- Supabase credentials come from environment variables.
-- `ai_messages` helpers compile without task/project modules.
-- `vercel.json` keeps SPA fallback routing.
+- `npm test`
+- اللعبة تعمل من المسار `/` مع لوحة مفاتيح وأزرار لمس.
+- `vercel.json` يحافظ على توجيه SPA للنشر على Vercel.

@@ -1,0 +1,2067 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+import * as THREE from "three";
+import { Crosshair, RotateCcw } from "lucide-react";
+import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import type { SoldierGender } from "@/components/game/soldierModel";
+import {
+  OperatorRig,
+  lodTierForDistance,
+  type OperatorRigStatus,
+} from "@/components/game/operatorRig";
+import {
+  getOperatorDiagnostics,
+  loadedSourceFor,
+  installOperatorDiagnosticsProbe,
+} from "@/lib/game/operatorAssets";
+import {
+  createCheckpoints,
+  createBuildings,
+  createMilitaryCamp,
+  createAirport,
+  createForest,
+  createRocks,
+  createRuins,
+  createSunShafts,
+  createTerrain,
+  upgradeBuildingsWithRealModels,
+  upgradeForestWithRealTrees,
+  upgradeRocksWithRealRocks,
+} from "@/lib/game/environment";
+import { upgradeVehicleMeshesWithRealModels } from "@/lib/game/environmentAssets";
+import { createWater } from "@/lib/game/water";
+import { createRain, updateWeatherVisuals } from "@/components/game/weatherFx";
+import { ATTACHMENTS } from "@/lib/game/arsenal";
+import { dayPhase } from "@/lib/game/weather";
+import { EXPANSION_LOOT_COUNT } from "@/lib/game/worldExpansion";
+import {
+  TOWER_TERMINAL,
+  TOWER_CAPTURE_TIME,
+  radarRevealActive,
+} from "@/lib/game/radioTowerSystem";
+import { BEACON_COUNTDOWN } from "@/lib/game/beaconDropSystem";
+import {
+  CHALLENGE_ZONE_CAPTURE_TIME,
+  CHALLENGE_ZONE_RADIUS,
+} from "@/lib/game/squadRevivalSystem";
+import {
+  DOME_MAX_INTEGRITY,
+  DOME_RADIUS,
+} from "@/lib/game/shieldDomeSystem";
+import { SENTRY_MAX_HEALTH } from "@/lib/game/sentryTurretSystem";
+import { FORTRESS_HOLD_TIME } from "@/lib/game/squadFortressSystem";
+import {
+  describeCloudError,
+  saveMatchResult,
+  type MatchSummary,
+} from "@/lib/matchCloud";
+import { playGunshot, playHitMarker, playReload } from "@/lib/game/sfx";
+import {
+  BOT_COUNT,
+  LOOT_COUNT,
+  BUILDING_POSITIONS,
+  ZONE_START_RADIUS,
+  BOT_CULL_DISTANCE,
+  BOT_LOD_DISTANCE,
+  DEPLOY_PLANE_ALTITUDE,
+  EXPLOSION_DURATION,
+  PLAYER_SPEED,
+  SPRINT_SPEED_FACTOR,
+  isSwimming,
+  createMatchState,
+  lootWeaponForIndex,
+  terrainHeight,
+  WEAPONS,
+  shoot,
+  stepMatch,
+  reloadWeapon,
+  switchWeapon,
+  MAX_ARMOR,
+  type DeployPhase,
+  type MatchState,
+  type MatchStatus,
+  type WeaponId,
+} from "@/lib/game/battleRoyale";
+import { VEHICLE_SPECS, type VehicleKind } from "@/lib/game/vehicles";
+import { SQUAD_SIZES, type SquadSize, type Teammate } from "@/lib/game/squad";
+import {
+  createLobbyState,
+  stepLobby,
+  lobbyShoot,
+  lobbySelectWeapon,
+  lobbyDeployNow,
+  LOBBY_COUNTDOWN,
+  LOBBY_START_AMMO,
+  TARGET_COUNT,
+  type LobbyState,
+  type OperatorGender,
+} from "@/lib/game/lobby";
+
+type Hud = {
+  health: number;
+  alive: number;
+  zone: number;
+  weapon: string;
+  ammo: number;
+  magazine: number;
+  reserve: number;
+  reloading: boolean;
+  armor: number;
+  owned: WeaponId[];
+  crouching: boolean;
+  jumping: boolean;
+  crates: number;
+  vehicle: string | null;
+  speed: number;
+  posX: number;
+  posZ: number;
+  moving: boolean;
+  airdrop: boolean;
+  swimming: boolean;
+  deployPhase: DeployPhase;
+  altitude: number;
+  squad: Teammate[];
+  status: MatchStatus;
+  weather: string;
+  phase: string;
+  droneAlert: boolean;
+  attachment: string | null;
+  radioCapture: number;
+  radioJam: boolean;
+  beaconHeld: number;
+  beaconActive: boolean;
+  dustStorm: boolean;
+  revivalActive: boolean;
+  revivalProgress: number;
+  revivalTimer: number;
+  dome: number | null;
+  sentryDeployed: boolean;
+  sentryHealth: number;
+  medevacActive: boolean;
+  fortressBuff: boolean;
+  fortressHold: number;
+  chopperIncoming: boolean;
+  gadgets: { shield: number; sentry: number; medevac: number };
+};
+
+const LOOT_COLORS: Record<WeaponId, number> = {
+  pistol: 0xfbbf24,
+  smg: 0xa78bfa,
+  ar: 0x38bdf8,
+  dmr: 0xf43f5e,
+  lmg: 0x22d3ee,
+  shotgun: 0xf97316,
+};
+
+const VEHICLE_COLORS: Record<VehicleKind, number> = {
+  uaz: 0x4d5d43,
+  pickup: 0x6b5a3e,
+  buggy: 0xb45309,
+};
+
+function createInitialHud(status: MatchStatus): Hud {
+  return {
+    health: 100,
+    alive: BOT_COUNT,
+    zone: ZONE_START_RADIUS,
+    weapon: WEAPONS.pistol.name,
+    ammo: 24,
+    magazine: WEAPONS.pistol.magazine,
+    reserve: 24,
+    reloading: false,
+    armor: 0,
+    owned: ["pistol"],
+    crouching: false,
+    jumping: false,
+    crates: LOOT_COUNT,
+    vehicle: null,
+    speed: 0,
+    posX: 0,
+    posZ: 0,
+    moving: false,
+    airdrop: false,
+    swimming: false,
+    deployPhase: "plane",
+    altitude: DEPLOY_PLANE_ALTITUDE,
+    squad: [],
+    status,
+    weather: "clear",
+    phase: "day",
+    droneAlert: false,
+    attachment: null,
+    radioCapture: 0,
+    radioJam: false,
+    beaconHeld: 0,
+    beaconActive: false,
+    dustStorm: false,
+    revivalActive: false,
+    revivalProgress: 0,
+    revivalTimer: 0,
+    dome: null,
+    sentryDeployed: false,
+    sentryHealth: 0,
+    medevacActive: false,
+    fortressBuff: false,
+    fortressHold: 0,
+    chopperIncoming: false,
+    gadgets: { shield: 0, sentry: 0, medevac: 0 },
+  };
+}
+
+function makeVehicleMesh(kind: VehicleKind): THREE.Group {
+  const group = new THREE.Group();
+  const bodyMat = new THREE.MeshLambertMaterial({ color: VEHICLE_COLORS[kind] });
+  const wheelMat = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
+  const body = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.9, 3.6), bodyMat);
+  body.position.y = 0.9;
+  const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.7, 1.4), bodyMat);
+  cabin.position.set(0, 1.6, -0.2);
+  group.add(body, cabin);
+  const wheelGeometry = new THREE.CylinderGeometry(0.42, 0.42, 0.3, 10);
+  wheelGeometry.rotateZ(Math.PI / 2);
+  for (const [wx, wz] of [[-0.95, 1.2], [0.95, 1.2], [-0.95, -1.2], [0.95, -1.2]] as const) {
+    const wheel = new THREE.Mesh(wheelGeometry, wheelMat);
+    wheel.position.set(wx, 0.42, wz);
+    group.add(wheel);
+  }
+  if (kind === "pickup") {
+    const turret = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.12, 0.12, 1.2, 8),
+      new THREE.MeshLambertMaterial({ color: 0x2b2f33 }),
+    );
+    turret.rotation.x = Math.PI / 2;
+    turret.position.set(0, 2, -1.1);
+    group.add(turret);
+  }
+  const flash = new THREE.Mesh(
+    new THREE.SphereGeometry(0.3, 6, 6),
+    new THREE.MeshBasicMaterial({ color: 0xffe08a }),
+  );
+  flash.name = "turretFlash";
+  flash.position.set(0, 2, -1.1);
+  flash.visible = false;
+  group.add(flash);
+  return group;
+}
+
+function HoldButton({ label, onHold }: { label: string; onHold: (active: boolean) => void }) {
+  return (
+    <Button
+      variant="outline"
+      className="h-11 w-14 select-none"
+      onPointerDown={(event) => {
+        event.preventDefault();
+        onHold(true);
+      }}
+      onPointerUp={() => onHold(false)}
+      onPointerLeave={() => onHold(false)}
+      onPointerCancel={() => onHold(false)}
+    >
+      {label}
+    </Button>
+  );
+}
+
+function makePlaneMesh(): THREE.Group {
+  const material = new THREE.MeshLambertMaterial({ color: 0x5b6b78 });
+  const group = new THREE.Group();
+  const fuselage = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 12, 10), material);
+  fuselage.rotation.x = Math.PI / 2;
+  const wing = new THREE.Mesh(new THREE.BoxGeometry(16, 0.25, 2.4), material);
+  const tail = new THREE.Mesh(new THREE.BoxGeometry(5, 0.2, 1.2), material);
+  tail.position.set(0, 1.2, 5.4);
+  const fin = new THREE.Mesh(new THREE.BoxGeometry(0.2, 2, 1.4), material);
+  fin.position.set(0, 1.4, 5.4);
+  group.add(fuselage, wing, tail, fin);
+  return group;
+}
+
+export default function BattleRoyale3D() {
+  const mountRef = useRef<HTMLDivElement | null>(null);
+  const stateRef = useRef<MatchState | null>(null);
+  const keysRef = useRef<Set<string>>(new Set());
+  const shootRef = useRef(false);
+  const enterRef = useRef(false);
+  const dropRef = useRef(false);
+  const reviveRef = useRef(false);
+  const beaconRef = useRef(false);
+  const shieldRef = useRef(false);
+  const sentryRef = useRef(false);
+  const medevacRef = useRef(false);
+  const reloadRef = useRef(false);
+  const jumpRef = useRef(false);
+  const switchRef = useRef<WeaponId | null>(null);
+  const crouchRef = useRef(false);
+  const sprintRef = useRef(false);
+  const camYawRef = useRef(0);
+  const camPitchRef = useRef(0.3);
+  const pointerLockedRef = useRef(false);
+  const cloudSavedRef = useRef(false);
+  const [squadSize, setSquadSize] = useState<SquadSize>(1);
+  const [mode, setMode] = useState<"lobby" | "match">("lobby");
+  const [gender, setGender] = useState<OperatorGender>("male");
+  const modeRef = useRef<"lobby" | "match">("lobby");
+  const genderRef = useRef<OperatorGender>("male");
+  const lobbyRef = useRef<LobbyState>(createLobbyState());
+  const [lobbyHud, setLobbyHud] = useState({
+    countdown: LOBBY_COUNTDOWN,
+    hits: 0,
+    shots: 0,
+    weaponId: "pistol" as WeaponId,
+    weapon: WEAPONS.pistol.name,
+    ammo: LOBBY_START_AMMO,
+  });
+  const [hud, setHud] = useState<Hud>(() => createInitialHud("idle"));
+  const [modelStatus, setModelStatus] = useState<"loading" | "real" | "fallback">("loading");
+  const [modelStatusReason, setModelStatusReason] = useState<string | null>(null);
+  const [modelDiag, setModelDiag] = useState<{
+    loaded: boolean;
+    added: boolean;
+    hidden: boolean;
+    meshes: number;
+    bones: number;
+    clipName: string | null;
+    mixerUpdating: boolean;
+    animationMode: string | null;
+    clipNames: string[];
+    source: string | null;
+    rigged: number;
+  } | null>(null);
+
+  const start = useCallback((size: SquadSize, operatorGender: OperatorGender) => {
+    stateRef.current = createMatchState(size);
+    genderRef.current = operatorGender;
+    modeRef.current = "match";
+    cloudSavedRef.current = false;
+    setMode("match");
+    setHud(createInitialHud("running"));
+  }, []);
+
+  const startRef = useRef(start);
+  useEffect(() => {
+    startRef.current = start;
+  }, [start]);
+
+  const pickGender = (next: OperatorGender) => {
+    setGender(next);
+    genderRef.current = next;
+    lobbyRef.current = { ...lobbyRef.current, gender: next };
+  };
+
+  const pickSquad = (size: SquadSize) => {
+    setSquadSize(size);
+    lobbyRef.current = { ...lobbyRef.current, squadSize: size };
+  };
+
+  const pickWeapon = (weapon: WeaponId) => {
+    lobbyRef.current = lobbySelectWeapon(lobbyRef.current, weapon);
+  };
+
+  const deployNow = () => {
+    lobbyRef.current = lobbyDeployNow(lobbyRef.current);
+  };
+
+  useEffect(() => {
+    const mount = mountRef.current;
+    if (!mount) {
+      return;
+    }
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x9fc4e8);
+    scene.fog = new THREE.Fog(0x9fc4e8, 140, 700);
+    const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 1600);
+    const camTarget = new THREE.Vector3();
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.05;
+    mount.appendChild(renderer.domElement);
+
+    const onPointerLockChange = () => {
+      pointerLockedRef.current = document.pointerLockElement === renderer.domElement;
+    };
+    const onMouseMove = (event: MouseEvent) => {
+      if (!pointerLockedRef.current) {
+        return;
+      }
+      camYawRef.current -= event.movementX * 0.0026;
+      camPitchRef.current = Math.max(
+        -0.35,
+        Math.min(1.1, camPitchRef.current + event.movementY * 0.0022),
+      );
+    };
+    const onMouseDown = (event: MouseEvent) => {
+      if (event.button === 0 && pointerLockedRef.current && modeRef.current === "match") {
+        shootRef.current = true;
+      }
+    };
+    const onCanvasClick = () => {
+      if (modeRef.current === "match" && !pointerLockedRef.current) {
+        // requestPointerLock returns a Promise in modern browsers and can
+        // reject (e.g. right after Escape, or without a user gesture);
+        // swallow it so the click never throws unhandled.
+        const lockRequest = renderer.domElement.requestPointerLock() as
+          | Promise<void>
+          | undefined;
+        if (lockRequest && typeof lockRequest.catch === "function") {
+          lockRequest.catch(() => undefined);
+        }
+      }
+    };
+    renderer.domElement.addEventListener("click", onCanvasClick);
+    document.addEventListener("pointerlockchange", onPointerLockChange);
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mousedown", onMouseDown);
+
+    const hemi = new THREE.HemisphereLight(0xbfd9ff, 0x3a6b35, 1.1);
+    scene.add(hemi);
+    const sun = new THREE.DirectionalLight(0xfff1d6, 1.2);
+    sun.position.set(30, 50, 20);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(2048, 2048);
+    sun.shadow.camera.left = -70;
+    sun.shadow.camera.right = 70;
+    sun.shadow.camera.top = 70;
+    sun.shadow.camera.bottom = -70;
+    sun.shadow.camera.near = 1;
+    sun.shadow.camera.far = 220;
+    sun.shadow.bias = -0.0005;
+    scene.add(sun);
+    scene.add(sun.target);
+    // Cheap shadowless fill light so gear and faces keep readable shading
+    // on the sun-facing side of the operator.
+    const fill = new THREE.DirectionalLight(0x9db8d9, 0.3);
+    fill.position.set(-35, 26, -30);
+    scene.add(fill);
+
+    const water = createWater();
+    scene.add(water.mesh);
+    const terrain = createTerrain();
+    terrain.receiveShadow = true;
+    scene.add(terrain);
+    const rocks = createRocks();
+    const ruins = createRuins();
+    const forest = createForest();
+    forest.group.traverse((child) => {
+      const meshChild = child as THREE.Mesh;
+      if (meshChild.isMesh) {
+        meshChild.castShadow = true;
+      }
+    });
+    scene.add(forest.group);
+    const checkpoints = createCheckpoints();
+    const buildings = createBuildings();
+    const camp = createMilitaryCamp();
+    const airport = createAirport();
+    for (const chunk of [rocks, ruins, checkpoints, buildings, camp, airport]) {
+      chunk.traverse((child) => {
+        const meshChild = child as THREE.Mesh;
+        if (meshChild.isMesh) {
+          meshChild.castShadow = true;
+          meshChild.receiveShadow = true;
+        }
+      });
+      scene.add(chunk);
+    }
+    scene.add(createSunShafts());
+    // Real CC0 asset upgrades load in the background; the procedural
+    // scene above stays visible until each swap succeeds.
+    void upgradeForestWithRealTrees(forest, 70);
+    void upgradeRocksWithRealRocks(rocks);
+    void upgradeBuildingsWithRealModels(buildings);
+
+    const dustCount = 500;
+    const dustPositions = new Float32Array(dustCount * 3);
+    for (let i = 0; i < dustCount; i += 1) {
+      dustPositions[i * 3] = (Math.random() * 2 - 1) * 160;
+      dustPositions[i * 3 + 1] = Math.random() * 14 + 1;
+      dustPositions[i * 3 + 2] = (Math.random() * 2 - 1) * 160;
+    }
+    const dustGeometry = new THREE.BufferGeometry();
+    dustGeometry.setAttribute("position", new THREE.BufferAttribute(dustPositions, 3));
+    const dust = new THREE.Points(
+      dustGeometry,
+      new THREE.PointsMaterial({ color: 0xd8cbb0, size: 0.35, transparent: true, opacity: 0.5 }),
+    );
+    scene.add(dust);
+
+    const zoneRing = new THREE.Mesh(
+      new THREE.TorusGeometry(1, 0.05, 8, 96),
+      new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.7 }),
+    );
+    zoneRing.rotation.x = -Math.PI / 2;
+    scene.add(zoneRing);
+
+    const rain = createRain();
+    scene.add(rain.points);
+
+    const zoneWall = new THREE.Mesh(
+      new THREE.CylinderGeometry(1, 1, 46, 64, 1, true),
+      new THREE.MeshBasicMaterial({
+        color: 0x3b82f6,
+        transparent: true,
+        opacity: 0.16,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+      }),
+    );
+    zoneWall.position.y = 23;
+    scene.add(zoneWall);
+
+    const droneMesh = new THREE.Group();
+    const droneBody = new THREE.Mesh(
+      new THREE.BoxGeometry(0.7, 0.22, 0.7),
+      new THREE.MeshLambertMaterial({ color: 0x2b2f33 }),
+    );
+    const rotorMat = new THREE.MeshLambertMaterial({
+      color: 0x111111,
+      transparent: true,
+      opacity: 0.55,
+    });
+    for (const [rx, rz] of [[-0.5, -0.5], [0.5, -0.5], [-0.5, 0.5], [0.5, 0.5]] as const) {
+      const rotor = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.03, 10), rotorMat);
+      rotor.position.set(rx, 0.14, rz);
+      droneMesh.add(rotor);
+    }
+    const droneLight = new THREE.Mesh(
+      new THREE.SphereGeometry(0.08, 6, 6),
+      new THREE.MeshBasicMaterial({ color: 0xff3355 }),
+    );
+    droneLight.position.set(0, -0.16, 0);
+    droneMesh.add(droneBody, droneLight);
+    droneMesh.visible = false;
+    scene.add(droneMesh);
+
+    const towerMesh = new THREE.Group();
+    const towerMetal = new THREE.MeshLambertMaterial({ color: 0x5a5f66 });
+    for (const [lx, lz] of [[-1.2, -1.2], [1.2, -1.2], [-1.2, 1.2], [1.2, 1.2]] as const) {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.3, 14, 0.3), towerMetal);
+      leg.position.set(lx, 7, lz);
+      towerMesh.add(leg);
+    }
+    const towerPlatform = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.3, 3.4), towerMetal);
+    towerPlatform.position.y = 14;
+    const towerMast = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.18, 6, 6), towerMetal);
+    towerMast.position.y = 17;
+    const towerDish = new THREE.Mesh(
+      new THREE.SphereGeometry(1.1, 10, 8, 0, Math.PI * 2, 0, Math.PI / 2),
+      new THREE.MeshLambertMaterial({ color: 0xd8d8d0, side: THREE.DoubleSide }),
+    );
+    towerDish.position.y = 20;
+    towerDish.rotation.x = Math.PI;
+    const towerWarn = new THREE.Mesh(
+      new THREE.SphereGeometry(0.22, 8, 8),
+      new THREE.MeshBasicMaterial({ color: 0xff3b30 }),
+    );
+    towerWarn.position.y = 20.2;
+    towerWarn.name = "towerWarn";
+    const towerTerminal = new THREE.Mesh(
+      new THREE.BoxGeometry(1.2, 1.1, 0.7),
+      new THREE.MeshLambertMaterial({ color: 0x2b2f33 }),
+    );
+    towerTerminal.position.set(0, 0.55, 1.6);
+    towerMesh.add(towerPlatform, towerMast, towerDish, towerWarn, towerTerminal);
+    towerMesh.position.set(TOWER_TERMINAL.x, terrainHeight(TOWER_TERMINAL.x, TOWER_TERMINAL.z), TOWER_TERMINAL.z);
+    scene.add(towerMesh);
+
+    const beaconSmoke = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.9, 1.6, 26, 10, 1, true),
+      new THREE.MeshBasicMaterial({
+        color: 0xff4422,
+        transparent: true,
+        opacity: 0.4,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+      }),
+    );
+    beaconSmoke.visible = false;
+    scene.add(beaconSmoke);
+    const beaconCrateMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(1.5, 1.5, 1.5),
+      new THREE.MeshLambertMaterial({ color: 0x22c55e }),
+    );
+    const beaconChute = new THREE.Mesh(
+      new THREE.ConeGeometry(2.6, 2, 8, 1, true),
+      new THREE.MeshLambertMaterial({ color: 0xe2e8f0, side: THREE.DoubleSide }),
+    );
+    beaconChute.position.y = 3.2;
+    const beaconCrateGroup = new THREE.Group();
+    beaconCrateGroup.add(beaconCrateMesh, beaconChute);
+    beaconCrateGroup.visible = false;
+    scene.add(beaconCrateGroup);
+
+    const revivalRing = new THREE.Mesh(
+      new THREE.TorusGeometry(1, 0.12, 8, 64),
+      new THREE.MeshBasicMaterial({ color: 0xf59e0b, transparent: true, opacity: 0.85 }),
+    );
+    revivalRing.rotation.x = -Math.PI / 2;
+    revivalRing.visible = false;
+    scene.add(revivalRing);
+
+    const domeMesh = new THREE.Mesh(
+      new THREE.SphereGeometry(1, 28, 14, 0, Math.PI * 2, 0, Math.PI / 2),
+      new THREE.MeshBasicMaterial({
+        color: 0x38bdf8,
+        transparent: true,
+        opacity: 0.16,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+      }),
+    );
+    const domeWire = new THREE.Mesh(
+      new THREE.SphereGeometry(1, 14, 7, 0, Math.PI * 2, 0, Math.PI / 2),
+      new THREE.MeshBasicMaterial({
+        color: 0x7dd3fc,
+        wireframe: true,
+        transparent: true,
+        opacity: 0.35,
+        depthWrite: false,
+      }),
+    );
+    const domeGroup = new THREE.Group();
+    domeGroup.add(domeMesh, domeWire);
+    domeGroup.visible = false;
+    scene.add(domeGroup);
+
+    const sentryMesh = new THREE.Group();
+    const sentryMetal = new THREE.MeshLambertMaterial({ color: 0x3b4148 });
+    for (const [lx, lz] of [[-0.4, -0.3], [0.4, -0.3], [0, 0.45]] as const) {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.9, 0.08), sentryMetal);
+      leg.position.set(lx, 0.45, lz);
+      leg.rotation.z = lx * 0.5;
+      sentryMesh.add(leg);
+    }
+    const sentryHead = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 0.6), sentryMetal);
+    sentryHead.position.y = 1;
+    const sentryBarrel = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.5, 6), sentryMetal);
+    sentryBarrel.rotation.x = Math.PI / 2;
+    sentryBarrel.position.set(0, 1, 0.4);
+    const sentryFlash = new THREE.Mesh(
+      new THREE.SphereGeometry(0.12, 6, 6),
+      new THREE.MeshBasicMaterial({ color: 0x7df9ff }),
+    );
+    sentryFlash.position.set(0, 1, 0.68);
+    sentryFlash.name = "sentryFlash";
+    sentryFlash.visible = false;
+    sentryMesh.add(sentryHead, sentryBarrel, sentryFlash);
+    sentryMesh.visible = false;
+    scene.add(sentryMesh);
+
+    const medevacMesh = new THREE.Group();
+    const medBody = new THREE.Mesh(
+      new THREE.BoxGeometry(0.8, 0.35, 0.8),
+      new THREE.MeshLambertMaterial({ color: 0xf1f5f9 }),
+    );
+    const crossA = new THREE.Mesh(
+      new THREE.BoxGeometry(0.5, 0.06, 0.16),
+      new THREE.MeshBasicMaterial({ color: 0xef4444 }),
+    );
+    crossA.position.y = 0.21;
+    const crossB = new THREE.Mesh(
+      new THREE.BoxGeometry(0.16, 0.06, 0.5),
+      new THREE.MeshBasicMaterial({ color: 0xef4444 }),
+    );
+    crossB.position.y = 0.21;
+    const medRotorMat = new THREE.MeshLambertMaterial({
+      color: 0x111111,
+      transparent: true,
+      opacity: 0.5,
+    });
+    const medRotors: THREE.Mesh[] = [];
+    for (const [rx, rz] of [[-0.55, -0.55], [0.55, -0.55], [-0.55, 0.55], [0.55, 0.55]] as const) {
+      const rotor = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.03, 10), medRotorMat);
+      rotor.position.set(rx, 0.2, rz);
+      medRotors.push(rotor);
+      medevacMesh.add(rotor);
+    }
+    medevacMesh.add(medBody, crossA, crossB);
+    medevacMesh.visible = false;
+    scene.add(medevacMesh);
+
+    const playerRigMale = new OperatorRig("woodland", "male");
+    const playerRigFemale = new OperatorRig("woodland", "female");
+    scene.add(playerRigMale.group, playerRigFemale.group);
+    installOperatorDiagnosticsProbe();
+    let maleReal = false;
+    let femaleReal = false;
+    // Mounted = the real body is loaded, a verified child of the player's
+    // rig group, the procedural fallback is hidden, and it has meshes.
+    // NOTE: the field on OperatorRigStatus is `addedToScene` — reading a
+    // nonexistent `.added` silently evaluated to undefined and made this
+    // check permanently false (the "mounted: no / meshes: 0" false alarm).
+    const isPlayerMounted = (status: OperatorRigStatus) =>
+      status.loaded && status.addedToScene && status.proceduralHidden && status.meshes > 0;
+    const reportModelStatus = () => {
+      const male = playerRigMale.status;
+      const female = playerRigFemale.status;
+      // Report the rig that is actually mounted; when neither is, report
+      // the loaded one so the failure stays visible and honest.
+      const best = isPlayerMounted(male)
+        ? male
+        : isPlayerMounted(female)
+          ? female
+          : male.loaded
+            ? male
+            : female;
+      const playerMounted = isPlayerMounted(male) || isPlayerMounted(female);
+      const bodyKey = genderRef.current === "female" ? "body:female" : "body:male";
+      setModelDiag({
+        loaded: male.loaded || female.loaded,
+        added: best.addedToScene,
+        hidden: best.proceduralHidden,
+        // Mesh/bone counts describe the model that is actually MOUNTED on
+        // the player — a loaded-but-unmounted body reports 0 so the HUD
+        // can never dress a failed mount as a successful one.
+        meshes: playerMounted ? best.meshes : 0,
+        bones: playerMounted ? best.bones : 0,
+        // Animation diagnostics: the clip actually playing on the mounted
+        // rig and whether its AnimationMixer is receiving updates.
+        clipName: playerMounted ? best.clipName : null,
+        mixerUpdating: playerMounted ? best.mixerUpdating : false,
+        animationMode: playerMounted ? best.animationMode : null,
+        clipNames: playerMounted ? best.clipNames : [],
+        source:
+          loadedSourceFor(bodyKey) ??
+          loadedSourceFor("body:male") ??
+          loadedSourceFor("body:female"),
+        // Counts only the player's successfully mounted model meshes —
+        // bot/squad mounts must never make the player look rigged.
+        rigged: playerMounted ? best.meshes : 0,
+      });
+      if (playerMounted) {
+        setModelStatus("real");
+        setModelStatusReason(null);
+      } else {
+        setModelStatus("fallback");
+        setModelStatusReason(getOperatorDiagnostics().lastError);
+      }
+    };
+    void playerRigMale.upgrade().then((ok) => {
+      maleReal = ok;
+      reportModelStatus();
+    });
+    void playerRigFemale.upgrade().then((ok) => {
+      femaleReal = ok;
+      reportModelStatus();
+    });
+    // A failed first attempt (slow network, SPA-fallback HTML, offline
+    // moment) must never lock the player into the procedural cubes for the
+    // whole session: retry quietly until the real model is in.
+    const modelRetryTimer = window.setInterval(() => {
+      // Retry on live mount state (not just the last promise result) so a
+      // detached or half-mounted model is re-attached automatically.
+      if (!isPlayerMounted(playerRigMale.status)) {
+        void playerRigMale.upgrade().then((ok) => {
+          maleReal = maleReal || ok;
+          reportModelStatus();
+        });
+      }
+      if (!isPlayerMounted(playerRigFemale.status)) {
+        void playerRigFemale.upgrade().then((ok) => {
+          femaleReal = femaleReal || ok;
+          reportModelStatus();
+        });
+      }
+    }, 15000);
+    // Muzzle flash for the player's weapon.
+    const playerFlash = new THREE.Mesh(
+      new THREE.SphereGeometry(0.16, 8, 8),
+      new THREE.MeshBasicMaterial({ color: 0xffd27a, transparent: true, opacity: 0.9 }),
+    );
+    playerFlash.visible = false;
+    scene.add(playerFlash);
+    let flashTimer = 0;
+    // Live animation/movement diagnostics, refreshed inside the RAF loop.
+    let diagTimer = 0;
+    let playerMoving = false;
+    let playerPosX = 0;
+    let playerPosZ = 0;
+    const botMeshes = Array.from({ length: BOT_COUNT }, (_, index) => {
+      const variant = index % 3 === 0 ? "ghillie" : index % 3 === 1 ? "desert" : "woodland";
+      const botGender: SoldierGender = index % 2 === 0 ? "male" : "female";
+      const botRig = new OperatorRig(variant, botGender);
+      const lod = new THREE.LOD();
+      lod.addLevel(botRig.group, 0);
+      const low = new THREE.Group();
+      const torso = new THREE.Mesh(
+        new THREE.CapsuleGeometry(0.38, 0.9, 3, 6),
+        new THREE.MeshLambertMaterial({ color: 0x6e4634 }),
+      );
+      torso.position.y = 0.95;
+      const head = new THREE.Mesh(
+        new THREE.SphereGeometry(0.24, 6, 6),
+        new THREE.MeshLambertMaterial({ color: 0x6e4634 }),
+      );
+      head.position.y = 1.68;
+      low.add(torso, head);
+      lod.addLevel(low, BOT_LOD_DISTANCE);
+      scene.add(lod);
+      lod.userData.rig = botRig;
+      return lod;
+    });
+    const squadMeshes = Array.from({ length: 4 }, (_, index) => {
+      const mateRig = new OperatorRig(index % 2 === 0 ? "woodland" : "desert", "male");
+      void mateRig.upgrade();
+      scene.add(mateRig.group);
+      return mateRig;
+    });
+    const vehicleMeshes = Array.from({ length: 3 }, (_, index) => {
+      const kinds: VehicleKind[] = ["uaz", "pickup", "buggy"];
+      const mesh = makeVehicleMesh(kinds[index]);
+      scene.add(mesh);
+      return mesh;
+    });
+    void upgradeVehicleMeshesWithRealModels(vehicleMeshes);
+    const tracerPool = Array.from({ length: 16 }, () => {
+      const geometry = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(),
+        new THREE.Vector3(),
+      ]);
+      const line = new THREE.Line(
+        geometry,
+        new THREE.LineBasicMaterial({ color: 0xffd54a, transparent: true, opacity: 0.9 }),
+      );
+      line.visible = false;
+      scene.add(line);
+      return line;
+    });
+    const blastPool = Array.from({ length: 6 }, () => {
+      const mesh = new THREE.Mesh(
+        new THREE.SphereGeometry(1, 10, 10),
+        new THREE.MeshBasicMaterial({ color: 0xff7a1a, transparent: true, opacity: 1 }),
+      );
+      mesh.visible = false;
+      scene.add(mesh);
+      return mesh;
+    });
+    const sparkPool = Array.from({ length: 6 }, () => {
+      const count = 26;
+      const positions = new Float32Array(count * 3);
+      const velocities = new Float32Array(count * 3);
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+      const points = new THREE.Points(
+        geometry,
+        new THREE.PointsMaterial({
+          color: 0xffc24a,
+          size: 0.28,
+          transparent: true,
+          opacity: 1,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+        }),
+      );
+      points.visible = false;
+      scene.add(points);
+      return { points, positions, velocities, active: false };
+    });
+
+    const planeMesh = makePlaneMesh();
+    scene.add(planeMesh);
+    const deployPlane = makePlaneMesh();
+    scene.add(deployPlane);
+
+    const playerChute = new THREE.Mesh(
+      new THREE.ConeGeometry(2.2, 1.6, 8, 1, true),
+      new THREE.MeshLambertMaterial({ color: 0x22c55e, side: THREE.DoubleSide }),
+    );
+    scene.add(playerChute);
+
+    const airdropCrate = new THREE.Mesh(
+      new THREE.BoxGeometry(1.4, 1.4, 1.4),
+      new THREE.MeshLambertMaterial({ color: 0xf59e0b }),
+    );
+    const parachute = new THREE.Mesh(
+      new THREE.ConeGeometry(2.4, 1.8, 8, 1, true),
+      new THREE.MeshLambertMaterial({ color: 0xe2e8f0, side: THREE.DoubleSide }),
+    );
+    parachute.position.y = 3;
+    const airdropGroup = new THREE.Group();
+    airdropGroup.add(airdropCrate, parachute);
+    scene.add(airdropGroup);
+    const lootMeshes = Array.from(
+      { length: LOOT_COUNT + BUILDING_POSITIONS.length + EXPANSION_LOOT_COUNT },
+      (_, index) => {
+      const crate = new THREE.Mesh(
+        new THREE.BoxGeometry(0.8, 0.8, 0.8),
+        new THREE.MeshLambertMaterial({ color: LOOT_COLORS[lootWeaponForIndex(index)] }),
+      );
+      crate.position.y = 0.5;
+      scene.add(crate);
+      return crate;
+      },
+    );
+
+    const lobbyScene = new THREE.Scene();
+    lobbyScene.background = new THREE.Color(0x8fb0cf);
+    lobbyScene.fog = new THREE.Fog(0x8fb0cf, 70, 240);
+    const lobbyCamera = new THREE.PerspectiveCamera(60, 1, 0.1, 800);
+    lobbyScene.add(new THREE.HemisphereLight(0xcfe2ff, 0x4a5a3a, 1.1));
+    const lobbySun = new THREE.DirectionalLight(0xfff1d6, 1.1);
+    lobbySun.position.set(10, 30, -10);
+    lobbySun.castShadow = true;
+    lobbySun.shadow.mapSize.set(1024, 1024);
+    lobbySun.shadow.camera.left = -30;
+    lobbySun.shadow.camera.right = 30;
+    lobbySun.shadow.camera.top = 30;
+    lobbySun.shadow.camera.bottom = -30;
+    lobbyScene.add(lobbySun);
+    lobbyScene.add(lobbySun.target);
+    const lobbyGround = new THREE.Mesh(
+      new THREE.CircleGeometry(42, 48),
+      new THREE.MeshLambertMaterial({ color: 0x71805c }),
+    );
+    lobbyGround.rotation.x = -Math.PI / 2;
+    lobbyGround.receiveShadow = true;
+    lobbyScene.add(lobbyGround);
+    const lobbyCrateMat = new THREE.MeshLambertMaterial({ color: 0x8a6b3e });
+    for (const [cx, cz] of [[-8, 6], [8, 6], [-10, -2], [10, -2], [0, -9]] as const) {
+      const crate = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.4, 1.4), lobbyCrateMat);
+      crate.position.set(cx, 0.7, cz);
+      crate.rotation.y = cx;
+      lobbyScene.add(crate);
+    }
+    const rack = new THREE.Mesh(
+      new THREE.BoxGeometry(4, 0.15, 0.4),
+      new THREE.MeshLambertMaterial({ color: 0x5b4630 }),
+    );
+    rack.position.set(0, 1.1, -8.6);
+    lobbyScene.add(rack);
+    for (let w = 0; w < 4; w += 1) {
+      const gun = new THREE.Mesh(
+        new THREE.BoxGeometry(0.12, 0.5, 0.12),
+        new THREE.MeshLambertMaterial({ color: 0x2b2f33 }),
+      );
+      gun.position.set(-1.5 + w, 1.5, -8.6);
+      lobbyScene.add(gun);
+    }
+    const lobbyTargets = Array.from({ length: TARGET_COUNT }, () => {
+      const mesh = new THREE.Mesh(
+        new THREE.BoxGeometry(1.2, 2.2, 0.3),
+        new THREE.MeshLambertMaterial({ color: 0xd9a13b }),
+      );
+      mesh.position.set(0, 1.1, 16);
+      lobbyScene.add(mesh);
+      return mesh;
+    });
+    const lobbyMaleRig = new OperatorRig("woodland", "male");
+    const lobbyFemaleRig = new OperatorRig("woodland", "female");
+    lobbyScene.add(lobbyMaleRig.group, lobbyFemaleRig.group);
+    void lobbyMaleRig.upgrade();
+    void lobbyFemaleRig.upgrade();
+
+    const resize = () => {
+      const width = mount.clientWidth || 640;
+      const height = mount.clientHeight || 420;
+      renderer.setSize(width, height);
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+      lobbyCamera.aspect = width / height;
+      lobbyCamera.updateProjectionMatrix();
+    };
+    resize();
+    window.addEventListener("resize", resize);
+
+    let frame = 0;
+    let last = performance.now();
+    let hudTimer = 0;
+    let lobbyHudTimer = 0;
+    let aimTimer = 0;
+    const loop = (now: number) => {
+      frame = window.requestAnimationFrame(loop);
+      const dt = Math.min((now - last) / 1000, 0.05);
+      last = now;
+      if (modeRef.current === "lobby") {
+        let lobby = stepLobby(lobbyRef.current, dt);
+        if (shootRef.current) {
+          shootRef.current = false;
+          lobby = lobbyShoot(lobby).state;
+          aimTimer = 0.6;
+          playGunshot(0.18);
+        }
+        lobbyRef.current = lobby;
+        const showFemale = lobby.gender === "female";
+        lobbyMaleRig.group.visible = !showFemale;
+        lobbyFemaleRig.group.visible = showFemale;
+        const inspect = Math.sin(now / 2400) * 0.5;
+        lobbyMaleRig.group.rotation.y = inspect;
+        lobbyFemaleRig.group.rotation.y = inspect;
+        aimTimer = Math.max(0, aimTimer - dt);
+        // 0.05 keeps the lobby operator in the Idle tier (0.12 would now
+        // count as walking and play the Walk clip in place).
+        lobbyMaleRig.update(
+          { time: now / 1000, speed01: 0.05, aiming: aimTimer > 0 },
+          dt,
+        );
+        lobbyFemaleRig.update(
+          { time: now / 1000, speed01: 0.05, aiming: aimTimer > 0 },
+          dt,
+        );
+        lobbyTargets.forEach((mesh, index) => {
+          const target = lobby.targets[index];
+          if (!target) {
+            return;
+          }
+          mesh.position.x = target.x;
+          (mesh.material as THREE.MeshLambertMaterial).color.setHex(
+            target.hitFlash > 0 ? 0xfefefe : 0xd9a13b,
+          );
+        });
+        lobbyCamera.position.set(0, 4.4, -9.5);
+        lobbyCamera.lookAt(0, 1.5, 10);
+        renderer.render(lobbyScene, lobbyCamera);
+        lobbyHudTimer += dt;
+        if (lobbyHudTimer > 0.1) {
+          lobbyHudTimer = 0;
+          setLobbyHud({
+            countdown: lobby.countdown,
+            hits: lobby.hits,
+            shots: lobby.shots,
+            weaponId: lobby.weapon,
+            weapon: WEAPONS[lobby.weapon].name,
+            ammo: lobby.ammo,
+          });
+        }
+        if (lobby.status === "launching") {
+          startRef.current(lobby.squadSize, lobby.gender);
+        }
+        return;
+      }
+      const keys = keysRef.current;
+      const usingMouse = pointerLockedRef.current;
+      const input = {
+        forward:
+          (keys.has("w") || keys.has("arrowup") ? 1 : 0) -
+          (keys.has("s") || keys.has("arrowdown") ? 1 : 0),
+        turn: usingMouse
+          ? 0
+          : (keys.has("a") || keys.has("arrowleft") ? 1 : 0) -
+            (keys.has("d") || keys.has("arrowright") ? 1 : 0),
+        strafe: usingMouse
+          ? (keys.has("d") || keys.has("arrowright") ? 1 : 0) -
+            (keys.has("a") || keys.has("arrowleft") ? 1 : 0)
+          : 0,
+        enter: enterRef.current,
+        drop: dropRef.current,
+        revive: reviveRef.current,
+        beacon: beaconRef.current,
+        shield: shieldRef.current,
+        sentry: sentryRef.current,
+        medevac: medevacRef.current,
+        aimAngle: usingMouse ? camYawRef.current : undefined,
+        jump: jumpRef.current,
+        crouch: crouchRef.current,
+        sprint: sprintRef.current,
+      };
+      let state = stateRef.current;
+      if (state && state.status === "running") {
+        state = stepMatch(state, dt, input);
+        // Keyboard-only turning rotates the player; keep the orbit camera
+        // yaw locked to the player's facing so A/D turns the view too.
+        if (!usingMouse && state.deployment.phase === "landed") {
+          camYawRef.current = state.player.angle;
+        }
+        if (shootRef.current) {
+          const shot = shoot(state);
+          state = shot.state;
+          shootRef.current = false;
+          aimTimer = 0.6;
+          playGunshot();
+          flashTimer = 0.06;
+          if (shot.hit) {
+            playHitMarker();
+          }
+        }
+        if (reloadRef.current) {
+          const before = state.reloadTimer;
+          state = reloadWeapon(state);
+          if (before === 0 && state.reloadTimer > 0) {
+            playReload();
+          }
+        }
+        if (switchRef.current) {
+          state = switchWeapon(state, switchRef.current);
+          switchRef.current = null;
+        }
+        stateRef.current = state;
+      }
+      enterRef.current = false;
+      dropRef.current = false;
+      jumpRef.current = false;
+      reloadRef.current = false;
+      beaconRef.current = false;
+      shieldRef.current = false;
+      sentryRef.current = false;
+      medevacRef.current = false;
+      const current = state;
+      if (
+        modeRef.current === "match" &&
+        current &&
+        current.status !== "running" &&
+        !cloudSavedRef.current
+      ) {
+        cloudSavedRef.current = true;
+        const summary: MatchSummary = {
+          status: current.status === "won" ? "won" : "lost",
+          durationSeconds: Math.round(current.time),
+          kills: BOT_COUNT - current.bots.filter((bot) => bot.alive).length,
+          healthRemaining: Math.max(0, Math.round(current.player.health)),
+          squadSize: current.squadSize,
+          squadSurvivors: current.squad.filter((mate) => mate.state === "active").length,
+          zoneRadius: Math.round(current.zone.radius),
+        };
+        void saveMatchResult(summary, current.squad).then((result) => {
+          if (result.saved) {
+            toast.success("☁️ حُفظت النتيجة في لوحة المتصدرين السحابية");
+            return;
+          }
+          if (result.savedLocally) {
+            // Honest messaging: local save is never presented as a cloud
+            // success, and the raw English fetch error is translated.
+            toast.info(
+              `💾 حُفظت النتيجة محليًا على هذا الجهاز — ${describeCloudError(result.reason)}`,
+            );
+          }
+        });
+      }
+      if (current) {
+        const deployment = current.deployment;
+        const playerRig = genderRef.current === "female" ? playerRigFemale : playerRigMale;
+        playerRigMale.group.visible = false;
+        playerRigFemale.group.visible = false;
+        let playerY = terrainHeight(current.player.x, current.player.z);
+        if (deployment.phase === "plane") {
+          playerY = DEPLOY_PLANE_ALTITUDE;
+        } else if (deployment.phase === "falling") {
+          playerY = terrainHeight(current.player.x, current.player.z) + deployment.altitude;
+        } else if (isSwimming(current.player.x, current.player.z)) {
+          playerY = -0.5;
+        } else {
+          playerY += current.jumpAir;
+        }
+        playerRig.group.position.set(
+          current.player.x,
+          playerY,
+          current.player.z,
+        );
+        playerRig.group.rotation.y = current.player.angle;
+        playerRig.group.scale.y = current.crouching ? 0.72 : 1;
+        const pdx = current.player.x - Number(playerRig.group.userData.px ?? current.player.x);
+        const pdz = current.player.z - Number(playerRig.group.userData.pz ?? current.player.z);
+        // Movement diagnostic: real position delta per second, so the HUD
+        // can prove WASD actually changes the player's coordinates.
+        playerMoving = Math.hypot(pdx, pdz) / Math.max(dt, 0.001) > 0.5;
+        playerPosX = current.player.x;
+        playerPosZ = current.player.z;
+        playerRig.update(
+          {
+          time: now / 1000,
+          // Normalized against the SPRINT speed so walking (~0.74) and
+          // sprinting (1.0) map to distinct animation tiers instead of
+          // both saturating at 1.0 (the old /18 divisor).
+          speed01: Math.min(
+            1,
+            Math.hypot(pdx, pdz) / Math.max(dt, 0.001) / (PLAYER_SPEED * SPRINT_SPEED_FACTOR),
+          ),
+          sprinting: sprintRef.current && !current.crouching,
+          swimming: isSwimming(current.player.x, current.player.z),
+          driving: current.playerVehicle >= 0,
+          aiming: aimTimer > 0,
+          reloading: current.reloadTimer > 0,
+          jumping: current.jumpAir > 0,
+          },
+          dt,
+        );
+        playerRig.group.userData.px = current.player.x;
+        playerRig.group.userData.pz = current.player.z;
+        playerRig.group.visible = current.status !== "lost" && deployment.phase !== "plane";
+        // BUG FIX: aimTimer was only decayed in the lobby branch, so after
+        // the first shot `aiming` stayed true forever in match mode. That
+        // permanently parked the rig in the aim bone-pose (arms out, no
+        // clips) instead of returning to Idle/Walk/Run clips.
+        aimTimer = Math.max(0, aimTimer - dt);
+        flashTimer = Math.max(0, flashTimer - dt);
+        playerFlash.visible = flashTimer > 0 && playerRig.group.visible;
+        if (playerFlash.visible) {
+          playerFlash.position.set(
+            current.player.x + Math.sin(current.player.angle) * 0.9,
+            playerY + (current.crouching ? 1.15 : 1.45),
+            current.player.z + Math.cos(current.player.angle) * 0.9,
+          );
+          playerFlash.scale.setScalar(0.8 + Math.random() * 0.5);
+        }
+        playerChute.visible = deployment.phase === "falling" && deployment.chute;
+        playerChute.position.set(current.player.x, playerY + 2.6, current.player.z);
+        squadMeshes.forEach((squadRig, index) => {
+          const mate = current.squad[index];
+          const showMate = Boolean(
+            mate && mate.state !== "out" && current.deployment.phase === "landed",
+          );
+          squadRig.group.visible = showMate;
+          if (showMate && mate) {
+            const mateY = isSwimming(mate.x, mate.z) ? -0.5 : terrainHeight(mate.x, mate.z);
+            squadRig.group.position.set(mate.x, mateY, mate.z);
+            squadRig.group.rotation.y = mate.angle;
+            squadRig.group.rotation.z = mate.state === "downed" ? Math.PI / 2.2 : 0;
+            const sdx = mate.x - Number(squadRig.group.userData.px ?? mate.x);
+            const sdz = mate.z - Number(squadRig.group.userData.pz ?? mate.z);
+            squadRig.update(
+              {
+                time: now / 1000,
+                speed01: Math.min(1, Math.hypot(sdx, sdz) / Math.max(dt, 0.001) / 16),
+                swimming: isSwimming(mate.x, mate.z),
+                downed: mate.state === "downed",
+              },
+              dt,
+            );
+            squadRig.group.userData.px = mate.x;
+            squadRig.group.userData.pz = mate.z;
+          }
+        });
+        deployPlane.visible = deployment.phase === "plane";
+        if (deployPlane.visible) {
+          deployPlane.position.set(
+            deployment.plane.x,
+            DEPLOY_PLANE_ALTITUDE,
+            deployment.plane.z,
+          );
+          deployPlane.rotation.y = deployment.plane.angle;
+        }
+        const radarReveal = current.radio.jamTimer > 0;
+        botMeshes.forEach((lod, index) => {
+          const bot = current.bots[index];
+          if (!bot) {
+            lod.visible = false;
+            return;
+          }
+          const dx = bot.x - current.player.x;
+          const dz = bot.z - current.player.z;
+          const far = dx * dx + dz * dz > BOT_CULL_DISTANCE * BOT_CULL_DISTANCE;
+          lod.visible = bot.alive && (!far || radarReveal);
+          if (lod.visible) {
+            const botRig = lod.userData.rig as OperatorRig;
+            if (!botRig.skeletal && !botRig.upgradeAttempted) {
+              botRig.upgradeAttempted = true;
+              void botRig.upgrade();
+            }
+            lod.position.set(bot.x, terrainHeight(bot.x, bot.z), bot.z);
+            lod.rotation.y = bot.angle;
+            lod.update(camera);
+            const bdx = bot.x - Number(lod.userData.px ?? bot.x);
+            const bdz = bot.z - Number(lod.userData.pz ?? bot.z);
+            botRig.update(
+              {
+                time: now / 1000,
+                speed01: Math.min(1, Math.hypot(bdx, bdz) / Math.max(dt, 0.001) / 9),
+              },
+              dt,
+              lodTierForDistance(Math.hypot(dx, dz)),
+            );
+            lod.userData.px = bot.x;
+            lod.userData.pz = bot.z;
+          }
+        });
+        lootMeshes.forEach((mesh, index) => {
+          const crate = current.loot[index];
+          mesh.visible = Boolean(crate && !crate.taken);
+          if (crate && !crate.taken) {
+            mesh.position.set(crate.x, terrainHeight(crate.x, crate.z) + 0.5, crate.z);
+            mesh.rotation.y = now / 600;
+          }
+        });
+        vehicleMeshes.forEach((mesh, index) => {
+          const vehicle = current.vehicles[index];
+          if (!vehicle) {
+            return;
+          }
+          mesh.position.set(vehicle.x, terrainHeight(vehicle.x, vehicle.z), vehicle.z);
+          mesh.rotation.y = vehicle.angle;
+          mesh.rotation.x = vehicle.wreck
+            ? 0.16
+            : Math.max(-0.08, Math.min(0.08, vehicle.speed * 0.004));
+          const flash = mesh.getObjectByName("turretFlash");
+          if (flash) {
+            flash.visible = vehicle.turretFlash > 0;
+          }
+          if (vehicle.wreck && !mesh.userData.wrecked) {
+            mesh.userData.wrecked = true;
+            mesh.traverse((child) => {
+              const meshChild = child as THREE.Mesh;
+              if (meshChild.isMesh) {
+                const material = meshChild.material as THREE.MeshLambertMaterial;
+                if (material.color) {
+                  material.color.setHex(0x1c1c1c);
+                }
+              }
+            });
+          }
+        });
+        current.tracers.forEach((tracer, index) => {
+          const line = tracerPool[index];
+          if (!line) {
+            return;
+          }
+          line.visible = true;
+          const position = line.geometry.attributes.position as THREE.BufferAttribute;
+          position.setXYZ(0, tracer.x1, 1.4, tracer.z1);
+          position.setXYZ(1, tracer.x2, 1.4, tracer.z2);
+          position.needsUpdate = true;
+        });
+        for (let i = current.tracers.length; i < tracerPool.length; i += 1) {
+          tracerPool[i].visible = false;
+        }
+        current.explosions.forEach((explosion, index) => {
+          const mesh = blastPool[index];
+          if (!mesh) {
+            return;
+          }
+          mesh.visible = true;
+          const progress = 1 - explosion.timer / EXPLOSION_DURATION;
+          mesh.position.set(
+            explosion.x,
+            terrainHeight(explosion.x, explosion.z) + 1 + progress * 3,
+            explosion.z,
+          );
+          mesh.scale.setScalar(1 + progress * 6);
+          (mesh.material as THREE.MeshBasicMaterial).opacity = Math.max(0, 1 - progress);
+          const spark = sparkPool[index];
+          if (!spark.active) {
+            spark.active = true;
+            for (let p = 0; p < 26; p += 1) {
+              const a = Math.random() * Math.PI * 2;
+              const el = Math.random() * Math.PI * 0.5;
+              const sp = 4 + Math.random() * 9;
+              spark.positions[p * 3] = explosion.x;
+              spark.positions[p * 3 + 1] = terrainHeight(explosion.x, explosion.z) + 1;
+              spark.positions[p * 3 + 2] = explosion.z;
+              spark.velocities[p * 3] = Math.cos(a) * Math.cos(el) * sp;
+              spark.velocities[p * 3 + 1] = Math.sin(el) * sp;
+              spark.velocities[p * 3 + 2] = Math.sin(a) * Math.cos(el) * sp;
+            }
+            spark.points.visible = true;
+          }
+          for (let p = 0; p < 26; p += 1) {
+            spark.velocities[p * 3 + 1] -= 14 * dt;
+            spark.positions[p * 3] += spark.velocities[p * 3] * dt;
+            spark.positions[p * 3 + 1] += spark.velocities[p * 3 + 1] * dt;
+            spark.positions[p * 3 + 2] += spark.velocities[p * 3 + 2] * dt;
+          }
+          (spark.points.geometry.attributes.position as THREE.BufferAttribute).needsUpdate = true;
+          (spark.points.material as THREE.PointsMaterial).opacity = Math.max(0, 1 - progress);
+        });
+        for (let i = current.explosions.length; i < blastPool.length; i += 1) {
+          blastPool[i].visible = false;
+          const spark = sparkPool[i];
+          spark.active = false;
+          spark.points.visible = false;
+        }
+        planeMesh.position.set(
+          current.airdrop.plane.x,
+          current.airdrop.plane.altitude,
+          current.airdrop.plane.z,
+        );
+        planeMesh.rotation.y = current.airdrop.plane.angle;
+        planeMesh.visible = true;
+        const drop = current.airdrop.crate;
+        airdropGroup.visible = Boolean(drop && !drop.taken);
+        if (drop && !drop.taken) {
+          airdropGroup.position.set(
+            drop.x,
+            terrainHeight(drop.x, drop.z) + drop.altitude + 0.7,
+            drop.z,
+          );
+          parachute.visible = !drop.landed;
+          airdropCrate.rotation.y = now / 800;
+        }
+        zoneRing.position.set(current.zone.x, 0.05, current.zone.z);
+        zoneRing.scale.setScalar(current.zone.radius);
+        updateWeatherVisuals({ scene, sun, hemi, weather: current.weather });
+        rain.update(dt, current.weather.rain, current.player.x, current.player.z);
+        zoneWall.visible = true;
+        zoneWall.position.set(current.zone.x, 23, current.zone.z);
+        zoneWall.scale.set(current.zone.radius, 1, current.zone.radius);
+        (zoneWall.material as THREE.MeshBasicMaterial).opacity =
+          0.12 + Math.sin(now / 300) * 0.04;
+        droneMesh.visible = true;
+        droneMesh.position.set(
+          current.drone.x,
+          terrainHeight(current.drone.x, current.drone.z) + 18,
+          current.drone.z,
+        );
+        droneMesh.rotation.y = -current.drone.orbitAngle;
+        droneMesh.rotation.z = Math.sin(now / 200) * 0.05;
+        const warn = towerMesh.getObjectByName("towerWarn");
+        if (warn) {
+          warn.visible = current.radio.cooldown > 0 && Math.sin(now / 150) > 0;
+        }
+        const bDrop = current.beacon.drop;
+        beaconSmoke.visible = Boolean(bDrop);
+        if (bDrop) {
+          beaconSmoke.position.set(
+            bDrop.x,
+            terrainHeight(bDrop.x, bDrop.z) + 13,
+            bDrop.z,
+          );
+        }
+        beaconCrateGroup.visible = Boolean(bDrop?.crate && !bDrop.crate.taken);
+        if (bDrop?.crate && !bDrop.crate.taken) {
+          beaconCrateGroup.position.set(
+            bDrop.crate.x,
+            terrainHeight(bDrop.crate.x, bDrop.crate.z) + bDrop.crate.altitude + 0.75,
+            bDrop.crate.z,
+          );
+          beaconChute.visible = !bDrop.crate.landed;
+        }
+        revivalRing.visible = current.revival.active;
+        if (current.revival.active) {
+          revivalRing.position.set(
+            current.revival.zone.x,
+            terrainHeight(current.revival.zone.x, current.revival.zone.z) + 0.12,
+            current.revival.zone.z,
+          );
+          revivalRing.scale.setScalar(CHALLENGE_ZONE_RADIUS);
+        }
+        domeGroup.visible = current.shield.active;
+        if (current.shield.active) {
+          domeGroup.position.set(
+            current.shield.x,
+            terrainHeight(current.shield.x, current.shield.z),
+            current.shield.z,
+          );
+          domeGroup.scale.setScalar(DOME_RADIUS);
+          (domeMesh.material as THREE.MeshBasicMaterial).opacity =
+            0.1 +
+            (current.shield.integrity / DOME_MAX_INTEGRITY) * 0.12 +
+            Math.sin(now / 260) * 0.03;
+        }
+        sentryMesh.visible = current.sentry.deployed;
+        if (current.sentry.deployed) {
+          sentryMesh.position.set(
+            current.sentry.x,
+            terrainHeight(current.sentry.x, current.sentry.z),
+            current.sentry.z,
+          );
+          sentryMesh.rotation.y = now / 900;
+          const flash = sentryMesh.getObjectByName("sentryFlash");
+          if (flash) {
+            flash.visible = current.sentry.flash > 0;
+          }
+        }
+        medevacMesh.visible = Boolean(current.medevac.active && current.medevac.drone);
+        if (current.medevac.active && current.medevac.drone) {
+          medevacMesh.position.set(
+            current.medevac.drone.x,
+            terrainHeight(current.medevac.drone.x, current.medevac.drone.z) +
+              current.medevac.drone.altitude,
+            current.medevac.drone.z,
+          );
+          medRotors.forEach((rotor, i) => {
+            rotor.rotation.y = now / (40 + i * 4);
+          });
+        }
+        sun.position.set(current.player.x + 45, 70, current.player.z + 28);
+        sun.target.position.set(current.player.x, 0, current.player.z);
+        sun.target.updateMatrixWorld();
+        const camYaw = camYawRef.current;
+        const camPitch = camPitchRef.current;
+        const camDist = deployment.phase === "landed" ? 9 : 15;
+        camTarget.set(
+          current.player.x - Math.sin(camYaw) * Math.cos(camPitch) * camDist,
+          playerY + 2.4 + Math.sin(camPitch) * camDist,
+          current.player.z - Math.cos(camYaw) * Math.cos(camPitch) * camDist,
+        );
+        camera.position.lerp(camTarget, Math.min(1, dt * 9));
+        camera.lookAt(
+          current.player.x,
+          playerY + 1.4,
+          current.player.z,
+        );
+      } else {
+        const orbit = now / 5000;
+        camera.position.set(Math.sin(orbit) * 190, 70, Math.cos(orbit) * 190);
+        camera.lookAt(0, 0, 0);
+        planeMesh.visible = false;
+        airdropGroup.visible = false;
+        deployPlane.visible = false;
+        playerChute.visible = false;
+        tracerPool.forEach((line) => {
+          line.visible = false;
+        });
+        blastPool.forEach((mesh) => {
+          mesh.visible = false;
+        });
+        sparkPool.forEach((spark) => {
+          spark.active = false;
+          spark.points.visible = false;
+        });
+        squadMeshes.forEach((squadRig) => {
+          squadRig.group.visible = false;
+        });
+        playerFlash.visible = false;
+        rain.points.visible = false;
+        zoneWall.visible = false;
+        droneMesh.visible = false;
+        beaconSmoke.visible = false;
+        beaconCrateGroup.visible = false;
+        revivalRing.visible = false;
+        domeGroup.visible = false;
+        sentryMesh.visible = false;
+        medevacMesh.visible = false;
+      }
+      if (current && current.status !== "running" && document.pointerLockElement) {
+        document.exitPointerLock();
+      }
+      forest.update(now / 1000, camera);
+      dust.rotation.y = now * 0.004;
+      water.update(now / 1000);
+      renderer.render(scene, camera);
+      hudTimer += dt;
+      // Live diagnostics: reportModelStatus was previously one-shot at
+      // mount time — before any rig update ran — so the HUD froze on
+      // "clip: none / mixer: no" even while clips were playing. Refresh
+      // it twice per second so clipName/mixerUpdating stay truthful.
+      diagTimer += dt;
+      if (diagTimer > 0.5) {
+        diagTimer = 0;
+        reportModelStatus();
+      }
+      if (current && hudTimer > 0.1) {
+        hudTimer = 0;
+        const attachmentId = current.attachments[current.weapon];
+        setHud({
+          health: Math.max(0, Math.round(current.player.health)),
+          alive: current.bots.filter((bot) => bot.alive).length,
+          zone: Math.round(current.zone.radius),
+          weapon: WEAPONS[current.weapon].name,
+          ammo: current.ammo[current.weapon],
+          magazine: current.magazine[current.weapon],
+          reserve: current.ammo[current.weapon],
+          reloading: current.reloadTimer > 0,
+          armor: Math.round(current.playerArmor),
+          owned: [...current.owned],
+          crouching: current.crouching,
+          jumping: current.jumpAir > 0.05,
+          crates: current.loot.filter((crate) => !crate.taken).length,
+          vehicle:
+            current.playerVehicle >= 0
+              ? VEHICLE_SPECS[current.vehicles[current.playerVehicle].kind].name
+              : null,
+          speed:
+            current.playerVehicle >= 0
+              ? Math.round(Math.abs(current.vehicles[current.playerVehicle].speed))
+              : 0,
+          posX: Math.round(playerPosX * 10) / 10,
+          posZ: Math.round(playerPosZ * 10) / 10,
+          moving: playerMoving,
+          airdrop: Boolean(current.airdrop.crate && !current.airdrop.crate.taken),
+          swimming: isSwimming(current.player.x, current.player.z),
+          deployPhase: current.deployment.phase,
+          altitude: Math.round(current.deployment.altitude),
+          squad: current.squad.map((mate) => ({ ...mate })),
+          status: current.status,
+          weather: current.weather.kind,
+          phase: dayPhase(current.weather.time),
+          droneAlert: current.drone.spottedTimer > 0,
+          attachment: attachmentId ? ATTACHMENTS[attachmentId].name : null,
+          radioCapture: Math.min(1, current.radio.captureProgress / TOWER_CAPTURE_TIME),
+          radioJam: radarRevealActive(current.radio),
+          beaconHeld: current.beacon.held,
+          beaconActive: Boolean(current.beacon.drop),
+          dustStorm: current.dust.active,
+          revivalActive: current.revival.active,
+          revivalProgress: Math.min(
+            1,
+            current.revival.captureProgress / CHALLENGE_ZONE_CAPTURE_TIME,
+          ),
+          revivalTimer: Math.max(0, Math.ceil(current.revival.timer)),
+          dome: current.shield.active
+            ? Math.max(0, current.shield.integrity / DOME_MAX_INTEGRITY)
+            : null,
+          sentryDeployed: current.sentry.deployed,
+          sentryHealth: current.sentry.health / SENTRY_MAX_HEALTH,
+          medevacActive: current.medevac.active,
+          fortressBuff: current.fortress.active && !current.fortress.chopperIncoming,
+          fortressHold: current.fortress.active
+            ? Math.min(1, current.fortress.holdProgress / FORTRESS_HOLD_TIME)
+            : 0,
+          chopperIncoming: current.fortress.chopperIncoming,
+          gadgets: { ...current.gadgets },
+        });
+      }
+    };
+    frame = window.requestAnimationFrame(loop);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearInterval(modelRetryTimer);
+      window.removeEventListener("resize", resize);
+      renderer.domElement.removeEventListener("click", onCanvasClick);
+      document.removeEventListener("pointerlockchange", onPointerLockChange);
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mousedown", onMouseDown);
+      if (document.pointerLockElement) {
+        document.exitPointerLock();
+      }
+      renderer.dispose();
+      if (renderer.domElement.parentElement === mount) {
+        mount.removeChild(renderer.domElement);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    const movementKeys = ["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright", " "];
+    const onKeyDown = (event: KeyboardEvent) => {
+      const key = event.key.toLowerCase();
+      if (movementKeys.includes(key)) {
+        event.preventDefault();
+      }
+      if (key === " ") {
+        jumpRef.current = true;
+      }
+      if (key === "e") {
+        enterRef.current = true;
+      }
+      if (key === "f") {
+        dropRef.current = true;
+      }
+      if (key === "r") {
+        reloadRef.current = true;
+      }
+      if (key === "shift") {
+        sprintRef.current = true;
+      }
+      if (key === "control") {
+        crouchRef.current = true;
+      }
+      if (key === "q") {
+        beaconRef.current = true;
+      }
+      if (key === "z") {
+        shieldRef.current = true;
+      }
+      if (key === "x") {
+        sentryRef.current = true;
+      }
+      if (key === "c") {
+        medevacRef.current = true;
+      }
+      if (key >= "1" && key <= "6") {
+        const ids: WeaponId[] = ["pistol", "smg", "ar", "dmr", "lmg", "shotgun"];
+        const id = ids[Number(key) - 1];
+        if (modeRef.current === "lobby") {
+          lobbyRef.current = lobbySelectWeapon(lobbyRef.current, id);
+        } else {
+          switchRef.current = id;
+        }
+      }
+      keysRef.current.add(key);
+    };
+    const onKeyUp = (event: KeyboardEvent) => {
+      const lowered = event.key.toLowerCase();
+      keysRef.current.delete(lowered);
+      if (lowered === "shift") {
+        sprintRef.current = false;
+      }
+      if (lowered === "control") {
+        crouchRef.current = false;
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+    };
+  }, []);
+
+  const holdKey = (key: string) => (active: boolean) => {
+    if (active) {
+      keysRef.current.add(key);
+    } else {
+      keysRef.current.delete(key);
+    }
+  };
+
+  return (
+    <div className="mx-auto w-full max-w-3xl space-y-4">
+      <div className="relative overflow-hidden rounded-xl border-2 border-slate-800 bg-slate-950 shadow-soft">
+        <div ref={mountRef} className="h-[320px] w-full sm:h-[440px]" />
+        {mode === "match" && hud.status === "running" && hud.deployPhase === "landed" ? (
+          <div className="pointer-events-none absolute left-1/2 top-1/2 z-[5] -translate-x-1/2 -translate-y-1/2">
+            <div className="relative h-7 w-7">
+              <span className="absolute left-1/2 top-0 h-2 w-0.5 -translate-x-1/2 bg-white/85" />
+              <span className="absolute bottom-0 left-1/2 h-2 w-0.5 -translate-x-1/2 bg-white/85" />
+              <span className="absolute left-0 top-1/2 h-0.5 w-2 -translate-y-1/2 bg-white/85" />
+              <span className="absolute right-0 top-1/2 h-0.5 w-2 -translate-y-1/2 bg-white/85" />
+              <span className="absolute left-1/2 top-1/2 h-1 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full bg-rose-400" />
+            </div>
+          </div>
+        ) : null}
+        <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-3">
+          <div className="w-36 space-y-1">
+            <p className="text-xs font-medium text-white drop-shadow">الصحة: {hud.health}</p>
+            <div className="h-2 overflow-hidden rounded-full bg-slate-800">
+              <div
+                className={cn(
+                  "h-full transition-all",
+                  hud.health > 40 ? "bg-emerald-500" : "bg-rose-500",
+                )}
+                style={{ width: `${hud.health}%` }}
+              />
+            </div>
+            <p className="text-[10px] font-medium text-sky-200 drop-shadow">الدرع: {hud.armor}</p>
+            <div className="h-1.5 overflow-hidden rounded-full bg-slate-800">
+              <div
+                className="h-full bg-sky-400 transition-all"
+                style={{ width: `${Math.min(100, (hud.armor / MAX_ARMOR) * 100)}%` }}
+              />
+            </div>
+            {hud.squad.map((mate, index) => (
+              <div key={index} className="space-y-0.5">
+                <p className="text-[10px] font-medium text-white drop-shadow">
+                  رفيق {index + 1}:{" "}
+                  {mate.state === "downed"
+                    ? "ساقط 🩸"
+                    : mate.state === "out"
+                      ? "خارج القتال"
+                      : `${Math.round(mate.health)}%`}
+                </p>
+                <div className="h-1.5 overflow-hidden rounded-full bg-slate-800">
+                  <div
+                    className={cn(
+                      "h-full",
+                      mate.state === "downed" ? "bg-amber-500" : "bg-emerald-500",
+                    )}
+                    style={{
+                      width: `${Math.max(0, Math.min(100, mate.health))}%`,
+                    }}
+                  />
+                </div>
+                {mate.state === "downed" ? (
+                  <div className="h-1 overflow-hidden rounded-full bg-slate-800">
+                    <div
+                      className="h-full bg-sky-400"
+                      style={{ width: `${(mate.reviveProgress / 5) * 100}%` }}
+                    />
+                  </div>
+                ) : null}
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <Badge className="bg-slate-900/80 text-white">أحياء: {hud.alive}</Badge>
+            <Badge className="bg-slate-900/80 text-white">المنطقة: {hud.zone}م</Badge>
+            <Badge className="bg-slate-900/80 text-white">
+              {hud.phase === "night" ? "🌙" : hud.phase === "day" ? "☀️" : "🌅"}{" "}
+              {hud.weather === "rain"
+                ? "🌧"
+                : hud.weather === "storm"
+                  ? "⛈"
+                  : hud.weather === "fog"
+                    ? "🌫"
+                    : hud.weather === "dust"
+                      ? "🌪"
+                      : "☀️"}
+            </Badge>
+            {hud.droneAlert ? (
+              <Badge className="bg-rose-700/90 text-white">🚨 استطلاع! إنك مكشوف</Badge>
+            ) : null}
+            {hud.radioJam ? (
+              <Badge className="bg-sky-700/90 text-white">📡 تشويش الرادار نشط</Badge>
+            ) : null}
+            {hud.dustStorm ? (
+              <Badge className="bg-amber-700/90 text-white">🌪 عاصفة رملية!</Badge>
+            ) : null}
+            {hud.dome !== null ? (
+              <Badge className="bg-sky-800/90 text-white">
+                🛡 القبة: {Math.round(hud.dome * 100)}%
+              </Badge>
+            ) : null}
+            {hud.sentryDeployed ? (
+              <Badge className="bg-cyan-900/90 text-white">
+                🔫 البرج الآلي: {Math.round(hud.sentryHealth * 100)}%
+              </Badge>
+            ) : null}
+            {hud.medevacActive ? (
+              <Badge className="bg-emerald-800/90 text-white">🚁 إخلاء طبي جارٍ!</Badge>
+            ) : null}
+            {hud.fortressBuff ? (
+              <Badge className="bg-violet-800/90 text-white">🏰 حصن الصمود (+30% مقاومة)</Badge>
+            ) : null}
+            {hud.fortressBuff && hud.fortressHold > 0 ? (
+              <Badge className="bg-violet-900/90 text-white">
+                🏰 الصمود: {Math.round(hud.fortressHold * 100)}% — مروحة الإنقاذ عند 100%
+              </Badge>
+            ) : null}
+            {hud.chopperIncoming ? (
+              <Badge className="bg-violet-700/90 text-white">🚁 مروحة الإنقاذ قادمة!</Badge>
+            ) : null}
+            {hud.airdrop ? (
+              <Badge className="bg-amber-600/90 text-white">📦 إسقاط جوي!</Badge>
+            ) : null}
+            {hud.swimming ? (
+              <Badge className="bg-cyan-700/90 text-white">🏊 سباحة</Badge>
+            ) : null}
+          </div>
+        </div>
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center p-3">
+          <Badge className="bg-slate-900/80 text-white">
+            {hud.weapon}
+            {hud.attachment ? ` + ${hud.attachment}` : ""}:{" "}
+            {hud.reloading ? "⟳ إعادة تلقيم…" : `${hud.magazine}/${hud.reserve}`}
+          </Badge>
+          <Badge className="bg-slate-900/80 text-white">
+            {hud.crouching ? "🦵 منحنٍ" : hud.jumping ? "🦘 في الهواء" : "🚶 واقف"}
+          </Badge>
+          <Badge className="mx-2 bg-slate-900/80 text-white">صناديق: {hud.crates}</Badge>
+          {hud.vehicle ? (
+            <Badge className="bg-emerald-900/80 text-white">
+              🚙 {hud.vehicle} — {hud.speed} م/ث
+            </Badge>
+          ) : null}
+        </div>
+        {mode === "lobby" ? (
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2.5 overflow-y-auto bg-slate-950/60 p-4 text-center backdrop-blur-sm">
+            <p className="text-2xl font-bold text-white">الصمود الأخير — ساحة الانتظار 🏕️</p>
+            <p className="text-sm font-medium text-amber-300">
+              الإقلاع خلال {Math.ceil(lobbyHud.countdown)} ثانية — 100 لاعب في الجيم
+            </p>
+            <div className="flex flex-wrap justify-center gap-2">
+              <Button
+                variant={gender === "male" ? "default" : "outline"}
+                onClick={() => pickGender("male")}
+              >
+                ♂ جندي
+              </Button>
+              <Button
+                variant={gender === "female" ? "default" : "outline"}
+                onClick={() => pickGender("female")}
+              >
+                ♀ جنديّة
+              </Button>
+            </div>
+            <div className="flex flex-wrap justify-center gap-2">
+              {SQUAD_SIZES.map((size) => (
+                <Button
+                  key={size}
+                  variant={size === squadSize ? "default" : "outline"}
+                  onClick={() => pickSquad(size)}
+                >
+                  {size === 1 ? "منفرد" : size === 2 ? "ثنائي" : size === 3 ? "ثلاثي" : "فرقة 5"}
+                </Button>
+              ))}
+            </div>
+            <div className="flex max-w-md flex-wrap justify-center gap-1.5">
+              {(Object.keys(WEAPONS) as WeaponId[]).map((id) => (
+                <Button
+                  key={id}
+                  variant={lobbyHud.weaponId === id ? "default" : "outline"}
+                  className="h-8 px-2 text-xs"
+                  onClick={() => pickWeapon(id)}
+                >
+                  {WEAPONS[id].name}
+                </Button>
+              ))}
+            </div>
+            <p className="text-xs text-slate-300">
+              اختبر سلاحك على الأهداف (زر الماوس أو 1-6 لتبديل السلاح) — إصابات:{" "}
+              {lobbyHud.hits}/{lobbyHud.shots} — ذخيرة: {lobbyHud.ammo}
+            </p>
+            <Button size="lg" onClick={deployNow}>
+              🪂 انزل الآن
+            </Button>
+          </div>
+        ) : null}
+        {mode === "match" && hud.status === "running" ? (
+          <div className="pointer-events-none absolute bottom-12 right-3 z-[5] max-w-[240px] rounded-lg border border-slate-700/70 bg-slate-950/70 p-2 text-right text-[10px] leading-5 text-slate-200 backdrop-blur-sm">
+            <p className="font-bold text-amber-300">التحكم:</p>
+            <p>🖱 اضغط على الشاشة لتفعيل الماوس وتدوير الكاميرا</p>
+            <p>زر الماوس الأيسر: إطلاق النار</p>
+            <p>W/S تقدم وتراجع — A/D تحرك جانبي</p>
+            <p>Shift جري — Ctrl انحناء — مسافة قفز</p>
+            <p>R إعادة تلقيم — 1-6 تبديل السلاح</p>
+            <p>E ركوب/نزول — F قفز بالمظلة</p>
+          </div>
+        ) : null}
+        {mode === "match" && hud.status === "running" ? (
+          <div className="pointer-events-none absolute left-3 top-24 z-[5] flex flex-col gap-1">
+            <span className="w-fit rounded bg-slate-900/80 px-1.5 py-0.5 text-[10px] text-slate-300">
+              📦 بناء: {__BUILD_COMMIT__.slice(0, 7)} — الملف:{" "}
+              {modelDiag?.source ? modelDiag.source.split("/").pop() : "—"}
+            </span>
+            <span
+              className={cn(
+                "w-fit rounded px-1.5 py-0.5 text-[10px] font-semibold",
+                modelDiag?.loaded && modelDiag.added && modelDiag.hidden && modelDiag.meshes > 0
+                  ? "bg-emerald-900/85 text-emerald-200"
+                  : modelStatus === "loading"
+                    ? "bg-slate-900/80 text-slate-300"
+                    : "bg-amber-900/85 text-amber-200",
+              )}
+            >
+              {modelDiag?.loaded && modelDiag.added && modelDiag.hidden && modelDiag.meshes > 0
+                ? `🧍 GLB بشري مُركّب على اللاعب — ${modelDiag.meshes} meshes / ${modelDiag.bones} عظمة`
+                : modelStatus === "loading"
+                  ? "⏳ جارٍ تحميل نموذج الشخصية…"
+                  : modelDiag?.loaded
+                    ? "⚠️ النموذج مُحمّل لكنه غير مُركّب على اللاعب بعد — جارٍ إعادة التركيب"
+                    : "⚠️ لم يُركَّب نموذج بشري — المجسم الإجرائي البديل ظاهر"}
+            </span>
+            {modelDiag?.loaded ? (
+              <>
+                <span className="w-fit rounded bg-slate-900/80 px-1.5 py-0.5 text-[10px] text-slate-200">
+                  ✅ أُضيف للمشهد: {modelDiag.added ? "نعم" : "لا"} — المجسم البدائي مخفي:{" "}
+                  {modelDiag.hidden ? "نعم" : "لا"}
+                </span>
+                <span className="w-fit max-w-72 truncate rounded bg-slate-900/80 px-1.5 py-0.5 text-[10px] text-slate-200">
+                  المصدر: {modelDiag.source ?? "؟"} — meshes نموذج اللاعب المُركّب:{" "}
+                  {modelDiag.rigged}
+                </span>
+                <span className="w-fit rounded bg-slate-900/80 px-1.5 py-0.5 text-[10px] text-slate-200">
+                  🎬 الحركة الحالية: {modelDiag.clipName ?? "لا شيء"} — Mixer يُحدَّث:{" "}
+                  {modelDiag.mixerUpdating ? "نعم" : "لا"}
+                </span>
+                <span className="w-fit max-w-72 truncate rounded bg-slate-900/80 px-1.5 py-0.5 text-[10px] text-slate-200">
+                  🎞 الحركات المرتبطة:{" "}
+                  {modelDiag.clipNames.length > 0
+                    ? modelDiag.clipNames.join("، ")
+                    : "لا مقاطع مرتبطة بالنموذج"}
+                </span>
+                <span className="w-fit rounded bg-slate-900/80 px-1.5 py-0.5 text-[10px] text-slate-200">
+                  ⚙️ وضع الحركة:{" "}
+                  {modelDiag.animationMode === "clips"
+                    ? "مقاطع GLTF"
+                    : modelDiag.animationMode === "bone-driver"
+                      ? "تحريك عظام مباشر (لا مقاطع)"
+                      : modelDiag.animationMode === "procedural"
+                        ? "بدائي"
+                        : "؟"}
+                </span>
+              </>
+            ) : null}
+            <span className="w-fit rounded bg-slate-900/80 px-1.5 py-0.5 text-[10px] text-slate-200">
+              📍 اللاعب: {hud.posX}، {hud.posZ} — يتحرك: {hud.moving ? "نعم" : "لا"}
+            </span>
+            {modelStatus === "fallback" && modelStatusReason ? (
+              <span className="w-fit max-w-72 rounded bg-amber-950/90 px-1.5 py-0.5 text-[10px] leading-snug text-amber-100">
+                {modelStatusReason}
+              </span>
+            ) : null}
+            {(["pistol", "smg", "ar", "dmr", "lmg", "shotgun"] as WeaponId[]).map((id, index) => (
+              <span
+                key={id}
+                className={cn(
+                  "rounded px-1.5 py-0.5 text-[10px]",
+                  hud.weapon === id
+                    ? "bg-amber-500 font-bold text-slate-950"
+                    : hud.owned.includes(id)
+                      ? "bg-slate-900/80 text-white"
+                      : "bg-slate-900/40 text-slate-500",
+                )}
+              >
+                {index + 1}· {WEAPONS[id].name}
+              </span>
+            ))}
+          </div>
+        ) : null}
+        {mode === "match" && hud.status !== "running" ? (
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-slate-950/70 p-6 text-center backdrop-blur-sm">
+            {hud.status === "won" ? (
+              <>
+                <p className="text-2xl font-bold text-white">الفوز! 🏆</p>
+                <p className="text-sm text-slate-300">الصمود الأخير — Last Stand</p>
+                <Button size="lg" onClick={() => start(squadSize, gender)}>
+                  <RotateCcw />
+                  جولة جديدة
+                </Button>
+              </>
+            ) : null}
+            {hud.status === "lost" ? (
+              <>
+                <p className="text-2xl font-bold text-white">تمت إقصاؤك 💀</p>
+                <p className="text-sm text-slate-300">الصمود الأخير — Last Stand</p>
+                <Button size="lg" onClick={() => start(squadSize, gender)}>
+                  <RotateCcw />
+                  حاول مرة أخرى
+                </Button>
+              </>
+            ) : null}
+          </div>
+        ) : null}
+        {mode === "match" && hud.revivalActive ? (
+          <div className="absolute inset-x-8 top-16 z-10 rounded-lg border border-amber-500/60 bg-slate-950/80 p-3 text-center backdrop-blur-sm">
+            <p className="text-sm font-bold text-amber-300">
+              🎖 تحدي القائد: احتل النقطة أو أقصِ عدوًا لإحياء فرقتك! ({hud.revivalTimer}ث)
+            </p>
+            <div className="mx-auto mt-1.5 h-2 w-56 overflow-hidden rounded-full bg-slate-800">
+              <div className="h-full bg-amber-500" style={{ width: `${hud.revivalProgress * 100}%` }} />
+            </div>
+          </div>
+        ) : null}
+      </div>
+
+      <div className="flex flex-wrap items-center justify-center gap-4">
+        {hud.status === "running" && hud.deployPhase !== "landed" ? (
+          <Button onClick={() => (dropRef.current = true)}>
+            🪂 القفز (F) — {hud.altitude}م
+          </Button>
+        ) : null}
+        <Button onClick={() => (shootRef.current = true)}>
+          <Crosshair />
+          إطلاق النار (زر الماوس)
+        </Button>
+        <Button variant="outline" onClick={() => (reloadRef.current = true)}>
+          ⟳ إعادة تلقيم (R)
+        </Button>
+        <Button variant="outline" onClick={() => (enterRef.current = true)}>
+          🚙 ركوب/نزول (E)
+        </Button>
+        {hud.beaconHeld > 0 && !hud.beaconActive ? (
+          <Button
+            className="bg-rose-700 hover:bg-rose-600"
+            onClick={() => (beaconRef.current = true)}
+          >
+            🧯 استدعاء إمدادات (Q) — {hud.beaconHeld}
+          </Button>
+        ) : null}
+        {hud.beaconActive ? (
+          <Badge className="bg-rose-800/90 text-white">
+            🧯 منارة نشطة — الإمداد خلال {BEACON_COUNTDOWN}ث (تنبيه للجميع!)
+          </Badge>
+        ) : null}
+        {hud.gadgets.shield > 0 && hud.dome === null ? (
+          <Button className="bg-sky-800 hover:bg-sky-700" onClick={() => (shieldRef.current = true)}>
+            🛡 قبة الدرع (Z) — {hud.gadgets.shield}
+          </Button>
+        ) : null}
+        {hud.gadgets.sentry > 0 || hud.sentryDeployed ? (
+          <Button className="bg-cyan-900 hover:bg-cyan-800" onClick={() => (sentryRef.current = true)}>
+            {hud.sentryDeployed ? "🔫 استرجاع البرج (X)" : `🔫 برج آلي (X) — ${hud.gadgets.sentry}`}
+          </Button>
+        ) : null}
+        {hud.gadgets.medevac > 0 && !hud.medevacActive ? (
+          <Button className="bg-emerald-800 hover:bg-emerald-700" onClick={() => (medevacRef.current = true)}>
+            🚁 إخلاء طبي (C) — {hud.gadgets.medevac}
+          </Button>
+        ) : null}
+        {hud.squad.some((mate) => mate.state === "downed") ? (
+          <HoldButton label="إسعاف (R)" onHold={(active) => (reviveRef.current = active)} />
+        ) : null}
+        <div dir="ltr" className="flex items-center gap-1.5">
+          <HoldButton label="◀" onHold={holdKey("a")} />
+          <div className="flex flex-col gap-1.5">
+            <HoldButton label="▲" onHold={holdKey("w")} />
+            <HoldButton label="▼" onHold={holdKey("s")} />
+          </div>
+          <HoldButton label="▶" onHold={holdKey("d")} />
+        </div>
+      </div>
+    </div>
+  );
+}

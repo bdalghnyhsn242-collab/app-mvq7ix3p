@@ -107,7 +107,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         });
 
         if (event === "SIGNED_IN" && isAuthEntryPath(window.location.pathname)) {
-          navigate("/dashboard", { replace: true });
+          navigate("/", { replace: true });
         }
 
         setTimeout(debouncedRefresh, 0);

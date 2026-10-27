@@ -1,0 +1,74 @@
+name: Deploy game preview to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+      - build-game-app-LLbPBtxtQCx
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      pages_available: ${{ steps.pages_check.outputs.available }}
+    steps:
+      - uses: actions/checkout@v4
+      # GitHub Pages is unavailable for PRIVATE repositories on free plans
+      # ("Upgrade or make this repository public to enable Pages"). Detect
+      # that up front so the run ends green with a clear notice instead of
+      # a confusing "Resource not accessible by integration" failure. The
+      # deploy path below activates automatically once the repo is public.
+      - id: pages_check
+        name: Check GitHub Pages availability
+        run: |
+          if [ "${{ github.event.repository.private }}" = "true" ]; then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::GitHub Pages requires a public repository (or a paid plan). This private repo deploys free via Cloudflare Pages or Vercel instead - see README."
+          else
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-node@v4
+        if: steps.pages_check.outputs.available != 'false'
+        with:
+          node-version: 20
+      - name: Install dependencies
+        if: steps.pages_check.outputs.available != 'false'
+        run: npm install
+      # Enables Pages with the "GitHub Actions" build source automatically,
+      # so deploy-pages does not fail with "Get Pages site failed" on repos
+      # where Pages was never configured manually.
+      - uses: actions/configure-pages@v5
+        if: steps.pages_check.outputs.available != 'false'
+        with:
+          enablement: true
+      - name: Build (subpath base for GitHub Pages)
+        if: steps.pages_check.outputs.available != 'false'
+        run: npm run build -- --base=/${{ github.event.repository.name }}/
+      - name: SPA fallback for deep links
+        if: steps.pages_check.outputs.available != 'false'
+        run: cp dist/index.html dist/404.html
+      - uses: actions/upload-pages-artifact@v3
+        if: steps.pages_check.outputs.available != 'false'
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    if: needs.build.outputs.pages_available != 'false'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

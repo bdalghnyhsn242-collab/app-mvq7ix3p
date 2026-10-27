@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ComponentPropsWithoutRef } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Mail } from "lucide-react";
+import { Eye, EyeOff, Loader2, Mail } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -20,24 +20,24 @@ import { useAuth } from "@/context/AuthContext";
 import { resetPassword, signIn, signInWithMagicLink, signUp } from "@/lib/auth";
 
 const loginSchema = z.object({
-  email: z.string().email({ message: "Please enter a valid email address" }),
-  password: z.string().min(8, { message: "Password must be at least 8 characters" }),
+  email: z.string().min(1, "أدخل البريد الإلكتروني").email("أدخل بريدًا إلكترونيًا صحيحًا"),
+  password: z.string().min(8, "كلمة المرور يجب أن تكون 8 أحرف على الأقل"),
 });
 
 const registerSchema = z
   .object({
-    name: z.string().min(2, { message: "Name must be at least 2 characters" }),
-    email: z.string().email({ message: "Please enter a valid email address" }),
-    password: z.string().min(8, { message: "Password must be at least 8 characters" }),
-    confirmPassword: z.string(),
+    name: z.string().min(2, "اسم المستخدم يجب أن يكون حرفين على الأقل"),
+    email: z.string().min(1, "أدخل البريد الإلكتروني").email("أدخل بريدًا إلكترونيًا صحيحًا"),
+    password: z.string().min(8, "كلمة المرور يجب أن تكون 8 أحرف على الأقل"),
+    confirmPassword: z.string().min(1, "أعد إدخال كلمة المرور"),
   })
   .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords do not match",
+    message: "كلمتا المرور غير متطابقتين",
     path: ["confirmPassword"],
   });
 
 const emailSchema = z.object({
-  email: z.string().email({ message: "Please enter a valid email address" }),
+  email: z.string().min(1, "أدخل البريد الإلكتروني").email("أدخل بريدًا إلكترونيًا صحيحًا"),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
@@ -45,6 +45,23 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 type EmailFormValues = z.infer<typeof emailSchema>;
 
 type AuthMode = "login" | "register" | "forgot-password" | "magic-link";
+
+function PasswordInput({ ...props }: ComponentPropsWithoutRef<typeof Input>) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="relative">
+      <Input {...props} type={show ? "text" : "password"} className="pe-10" />
+      <button
+        type="button"
+        onClick={() => setShow((value) => !value)}
+        aria-label={show ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
+        className="absolute inset-y-0 end-0 flex w-10 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
+      >
+        {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+      </button>
+    </div>
+  );
+}
 
 export function AuthForm() {
   const [isLoading, setIsLoading] = useState(false);
@@ -54,7 +71,7 @@ export function AuthForm() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate("/dashboard", { replace: true });
+      navigate("/", { replace: true });
     }
   }, [isAuthenticated, navigate]);
 
@@ -84,7 +101,7 @@ export function AuthForm() {
       const { error } = await signIn(values);
       if (!error) {
         await refreshSession();
-        navigate("/dashboard", { replace: true });
+        navigate("/", { replace: true });
       }
     } finally {
       setIsLoading(false);
@@ -101,7 +118,7 @@ export function AuthForm() {
       });
 
       if (!error) {
-        toast.success("Account created. Check your email if confirmation is enabled.");
+        toast.success("تم إنشاء الحساب — تحقق من بريدك إذا كان التأكيد مطلوبًا");
         setAuthMode("login");
         loginForm.setValue("email", values.email);
       }
@@ -133,16 +150,11 @@ export function AuthForm() {
   }
 
   return (
-    <div className="w-full max-w-md rounded-lg border bg-card p-6 shadow-sm">
-      <div className="mb-6 text-center">
-        <h1 className="text-2xl font-semibold">Sign in</h1>
-        <p className="mt-2 text-sm text-muted-foreground">Use Supabase auth to access the app shell.</p>
-      </div>
-
+    <div className="w-full rounded-xl border border-slate-700/60 bg-slate-900/70 p-6 shadow-xl backdrop-blur-sm">
       <Tabs value={authMode} onValueChange={(value) => setAuthMode(value as AuthMode)}>
-        <TabsList className="mb-6 grid w-full grid-cols-2">
-          <TabsTrigger value="login">Login</TabsTrigger>
-          <TabsTrigger value="register">Sign up</TabsTrigger>
+        <TabsList className="mb-6 grid w-full grid-cols-2 bg-slate-800/80">
+          <TabsTrigger value="login">تسجيل الدخول</TabsTrigger>
+          <TabsTrigger value="register">إنشاء حساب</TabsTrigger>
         </TabsList>
 
         <TabsContent value="login">
@@ -153,9 +165,15 @@ export function AuthForm() {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel>البريد الإلكتروني</FormLabel>
                     <FormControl>
-                      <Input {...field} type="email" autoComplete="email" placeholder="you@example.com" />
+                      <Input
+                        {...field}
+                        type="email"
+                        dir="ltr"
+                        autoComplete="email"
+                        placeholder="you@example.com"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -166,40 +184,58 @@ export function AuthForm() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Password</FormLabel>
+                    <FormLabel>كلمة المرور</FormLabel>
                     <FormControl>
-                      <Input {...field} type="password" autoComplete="current-password" placeholder="********" />
+                      <PasswordInput {...field} autoComplete="current-password" placeholder="••••••••" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Signing in" : "Sign in"}
+              <Button
+                type="submit"
+                className="w-full bg-[#2563eb] text-white hover:bg-[#3b82f6]"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    جارٍ تسجيل الدخول…
+                  </>
+                ) : (
+                  "تسجيل الدخول"
+                )}
               </Button>
             </form>
           </Form>
 
-          <div className="mt-4 flex justify-center">
+          <div className="mt-4 flex items-center justify-between text-sm">
             <button
               type="button"
               onClick={() => setAuthMode("forgot-password")}
-              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+              className="text-muted-foreground transition-colors hover:text-foreground"
             >
-              Forgot password?
+              نسيت كلمة المرور؟
+            </button>
+            <button
+              type="button"
+              onClick={() => setAuthMode("register")}
+              className="font-semibold text-[#38e1ff] transition-colors hover:text-[#7dd3fc]"
+            >
+              إنشاء حساب جديد
             </button>
           </div>
 
-          <div className="mt-4 space-y-3">
+          <div className="mt-4">
             <Button
               type="button"
               variant="outline"
-              className="w-full"
+              className="w-full border-slate-700 bg-transparent hover:bg-slate-800"
               onClick={() => setAuthMode("magic-link")}
               disabled={isLoading}
             >
               <Mail className="h-4 w-4" />
-              Continue with magic link
+              الدخول برابط سحري عبر البريد
             </Button>
           </div>
         </TabsContent>
@@ -212,9 +248,9 @@ export function AuthForm() {
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Name</FormLabel>
+                    <FormLabel>اسم المستخدم</FormLabel>
                     <FormControl>
-                      <Input {...field} autoComplete="name" placeholder="Jane Doe" />
+                      <Input {...field} autoComplete="name" placeholder="مثال: الصقر الشمالي" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -225,9 +261,15 @@ export function AuthForm() {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel>البريد الإلكتروني</FormLabel>
                     <FormControl>
-                      <Input {...field} type="email" autoComplete="email" placeholder="you@example.com" />
+                      <Input
+                        {...field}
+                        type="email"
+                        dir="ltr"
+                        autoComplete="email"
+                        placeholder="you@example.com"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -238,9 +280,9 @@ export function AuthForm() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Password</FormLabel>
+                    <FormLabel>كلمة المرور</FormLabel>
                     <FormControl>
-                      <Input {...field} type="password" autoComplete="new-password" placeholder="********" />
+                      <PasswordInput {...field} autoComplete="new-password" placeholder="8 أحرف على الأقل" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -251,19 +293,39 @@ export function AuthForm() {
                 name="confirmPassword"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Confirm password</FormLabel>
+                    <FormLabel>تأكيد كلمة المرور</FormLabel>
                     <FormControl>
-                      <Input {...field} type="password" autoComplete="new-password" placeholder="********" />
+                      <PasswordInput {...field} autoComplete="new-password" placeholder="••••••••" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Creating account" : "Create account"}
+              <Button
+                type="submit"
+                className="w-full bg-[#f97316] text-slate-950 hover:bg-[#fb923c]"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    جارٍ إنشاء الحساب…
+                  </>
+                ) : (
+                  "إنشاء الحساب"
+                )}
               </Button>
             </form>
           </Form>
+          <div className="mt-4 text-center text-sm">
+            <button
+              type="button"
+              onClick={() => setAuthMode("login")}
+              className="text-muted-foreground transition-colors hover:text-foreground"
+            >
+              لديك حساب بالفعل؟ سجّل الدخول
+            </button>
+          </div>
         </TabsContent>
 
         <TabsContent value="forgot-password">
@@ -274,22 +336,39 @@ export function AuthForm() {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel>البريد الإلكتروني</FormLabel>
                     <FormControl>
-                      <Input {...field} type="email" autoComplete="email" placeholder="you@example.com" />
+                      <Input
+                        {...field}
+                        type="email"
+                        dir="ltr"
+                        autoComplete="email"
+                        placeholder="you@example.com"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Sending reset email" : "Send reset email"}
+                {isLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    جارٍ الإرسال…
+                  </>
+                ) : (
+                  "إرسال رسالة استعادة كلمة المرور"
+                )}
               </Button>
             </form>
           </Form>
-          <div className="mt-4 flex justify-center">
-            <button type="button" onClick={() => setAuthMode("login")} className="text-sm text-muted-foreground hover:text-foreground">
-              Back to login
+          <div className="mt-4 text-center">
+            <button
+              type="button"
+              onClick={() => setAuthMode("login")}
+              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+            >
+              العودة إلى تسجيل الدخول
             </button>
           </div>
         </TabsContent>
@@ -302,22 +381,39 @@ export function AuthForm() {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel>البريد الإلكتروني</FormLabel>
                     <FormControl>
-                      <Input {...field} type="email" autoComplete="email" placeholder="you@example.com" />
+                      <Input
+                        {...field}
+                        type="email"
+                        dir="ltr"
+                        autoComplete="email"
+                        placeholder="you@example.com"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Sending magic link" : "Send magic link"}
+                {isLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    جارٍ الإرسال…
+                  </>
+                ) : (
+                  "إرسال رابط الدخول"
+                )}
               </Button>
             </form>
           </Form>
-          <div className="mt-4 flex justify-center">
-            <button type="button" onClick={() => setAuthMode("login")} className="text-sm text-muted-foreground hover:text-foreground">
-              Back to login
+          <div className="mt-4 text-center">
+            <button
+              type="button"
+              onClick={() => setAuthMode("login")}
+              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+            >
+              العودة إلى تسجيل الدخول
             </button>
           </div>
         </TabsContent>

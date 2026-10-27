@@ -6,6 +6,7 @@ import { TriggerProvider } from "@/context/TriggerContext";
 import { UserSettingsProvider } from "@/context/UserSettingsContext";
 import AuthPage from "@/pages/AuthPage";
 import HomePage from "@/pages/HomePage";
+import LastStandV2Page from "@/pages/LastStandV2Page";
 import NotFound from "@/pages/NotFound";
 import ResetPasswordPage from "@/pages/ResetPasswordPage";
 import SettingsPage from "@/pages/SettingsPage";
@@ -19,6 +20,7 @@ function App() {
           <ThemeBootstrapper />
           <Routes>
             <Route path="/" element={<HomePage />} />
+            <Route path="/v2" element={<LastStandV2Page />} />
             <Route
               path="/auth"
               element={AUTH_ENABLED ? <AuthPage /> : <Navigate to="/" replace />}
