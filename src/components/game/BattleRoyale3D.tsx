@@ -1927,8 +1927,27 @@ export default function BattleRoyale3D() {
                   🎬 الحركة الحالية: {modelDiag.clipName ?? "لا شيء"} — Mixer يُحدَّث:{" "}
                   {modelDiag.mixerUpdating ? "نعم" : "لا"}
                 </span>
+                <span className="w-fit max-w-72 truncate rounded bg-slate-900/80 px-1.5 py-0.5 text-[10px] text-slate-200">
+                  🎞 الحركات المرتبطة:{" "}
+                  {modelDiag.clipNames.length > 0
+                    ? modelDiag.clipNames.join("، ")
+                    : "لا مقاطع مرتبطة بالنموذج"}
+                </span>
+                <span className="w-fit rounded bg-slate-900/80 px-1.5 py-0.5 text-[10px] text-slate-200">
+                  ⚙️ وضع الحركة:{" "}
+                  {modelDiag.animationMode === "clips"
+                    ? "مقاطع GLTF"
+                    : modelDiag.animationMode === "bone-driver"
+                      ? "تحريك عظام مباشر (لا مقاطع)"
+                      : modelDiag.animationMode === "procedural"
+                        ? "بدائي"
+                        : "؟"}
+                </span>
               </>
             ) : null}
+            <span className="w-fit rounded bg-slate-900/80 px-1.5 py-0.5 text-[10px] text-slate-200">
+              📍 اللاعب: {hud.posX}، {hud.posZ} — يتحرك: {hud.moving ? "نعم" : "لا"}
+            </span>
             {modelStatus === "fallback" && modelStatusReason ? (
               <span className="w-fit max-w-72 rounded bg-amber-950/90 px-1.5 py-0.5 text-[10px] leading-snug text-amber-100">
                 {modelStatusReason}
