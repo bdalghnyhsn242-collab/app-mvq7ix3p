@@ -665,15 +665,20 @@ export default function BattleRoyale3D() {
           const far = dx * dx + dz * dz > BOT_CULL_DISTANCE * BOT_CULL_DISTANCE;
           lod.visible = bot.alive && !far;
           if (lod.visible) {
+            const botRig = lod.userData.rig as OperatorRig;
             lod.position.set(bot.x, terrainHeight(bot.x, bot.z), bot.z);
             lod.rotation.y = bot.angle;
             lod.update(camera);
             const bdx = bot.x - Number(lod.userData.px ?? bot.x);
             const bdz = bot.z - Number(lod.userData.pz ?? bot.z);
-            animateSoldier(lod, {
-              time: now / 1000,
-              speed01: Math.min(1, Math.hypot(bdx, bdz) / Math.max(dt, 0.001) / 9),
-            });
+            botRig.update(
+              {
+                time: now / 1000,
+                speed01: Math.min(1, Math.hypot(bdx, bdz) / Math.max(dt, 0.001) / 9),
+              },
+              dt,
+              lodTierForDistance(Math.hypot(dx, dz)),
+            );
             lod.userData.px = bot.x;
             lod.userData.pz = bot.z;
           }
