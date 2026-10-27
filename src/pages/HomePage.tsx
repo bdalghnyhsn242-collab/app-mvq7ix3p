@@ -6,7 +6,9 @@ export default function HomePage() {
     <AppLayout>
       <div className="page-shell space-y-6">
         <div className="space-y-1 text-center">
-          <h1 className="text-3xl font-bold sm:text-4xl">باتل رويال 3D 🏝️</h1>
+          <h1 className="text-3xl font-bold sm:text-4xl">
+            الصمود الأخير <span dir="ltr" className="text-xl text-muted-foreground">Last Stand</span> 🏝️
+          </h1>
           <p className="mx-auto max-w-xl text-sm text-muted-foreground">
             انزل إلى الجزيرة، واجه الأعداء، وابقَ داخل المنطقة الآمنة حتى النهاية!
           </p>
