@@ -925,6 +925,7 @@ export default function BattleRoyale3D() {
           );
           deployPlane.rotation.y = deployment.plane.angle;
         }
+        const radarReveal = current.radio.jamTimer > 0;
         botMeshes.forEach((lod, index) => {
           const bot = current.bots[index];
           if (!bot) {
@@ -934,7 +935,7 @@ export default function BattleRoyale3D() {
           const dx = bot.x - current.player.x;
           const dz = bot.z - current.player.z;
           const far = dx * dx + dz * dz > BOT_CULL_DISTANCE * BOT_CULL_DISTANCE;
-          lod.visible = bot.alive && !far;
+          lod.visible = bot.alive && (!far || radarReveal);
           if (lod.visible) {
             const botRig = lod.userData.rig as OperatorRig;
             lod.position.set(bot.x, terrainHeight(bot.x, bot.z), bot.z);
