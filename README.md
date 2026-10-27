@@ -123,6 +123,21 @@ npm test
 | شخصية مكسوّة (ذكر) | `modular_men/Adventurer.glb` — [trebeljahr/quaternius-showcase](https://github.com/trebeljahr/quaternius-showcase) (Quaternius, Ultimate Modular Men) | CC0 1.0 | جسم المشغّل الذكر |
 | شخصية مكسوّة (أنثى) | `modular_women/Adventurer.glb` — نفس المستودع (Ultimate Modular Women) | CC0 1.0 | جسم المشغّلة الأنثى |
 | بندقية هجومية بخامات PBR | `modular_sci_fi_guns_pack/AR_1.glb` — نفس المستودع (Sci-Fi Modular Gun Pack) | CC0 1.0 | سلاح مثبّت على عظام اليد |
+| أشجار (CommonTree/PineTree/BirchTree) وشجيرات وعشب | `nature_pack/CommonTree_1.glb` و`PineTree_1.glb` و`BirchTree_1.glb` و`Bush_1.glb` و`Grass.glb` — نفس المستودع (Ultimate Nature Pack) | CC0 1.0 | مستوى التفاصيل العالي للغابة + عشب وشجيرات تحت الأشجار |
+| صخور | `nature_pack/Rock_1..4.glb` — نفس المستودع | CC0 1.0 | استبدال الصخور الإجرائية (5-13KB لكل صخرة) |
+| منازل ومباني مكسوّة بالنسيج | `buildings_pack_2/House1.glb` و`House2.glb` و`Building1_Small.glb` و`Building2_Small.glb` — نفس المستودع (Ultimate Buildings Pack) | CC0 1.0 | البيوت المهجورة الأربعة بنفس مواقع الغنائم والعوائق |
+| مركبة عسكرية مجنزرة | `tank_pack/Tank.glb` — نفس المستودع (Animated Tanks Pack) | CC0 1.0 | المركبة المسلحة ذات البرش (نفس نظام القيادة والبرش الحالي) |
+
+**التحقق من التراخيص:** جدول `LICENSES.md` في المستودع المصدر يوثّق أن كل
+الحزم المستخدمة CC0-1.0 upstream (آخر فحص 2026-10-10)، مع تنبيه صريح أن
+حزم Quaternius الأحدث أصبحت QAL (لا تسمح بإعادة التوزيع) ولم تُستخدم أي
+حزمة منها. أسماء الملفات تحققت من قوائم GitHub API الفعلية للمستودع.
+
+**ترتيب التحميل البيئي:** ملف محلي في `public/models/env/<category>/` ←
+نسخة CDN ← بقاء المشهد الإجرائي الحالي (لا انهيار عند فشل الشبكة). الترقية
+تجري في الخلفية بعد بناء المشهد، والأداء محفوظ: مستوى LOD البعيد يبقى
+إجرائيًا، والاستنساخ يشارك الهندسة والخامات، وميزانية الذاكرة الإجمالية
+للأصول الجديدة ≈ 5MB.
 
 **حالة التنزيل إلى ملفات المشروع:** بيئة التنفيذ في هذه الجلسة محجوبة
 بخطة الحساب (تعذّر تشغيل أي أمر)، لذا لم يُمكن نسخ ملفات GLB الثنائية إلى
