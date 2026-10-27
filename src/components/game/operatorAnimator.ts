@@ -65,6 +65,19 @@ export class OperatorAnimator {
     return this.actions.size > 0;
   }
 
+  /** True when a clip exists for this state (mixer can play it). */
+  canPlay(state: OperatorState): boolean {
+    return this.actions.has(state);
+  }
+
+  /** Fades out the current clip so direct bone posing can take over. */
+  pause(): void {
+    if (this.current) {
+      this.actions.get(this.current)?.fadeOut(0.15);
+      this.current = null;
+    }
+  }
+
   setState(next: OperatorState, fade: number = FADE_DURATION): boolean {
     if (next === this.current) {
       return false;
