@@ -174,7 +174,15 @@ npm test
 2. `src/lib/matchCloud.ts` — بناء صفوف الإحصاءات، حساب نقاط المتصدرين الحتمية، حفظ أداء كل رفيق، وقراءة لوحة المتصدرين.
 3. `supabase/migrations/20260504000000_game_cloud_tables.sql` — جداول `match_stats` و`leaderboard` و`squad_performances` مع سياسات RLS للزوار.
 
-للتفعيل: اضبط `VITE_SUPABASE_URL` و`VITE_SUPABASE_ANON_KEY` في `.env.local` ثم طبّق الترحيل (`supabase db push` أو تشغيل ملف SQL في لوحة Supabase). عند انتهاء أي جولة تظهر رسالة «☁️ حُفظت النتيجة» عند النجاح.
+للتفعيل: اضبط `VITE_SUPABASE_URL` و`VITE_SUPABASE_ANON_KEY` في `.env.local` ثم طبّق الترحيل (`supabase db push` أو تشغيل ملف SQL في لوحة Supabase). عند انتهاء أي جولة تظهر رسالة «☁️ حُفظت النتيجة» عند النجاح فقط.
+
+### الحفظ المحلي (يعمل دائمًا دون حساب)
+
+عند فشل الحفظ السحابي (انقطاع شبكة، مشروع Supabase متوقف مؤقتًا، أو غياب
+الإعداد) تُحفظ نتيجة الجولة تلقائيًا على هذا الجهاز في `localStorage`
+(`last-stand:match-history`، حتى 50 جولة) وتظهر رسالة «💾 حُفظت النتيجة
+محليًا» مع سبب فشل السحابة إن وُجد — دون أي رسالة نجاح كاذبة. الدوال:
+`saveMatchLocally` و`loadLocalMatches` في `src/lib/matchCloud.ts`.
 
 ## الأصول ثلاثية الأبعاد (CC0 — استخدام تجاري مسموح)
 
