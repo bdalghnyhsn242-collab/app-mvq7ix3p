@@ -143,34 +143,68 @@ function describeScene(root: THREE.Object3D): string {
   return `${meshes} meshes / ${materials.size} materials / ${bones} bones / ${vertices} vertices / height≈${size.y.toFixed(2)}m`;
 }
 
-function loadWithTimeout(url: string): Promise<GLTF> {
+const GLB_MAGIC = [0x67, 0x6c, 0x54, 0x46]; // "glTF"
+
+/**
+ * Fetches the model bytes manually instead of letting GLTFLoader open the
+ * URL. This is required on static hosts with an SPA fallback: a missing
+ * /models/*.glb returns index.html with HTTP 200, which GLTFLoader would
+ * otherwise report as an opaque parse error. Here we verify the GLB magic
+ * bytes (or a JSON glTF signature) first and name the real problem.
+ */
+async function fetchModelBuffer(url: string): Promise<ArrayBuffer> {
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), LOAD_TIMEOUT_MS);
+  try {
+    const response = await fetch(url, { signal: controller.signal, mode: "cors" });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status} ${response.statusText} — ${url}`);
+    }
+    const buffer = await response.arrayBuffer();
+    const head = new Uint8Array(buffer.slice(0, 4));
+    const isGlb =
+      head[0] === GLB_MAGIC[0] &&
+      head[1] === GLB_MAGIC[1] &&
+      head[2] === GLB_MAGIC[2] &&
+      head[3] === GLB_MAGIC[3];
+    const headText = new TextDecoder()
+      .decode(new Uint8Array(buffer.slice(0, 32)))
+      .trimStart();
+    const isGltfJson = headText.startsWith("{");
+    if (!isGlb && !isGltfJson) {
+      const contentType = response.headers.get("content-type") ?? "غير معروف";
+      throw new Error(
+        `الخادم أعاد محتوى غير GLTF (${contentType}) — غالبًا صفحة SPA الاحتياطية (index.html) بدل ملف النموذج: ${url}`,
+      );
+    }
+    return buffer;
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error(`انتهت مهلة ${LOAD_TIMEOUT_MS / 1000}ث أثناء تحميل ${url}`);
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timer);
+  }
+}
+
+async function loadWithTimeout(url: string): Promise<GLTF> {
   logAsset("info", `بدء تحميل: ${url}`);
-  return new Promise((resolve, reject) => {
-    const timer = window.setTimeout(
-      () => reject(new Error(`انتهت مهلة ${LOAD_TIMEOUT_MS / 1000}ث أثناء تحميل ${url}`)),
-      LOAD_TIMEOUT_MS,
-    );
-    new GLTFLoader().load(
-      url,
+  const buffer = await fetchModelBuffer(url);
+  // Relative URIs (external .bin / textures) resolve against the model URL.
+  const basePath = url.slice(0, url.lastIndexOf("/") + 1);
+  return await new Promise<GLTF>((resolve, reject) => {
+    new GLTFLoader().parse(
+      buffer,
+      basePath,
       (gltf) => {
-        window.clearTimeout(timer);
         logAsset("info", `تم تحميل وتحليل الملف: ${url}`);
         resolve(gltf);
       },
-      undefined,
       (error) => {
-        window.clearTimeout(timer);
-        const message =
-          error instanceof Error
-            ? error.message
-            : typeof (error as ErrorEvent | undefined)?.message === "string"
-              ? (error as ErrorEvent).message
-              : String(error ?? "خطأ غير معروف");
-        logAsset(
-          "error",
-          `فشل تحميل ${url} — السبب: ${message} (شبكة/CORS/مسار/تحليل — انظر رسالة المتصفح الأصلية في Network)`,
-        );
-        reject(error instanceof Error ? error : new Error(message));
+        const message = error instanceof Error ? error.message : String(error);
+        logAsset("error", `فشل تحليل ${url} — السبب: ${message}`);
+        reject(new Error(message));
       },
     );
   });
