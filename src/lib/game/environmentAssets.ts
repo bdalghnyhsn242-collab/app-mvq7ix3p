@@ -22,6 +22,17 @@ export const ENVIRONMENT_CDN_BASE =
 /** Local overrides live in `public/models/env/<category>/<file>`. */
 export const ENVIRONMENT_LOCAL_BASE = "/models/env/";
 
+/**
+ * Actual folder names inside the upstream repository (verified via the
+ * GitHub API tree listing). The logical category names differ from the
+ * upstream pack folder names, so every CDN url must go through this map.
+ */
+export const CDN_FOLDERS: Record<EnvironmentCategory, string> = {
+  nature: "nature_pack",
+  buildings: "buildings_pack_2",
+  vehicles: "tank_pack",
+};
+
 export const NATURE_FILES = {
   treeCommon: "CommonTree_1.glb",
   treePine: "PineTree_1.glb",
@@ -54,9 +65,10 @@ export function environmentAssetUrl(
   localBase: string = ENVIRONMENT_LOCAL_BASE,
   cdnBase: string = ENVIRONMENT_CDN_BASE,
 ): { local: string; cdn: string } {
+  const cdnFolder = CDN_FOLDERS[category];
   return {
     local: `${localBase}${category}/${file}`,
-    cdn: `${cdnBase}${category}/${file}`,
+    cdn: `${cdnBase}${cdnFolder}/${file}`,
   };
 }
 
