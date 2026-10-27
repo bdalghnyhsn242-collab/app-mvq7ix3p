@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Last Stand">
+  <defs>
+    <linearGradient id="ls-steel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3d444d"/>
+      <stop offset="0.55" stop-color="#23282e"/>
+      <stop offset="1" stop-color="#101318"/>
+    </linearGradient>
+    <linearGradient id="ls-edge" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#9aa4b0"/>
+      <stop offset="1" stop-color="#4a525c"/>
+    </linearGradient>
+    <linearGradient id="ls-blue" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#38e1ff"/>
+      <stop offset="1" stop-color="#2563eb"/>
+    </linearGradient>
+  </defs>
+  <path d="M32 3 L56.5 11.5 V30.5 C56.5 44.8 47 54.8 32 60.5 C17 54.8 7.5 44.8 7.5 30.5 V11.5 Z" fill="url(#ls-steel)" stroke="url(#ls-edge)" stroke-width="2.5" stroke-linejoin="round"/>
+  <path d="M32 6.5 L53.5 13.8 V30.4 C53.5 42.9 45.2 51.6 32 56.8 C18.8 51.6 10.5 42.9 10.5 30.4 V13.8 Z" fill="#0d1015" opacity="0.55"/>
+  <circle cx="32" cy="30" r="11.5" fill="none" stroke="url(#ls-blue)" stroke-width="2.2" opacity="0.95"/>
+  <g stroke="url(#ls-blue)" stroke-width="2.2" stroke-linecap="round" opacity="0.95">
+    <path d="M32 15 V18"/>
+    <path d="M32 42 V45"/>
+    <path d="M17.5 30 H20.5"/>
+    <path d="M43.5 30 H46.5"/>
+  </g>
+  <path d="M24.5 33.5 L32 25.5 L39.5 33.5" fill="none" stroke="#f97316" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M26 38.5 H38" fill="none" stroke="#38e1ff" stroke-width="2.4" stroke-linecap="round"/>
+</svg>
