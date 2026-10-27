@@ -101,38 +101,11 @@ export default function BattleRoyale3D() {
     sun.position.set(30, 50, 20);
     scene.add(sun);
 
-    const water = new THREE.Mesh(
-      new THREE.PlaneGeometry(500, 500),
-      new THREE.MeshLambertMaterial({ color: 0x1d6fa5 }),
-    );
-    water.rotation.x = -Math.PI / 2;
-    water.position.y = -2.6;
-    scene.add(water);
-
-    const island = new THREE.Mesh(
-      new THREE.CylinderGeometry(40, 46, 5, 48),
-      new THREE.MeshLambertMaterial({ color: 0xd9b26f }),
-    );
-    island.position.y = -2.5;
-    scene.add(island);
-    const grass = new THREE.Mesh(
-      new THREE.CircleGeometry(40, 48),
-      new THREE.MeshLambertMaterial({ color: 0x4d8f4d }),
-    );
-    grass.rotation.x = -Math.PI / 2;
-    grass.position.y = 0.01;
-    scene.add(grass);
-
-    for (let i = 0; i < 14; i += 1) {
-      const angle = (i / 14) * Math.PI * 2;
-      const radius = 12 + (i % 4) * 7;
-      const tree = new THREE.Mesh(
-        new THREE.ConeGeometry(1.4, 4, 6),
-        new THREE.MeshLambertMaterial({ color: 0x2f6b34 }),
-      );
-      tree.position.set(Math.cos(angle) * radius, 2, Math.sin(angle) * radius);
-      scene.add(tree);
-    }
+    const water = createWater();
+    scene.add(water.mesh);
+    scene.add(createTerrain());
+    scene.add(createRocks());
+    scene.add(createRuins());
 
     const zoneRing = new THREE.Mesh(
       new THREE.TorusGeometry(1, 0.05, 8, 96),
