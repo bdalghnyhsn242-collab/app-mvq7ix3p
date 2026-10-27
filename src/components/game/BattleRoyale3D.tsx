@@ -32,7 +32,7 @@ import {
   CHALLENGE_ZONE_CAPTURE_TIME,
   CHALLENGE_ZONE_RADIUS,
 } from "@/lib/game/squadRevivalSystem";
-import { DOME_RADIUS } from "@/lib/game/shieldDomeSystem";
+import { DOME_MAX_INTEGRITY, DOME_RADIUS } from "@/lib/game/shieldDomeSystem";
 import {
   BOT_COUNT,
   LOOT_COUNT,
@@ -1124,7 +1124,9 @@ export default function BattleRoyale3D() {
           );
           domeGroup.scale.setScalar(DOME_RADIUS);
           (domeMesh.material as THREE.MeshBasicMaterial).opacity =
-            0.1 + (current.shield.integrity / 120) * 0.12 + Math.sin(now / 260) * 0.03;
+            0.1 +
+            (current.shield.integrity / DOME_MAX_INTEGRITY) * 0.12 +
+            Math.sin(now / 260) * 0.03;
         }
         sentryMesh.visible = current.sentry.deployed;
         if (current.sentry.deployed) {
