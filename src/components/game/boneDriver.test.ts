@@ -46,10 +46,6 @@ function bone(root: THREE.Group, name: string): THREE.Bone {
   return found;
 }
 
-function angleFromRest(bone: THREE.Bone): number {
-  return bone.quaternion.angleTo(bone.userData.restAngle ?? bone.quaternion.clone());
-}
-
 describe("generic humanoid bone driver", () => {
   it("animates a mixamo-style rig while running without accumulating poses", () => {
     const root = makeHumanoid();
