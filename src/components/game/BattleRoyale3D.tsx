@@ -379,6 +379,27 @@ export default function BattleRoyale3D() {
       scene.add(mesh);
       return mesh;
     });
+    const sparkPool = Array.from({ length: 6 }, () => {
+      const count = 26;
+      const positions = new Float32Array(count * 3);
+      const velocities = new Float32Array(count * 3);
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+      const points = new THREE.Points(
+        geometry,
+        new THREE.PointsMaterial({
+          color: 0xffc24a,
+          size: 0.28,
+          transparent: true,
+          opacity: 1,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+        }),
+      );
+      points.visible = false;
+      scene.add(points);
+      return { points, positions, velocities, active: false };
+    });
 
     const planeMesh = makePlaneMesh();
     scene.add(planeMesh);
