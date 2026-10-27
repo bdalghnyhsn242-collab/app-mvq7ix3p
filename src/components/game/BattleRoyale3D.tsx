@@ -9,6 +9,8 @@ import { OperatorRig, lodTierForDistance } from "@/components/game/operatorRig";
 import {
   createCheckpoints,
   createBuildings,
+  createMilitaryCamp,
+  createAirport,
   createForest,
   createRocks,
   createRuins,
@@ -16,6 +18,9 @@ import {
   createTerrain,
 } from "@/lib/game/environment";
 import { createWater } from "@/lib/game/water";
+import { createRain, updateWeatherVisuals } from "@/components/game/weatherFx";
+import { ATTACHMENTS } from "@/lib/game/arsenal";
+import { dayPhase } from "@/lib/game/weather";
 import {
   BOT_COUNT,
   LOOT_COUNT,
@@ -67,6 +72,10 @@ type Hud = {
   altitude: number;
   squad: Teammate[];
   status: MatchStatus;
+  weather: string;
+  phase: string;
+  droneAlert: boolean;
+  attachment: string | null;
 };
 
 const LOOT_COLORS: Record<WeaponId, number> = {
@@ -189,6 +198,10 @@ export default function BattleRoyale3D() {
     altitude: DEPLOY_PLANE_ALTITUDE,
     squad: [],
     status: "idle",
+    weather: "clear",
+    phase: "day",
+    droneAlert: false,
+    attachment: null,
   });
 
   const start = useCallback((size: SquadSize, operatorGender: OperatorGender) => {
@@ -253,7 +266,8 @@ export default function BattleRoyale3D() {
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     mount.appendChild(renderer.domElement);
 
-    scene.add(new THREE.HemisphereLight(0xbfd9ff, 0x3a6b35, 1.1));
+    const hemi = new THREE.HemisphereLight(0xbfd9ff, 0x3a6b35, 1.1);
+    scene.add(hemi);
     const sun = new THREE.DirectionalLight(0xfff1d6, 1.2);
     sun.position.set(30, 50, 20);
     sun.castShadow = true;
@@ -285,7 +299,9 @@ export default function BattleRoyale3D() {
     scene.add(forest.group);
     const checkpoints = createCheckpoints();
     const buildings = createBuildings();
-    for (const chunk of [rocks, ruins, checkpoints, buildings]) {
+    const camp = createMilitaryCamp();
+    const airport = createAirport();
+    for (const chunk of [rocks, ruins, checkpoints, buildings, camp, airport]) {
       chunk.traverse((child) => {
         const meshChild = child as THREE.Mesh;
         if (meshChild.isMesh) {
@@ -318,6 +334,46 @@ export default function BattleRoyale3D() {
     );
     zoneRing.rotation.x = -Math.PI / 2;
     scene.add(zoneRing);
+
+    const rain = createRain();
+    scene.add(rain.points);
+
+    const zoneWall = new THREE.Mesh(
+      new THREE.CylinderGeometry(1, 1, 46, 64, 1, true),
+      new THREE.MeshBasicMaterial({
+        color: 0x3b82f6,
+        transparent: true,
+        opacity: 0.16,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+      }),
+    );
+    zoneWall.position.y = 23;
+    scene.add(zoneWall);
+
+    const droneMesh = new THREE.Group();
+    const droneBody = new THREE.Mesh(
+      new THREE.BoxGeometry(0.7, 0.22, 0.7),
+      new THREE.MeshLambertMaterial({ color: 0x2b2f33 }),
+    );
+    const rotorMat = new THREE.MeshLambertMaterial({
+      color: 0x111111,
+      transparent: true,
+      opacity: 0.55,
+    });
+    for (const [rx, rz] of [[-0.5, -0.5], [0.5, -0.5], [-0.5, 0.5], [0.5, 0.5]] as const) {
+      const rotor = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.03, 10), rotorMat);
+      rotor.position.set(rx, 0.14, rz);
+      droneMesh.add(rotor);
+    }
+    const droneLight = new THREE.Mesh(
+      new THREE.SphereGeometry(0.08, 6, 6),
+      new THREE.MeshBasicMaterial({ color: 0xff3355 }),
+    );
+    droneLight.position.set(0, -0.16, 0);
+    droneMesh.add(droneBody, droneLight);
+    droneMesh.visible = false;
+    scene.add(droneMesh);
 
     const playerRigMale = new OperatorRig("woodland", "male");
     const playerRigFemale = new OperatorRig("woodland", "female");
