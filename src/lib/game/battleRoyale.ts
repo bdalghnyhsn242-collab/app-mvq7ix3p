@@ -768,7 +768,7 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
     }
   }
 
-  const squad = stepSquad(state.squad, dt, player, { revive: Boolean(input.revive) }, zone).map(
+  let squad = stepSquad(state.squad, dt, player, { revive: Boolean(input.revive) }, zone).map(
     (mate, mateIndex) => {
       if (mate.state !== "active") {
         return mate;
@@ -803,6 +803,16 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
     },
   );
 
+  let revival = state.revival;
+  if (!revival.active && shouldTriggerRevival(squad)) {
+    revival = triggerRevival(player);
+  }
+  revival = stepRevival(revival, dt, player);
+  if (revival.succeeded) {
+    squad = respawnSquad(squad, player);
+    revival = createRevivalState();
+  }
+
   const next: MatchState = {
     player: { ...player, health },
     bots,
@@ -816,6 +826,10 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
     airdrop,
     weather,
     drone,
+    radio,
+    beacon,
+    dust,
+    revival,
     attachments,
     squadSize: state.squadSize,
     squad,
