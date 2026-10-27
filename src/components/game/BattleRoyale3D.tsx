@@ -4,11 +4,8 @@ import { Crosshair, RotateCcw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import {
-  animateSoldier,
-  makeSoldier,
-  type SoldierGender,
-} from "@/components/game/soldierModel";
+import type { SoldierGender } from "@/components/game/soldierModel";
+import { OperatorRig, lodTierForDistance } from "@/components/game/operatorRig";
 import {
   createCheckpoints,
   createBuildings,
@@ -322,14 +319,18 @@ export default function BattleRoyale3D() {
     zoneRing.rotation.x = -Math.PI / 2;
     scene.add(zoneRing);
 
-    const playerMeshMale = makeSoldier(0x22c55e, "woodland", "male");
-    const playerMeshFemale = makeSoldier(0x22c55e, "woodland", "female");
-    scene.add(playerMeshMale, playerMeshFemale);
+    const playerRigMale = new OperatorRig("woodland", "male");
+    const playerRigFemale = new OperatorRig("woodland", "female");
+    scene.add(playerRigMale.group, playerRigFemale.group);
+    void playerRigMale.upgrade();
+    void playerRigFemale.upgrade();
     const botMeshes = Array.from({ length: BOT_COUNT }, (_, index) => {
       const variant = index % 3 === 0 ? "ghillie" : index % 3 === 1 ? "desert" : "woodland";
       const botGender: SoldierGender = index % 2 === 0 ? "male" : "female";
+      const botRig = new OperatorRig(variant, botGender);
+      void botRig.upgrade();
       const lod = new THREE.LOD();
-      lod.addLevel(makeSoldier(0xb4543b, variant, botGender), 0);
+      lod.addLevel(botRig.group, 0);
       const low = new THREE.Group();
       const torso = new THREE.Mesh(
         new THREE.CapsuleGeometry(0.38, 0.9, 3, 6),
@@ -344,12 +345,14 @@ export default function BattleRoyale3D() {
       low.add(torso, head);
       lod.addLevel(low, BOT_LOD_DISTANCE);
       scene.add(lod);
+      lod.userData.rig = botRig;
       return lod;
     });
     const squadMeshes = Array.from({ length: 4 }, (_, index) => {
-      const mate = makeSoldier(0x16a34a, index % 2 === 0 ? "woodland" : "desert");
-      scene.add(mate);
-      return mate;
+      const mateRig = new OperatorRig(index % 2 === 0 ? "woodland" : "desert", "male");
+      void mateRig.upgrade();
+      scene.add(mateRig.group);
+      return mateRig;
     });
     const vehicleMeshes = Array.from({ length: 3 }, (_, index) => {
       const kinds: VehicleKind[] = ["uaz", "pickup", "buggy"];
