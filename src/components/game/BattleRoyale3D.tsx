@@ -434,6 +434,9 @@ export default function BattleRoyale3D() {
           <div className="flex gap-2">
             <Badge className="bg-slate-900/80 text-white">أحياء: {hud.alive}</Badge>
             <Badge className="bg-slate-900/80 text-white">المنطقة: {hud.zone}م</Badge>
+            {hud.airdrop ? (
+              <Badge className="bg-amber-600/90 text-white">📦 إسقاط جوي!</Badge>
+            ) : null}
           </div>
         </div>
         <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center p-3">
@@ -441,6 +444,11 @@ export default function BattleRoyale3D() {
             {hud.weapon}: {hud.ammo} ذخيرة
           </Badge>
           <Badge className="mx-2 bg-slate-900/80 text-white">صناديق: {hud.crates}</Badge>
+          {hud.vehicle ? (
+            <Badge className="bg-emerald-900/80 text-white">
+              🚙 {hud.vehicle} — {hud.speed} م/ث
+            </Badge>
+          ) : null}
         </div>
         {hud.status !== "running" ? (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-slate-950/70 p-6 text-center backdrop-blur-sm">
