@@ -103,6 +103,75 @@ export function fabricRoughnessTexture(): THREE.Texture | null {
   return texture;
 }
 
+/** Subtle skin base: warm tone with soft blotches and pores. */
+export function skinTexture(): THREE.Texture | null {
+  const key = "skin";
+  if (textureCache.has(key)) {
+    return textureCache.get(key) ?? null;
+  }
+  const { canvas, ctx } = createCanvas(128);
+  if (!ctx) {
+    textureCache.set(key, null);
+    return null;
+  }
+  const random = seeded(5150);
+  ctx.fillStyle = "#e2a878";
+  ctx.fillRect(0, 0, 128, 128);
+  for (let i = 0; i < 90; i += 1) {
+    ctx.fillStyle =
+      random() > 0.5 ? "rgba(214,154,110,0.5)" : "rgba(240,196,150,0.5)";
+    ctx.beginPath();
+    ctx.ellipse(
+      random() * 128,
+      random() * 128,
+      3 + random() * 10,
+      2 + random() * 7,
+      random() * Math.PI,
+      0,
+      Math.PI * 2,
+    );
+    ctx.fill();
+  }
+  for (let i = 0; i < 220; i += 1) {
+    ctx.fillStyle = "rgba(120,70,50,0.12)";
+    ctx.fillRect(random() * 128, random() * 128, 1.5, 1.5);
+  }
+  const texture = finalize(canvas, 1);
+  textureCache.set(key, texture);
+  return texture;
+}
+
+/** Nylon webbing for tactical gear: dark base with stitch rows and wear. */
+export function webbingTexture(): THREE.Texture | null {
+  const key = "webbing";
+  if (textureCache.has(key)) {
+    return textureCache.get(key) ?? null;
+  }
+  const { canvas, ctx } = createCanvas(128);
+  if (!ctx) {
+    textureCache.set(key, null);
+    return null;
+  }
+  const random = seeded(7717);
+  ctx.fillStyle = "#26292d";
+  ctx.fillRect(0, 0, 128, 128);
+  ctx.strokeStyle = "#34383d";
+  ctx.lineWidth = 2;
+  for (let y = 6; y < 128; y += 12) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(128, y);
+    ctx.stroke();
+  }
+  for (let i = 0; i < 160; i += 1) {
+    ctx.fillStyle = random() > 0.5 ? "rgba(15,17,19,0.5)" : "rgba(61,66,72,0.5)";
+    ctx.fillRect(random() * 128, random() * 128, 2, 2);
+  }
+  const texture = finalize(canvas, 2);
+  textureCache.set(key, texture);
+  return texture;
+}
+
 export function mudTexture(): THREE.Texture | null {
   const key = "mud";
   if (textureCache.has(key)) {
@@ -161,7 +230,13 @@ export function clothMaterial(variant: CamoVariant): THREE.MeshStandardMaterial 
 
 export function gearMaterial(): THREE.MeshStandardMaterial {
   return cachedMaterial("gear", () =>
-    new THREE.MeshStandardMaterial({ color: 0x2b2f33, roughness: 0.62, metalness: 0.18 }),
+    new THREE.MeshStandardMaterial({
+      color: 0x2e3338,
+      map: webbingTexture() ?? undefined,
+      roughnessMap: fabricRoughnessTexture() ?? undefined,
+      roughness: 0.7,
+      metalness: 0.12,
+    }),
   );
 }
 
@@ -190,7 +265,12 @@ export function bootMaterial(): THREE.MeshStandardMaterial {
 
 export function skinMaterial(): THREE.MeshStandardMaterial {
   return cachedMaterial("skin", () =>
-    new THREE.MeshStandardMaterial({ color: 0xf1c27d, roughness: 0.7, metalness: 0.02 }),
+    new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      map: skinTexture() ?? undefined,
+      roughness: 0.55,
+      metalness: 0.02,
+    }),
   );
 }
 
