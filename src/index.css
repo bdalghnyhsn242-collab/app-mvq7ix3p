@@ -119,3 +119,38 @@
     @apply mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8;
   }
 }
+
+/* Auth splash ambience: opacity-only keyframes (GPU-cheap, no layout). */
+@keyframes ls-glow {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+
+@keyframes ls-scan {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(100%);
+  }
+}
+
+.ls-glow {
+  animation: ls-glow 7s ease-in-out infinite;
+}
+
+.ls-scan {
+  animation: ls-scan 9s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ls-glow,
+  .ls-scan {
+    animation: none;
+  }
+}
