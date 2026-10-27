@@ -261,6 +261,7 @@ export default function BattleRoyale3D() {
         turn:
           (keys.has("a") || keys.has("arrowleft") ? 1 : 0) -
           (keys.has("d") || keys.has("arrowright") ? 1 : 0),
+        enter: enterRef.current,
       };
       let state = stateRef.current;
       if (state && state.status === "running") {
@@ -271,6 +272,7 @@ export default function BattleRoyale3D() {
         }
         stateRef.current = state;
       }
+      enterRef.current = false;
       const current = state;
       if (current) {
         playerMesh.position.set(
@@ -296,6 +298,33 @@ export default function BattleRoyale3D() {
             mesh.rotation.y = now / 600;
           }
         });
+        vehicleMeshes.forEach((mesh, index) => {
+          const vehicle = current.vehicles[index];
+          if (!vehicle) {
+            return;
+          }
+          mesh.position.set(vehicle.x, terrainHeight(vehicle.x, vehicle.z), vehicle.z);
+          mesh.rotation.y = vehicle.angle;
+          mesh.rotation.x = Math.max(-0.08, Math.min(0.08, vehicle.speed * 0.004));
+        });
+        planeMesh.position.set(
+          current.airdrop.plane.x,
+          current.airdrop.plane.altitude,
+          current.airdrop.plane.z,
+        );
+        planeMesh.rotation.y = current.airdrop.plane.angle;
+        planeMesh.visible = true;
+        const drop = current.airdrop.crate;
+        airdropGroup.visible = Boolean(drop && !drop.taken);
+        if (drop && !drop.taken) {
+          airdropGroup.position.set(
+            drop.x,
+            terrainHeight(drop.x, drop.z) + drop.altitude + 0.7,
+            drop.z,
+          );
+          parachute.visible = !drop.landed;
+          airdropCrate.rotation.y = now / 800;
+        }
         zoneRing.position.set(current.zone.x, 0.05, current.zone.z);
         zoneRing.scale.setScalar(current.zone.radius);
         camera.position.set(
@@ -312,6 +341,8 @@ export default function BattleRoyale3D() {
         const orbit = now / 5000;
         camera.position.set(Math.sin(orbit) * 190, 70, Math.cos(orbit) * 190);
         camera.lookAt(0, 0, 0);
+        planeMesh.visible = false;
+        airdropGroup.visible = false;
       }
       forest.update(now / 1000, camera);
       dust.rotation.y = now * 0.004;
@@ -327,6 +358,15 @@ export default function BattleRoyale3D() {
           weapon: WEAPONS[current.weapon].name,
           ammo: current.ammo[current.weapon],
           crates: current.loot.filter((crate) => !crate.taken).length,
+          vehicle:
+            current.playerVehicle >= 0
+              ? VEHICLE_SPECS[current.vehicles[current.playerVehicle].kind].name
+              : null,
+          speed:
+            current.playerVehicle >= 0
+              ? Math.round(Math.abs(current.vehicles[current.playerVehicle].speed))
+              : 0,
+          airdrop: Boolean(current.airdrop.crate && !current.airdrop.crate.taken),
           status: current.status,
         });
       }
