@@ -165,12 +165,11 @@ export default function BattleRoyale3D() {
       vehicle: null,
       speed: 0,
       airdrop: false,
-    swimming: false,
-    deployPhase: "plane",
-    altitude: DEPLOY_PLANE_ALTITUDE,
-    squad: [],
+      swimming: false,
+      deployPhase: "plane",
+      altitude: DEPLOY_PLANE_ALTITUDE,
+      squad: [],
       status: "running",
-  }, []);
   }, []);
 
   useEffect(() => {
