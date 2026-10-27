@@ -679,6 +679,15 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
     if (crate.beacon) {
       beaconHeld += 1;
     }
+    if (crate.shield) {
+      gadgets.shield += 1;
+    }
+    if (crate.sentry) {
+      gadgets.sentry += 1;
+    }
+    if (crate.medevac) {
+      gadgets.medevac += 1;
+    }
     if (crate.attachment) {
       attachments[crate.weapon] = crate.attachment;
     }
@@ -687,6 +696,11 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
   beacon = { ...beacon, held: beaconHeld };
 
   let health = player.health;
+  const applyPlayerDamage = (amount: number) => {
+    const dome = domeAbsorb(shield, player.x, player.z, amount);
+    shield = drainDome(shield, dome.absorbed);
+    health -= dome.leaked * fortressDamageFactor(fortress);
+  };
   if (beacon.drop?.crate && beacon.drop.crate.landed && !beacon.drop.crate.taken) {
     const crate = beacon.drop.crate;
     if (Math.hypot(crate.x - player.x, crate.z - player.z) < BEACON_PICKUP_RADIUS) {
