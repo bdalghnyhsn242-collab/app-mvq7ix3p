@@ -361,6 +361,8 @@ export default function BattleRoyale3D() {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.05;
     mount.appendChild(renderer.domElement);
 
     const onPointerLockChange = () => {
@@ -414,6 +416,11 @@ export default function BattleRoyale3D() {
     sun.shadow.bias = -0.0005;
     scene.add(sun);
     scene.add(sun.target);
+    // Cheap shadowless fill light so gear and faces keep readable shading
+    // on the sun-facing side of the operator.
+    const fill = new THREE.DirectionalLight(0x9db8d9, 0.3);
+    fill.position.set(-35, 26, -30);
+    scene.add(fill);
 
     const water = createWater();
     scene.add(water.mesh);
