@@ -1,7 +1,10 @@
 import * as THREE from "three";
 import {
   createOperatorInstance,
+  attachWeaponToHand,
   loadOperatorGltf,
+  loadOperatorClipsGltf,
+  loadWeaponGltf,
   type OperatorVariant,
 } from "@/lib/game/operatorAssets";
 import {
@@ -38,9 +41,12 @@ export function lodTierForDistance(distance: number): LodTier {
 export class OperatorRig {
   readonly group = new THREE.Group();
   readonly variant: OperatorVariant;
+  /** Set once an upgrade has been attempted; enables lazy bot upgrades. */
+  upgradeAttempted = false;
   private procedural: THREE.Group;
   private animator: OperatorAnimator | null = null;
   private gltfRoot: THREE.Object3D | null = null;
+  private weaponAttached = false;
   private tick = 0;
   private lastMotion: SoldierMotion | null = null;
 
@@ -58,11 +64,18 @@ export class OperatorRig {
     if (this.animator) {
       return true;
     }
-    const gltf = await loadOperatorGltf(this.variant);
-    if (!gltf) {
+    this.upgradeAttempted = true;
+    const body = await loadOperatorGltf(this.variant);
+    if (!body) {
       return false;
     }
-    const instance = createOperatorInstance(this.variant, gltf);
+    const clipsGltf = body.animations.length > 0 ? body : await loadOperatorClipsGltf();
+    const instance = createOperatorInstance(this.variant, body, clipsGltf);
+    if (!instance.hasMappedClips) {
+      // No clip animates this skeleton: keep the detailed procedural rig
+      // instead of swapping in a static T-pose model.
+      return false;
+    }
     this.gltfRoot = instance.root;
     this.animator = new OperatorAnimator(instance.root, instance.clips);
     this.group.add(instance.root);
@@ -70,7 +83,19 @@ export class OperatorRig {
     if (this.lastMotion) {
       this.animator.setState(selectOperatorState(this.lastMotion));
     }
+    void this.attachWeapon();
     return true;
+  }
+
+  private async attachWeapon(): Promise<void> {
+    if (this.weaponAttached || !this.gltfRoot) {
+      return;
+    }
+    const weapon = await loadWeaponGltf();
+    if (!weapon || !this.gltfRoot) {
+      return;
+    }
+    this.weaponAttached = attachWeaponToHand(this.gltfRoot, weapon.scene);
   }
 
   update(motion: SoldierMotion, dt: number, tier: LodTier = 0): void {
