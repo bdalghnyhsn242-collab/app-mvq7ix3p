@@ -76,8 +76,10 @@ describe("CC0 asset pipeline guards", () => {
     const clips = [clipNamed("TPose", "Hips"), clipNamed("Walk", "Hips")];
     const mapped = mapOperatorClips(clips);
     expect(mapped.idle?.name).toBe("Walk");
-    expect(mapped.sprint?.name).toBe("Walk");
     expect(mapped.walk?.name).toBe("Walk");
+    // Only one motion clip exists: it backs idle/walk, and sprint stays
+    // null rather than duplicating the same clip or using the T-pose.
+    expect(mapped.sprint).toBeNull();
   });
 
   it("marks an instance unmapped when no clip matches the skeleton", () => {
