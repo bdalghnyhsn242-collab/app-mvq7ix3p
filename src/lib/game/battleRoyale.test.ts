@@ -210,6 +210,93 @@ describe("battle royale core logic", () => {
     expect(revived.squad[0].health).toBe(50);
   });
 
+  it("deploys the shield dome and absorbs turret fire inside it", () => {
+    let state = withState({
+      gadgets: { shield: 1, sentry: 0, medevac: 0 },
+      bots: [{ x: 0, z: 150, angle: 0, health: 100, alive: true }],
+    });
+    state = stepMatch(state, 0.1, { forward: 0, turn: 0, shield: true });
+    expect(state.shield.active).toBe(true);
+    expect(state.gadgets.shield).toBe(0);
+    const integrityBefore = state.shield.integrity;
+    const vehicles = state.vehicles;
+    vehicles[1] = { ...vehicles[1], x: 8, z: 0, driverBot: 0 };
+    const underFire = stepMatch({ ...state, vehicles }, 0.1, { forward: 0, turn: 0 });
+    expect(underFire.shield.integrity).toBeLessThan(integrityBefore);
+    expect(underFire.player.health).toBe(100);
+  });
+
+  it("deploys a sentry turret that stuns approaching bots", () => {
+    let state = withState({
+      gadgets: { shield: 0, sentry: 1, medevac: 0 },
+      bots: [{ x: 20, z: 0, angle: 0, health: 100, alive: true }],
+    });
+    state = stepMatch(state, 0.1, { forward: 0, turn: 0, sentry: true });
+    expect(state.sentry.deployed).toBe(true);
+    expect(state.gadgets.sentry).toBe(0);
+    const next = stepMatch(state, 0.1, { forward: 0, turn: 0 });
+    expect(next.bots[0].stunTimer ?? 0).toBeGreaterThan(0);
+  });
+
+  it("retrieves an undamaged sentry back into the inventory", () => {
+    let state = withState({
+      gadgets: { shield: 0, sentry: 1, medevac: 0 },
+      bots: [{ x: 0, z: 150, angle: 0, health: 100, alive: true }],
+    });
+    state = stepMatch(state, 0.1, { forward: 0, turn: 0, sentry: true });
+    expect(state.sentry.deployed).toBe(true);
+    const retrieved = stepMatch(state, 0.1, { forward: 0, turn: 0, sentry: true });
+    expect(retrieved.sentry.deployed).toBe(false);
+    expect(retrieved.gadgets.sentry).toBe(1);
+  });
+
+  it("evacuates a downed squadmate with the medical drone", () => {
+    const squad = [knockDown({ ...createSquad(2)[0], x: 4, z: 0 })];
+    let state = withState({
+      squadSize: 2,
+      squad,
+      gadgets: { shield: 0, sentry: 0, medevac: 1 },
+      bots: [{ x: 0, z: 150, angle: 0, health: 100, alive: true }],
+    });
+    state = stepMatch(state, 0.1, { forward: 0, turn: 0, medevac: true });
+    expect(state.medevac.active).toBe(true);
+    expect(state.gadgets.medevac).toBe(0);
+    for (let i = 0; i < 200 && !state.medevac.healed; i += 1) {
+      state = stepMatch(state, 0.5, { forward: 0, turn: 0 });
+    }
+    expect(state.medevac.healed).toBe(true);
+    const revived = stepMatch(state, 0.1, { forward: 0, turn: 0 });
+    expect(revived.squad[0].state).toBe("active");
+    expect(revived.squad[0].health).toBe(50);
+  });
+
+  it("grants the fortress buff during the last-stand challenge", () => {
+    const wiped = createSquad(2).map((mate) => ({
+      ...knockDown(mate),
+      state: "out" as const,
+    }));
+    let state = withState({
+      squadSize: 2,
+      squad: wiped,
+      bots: [
+        { x: 0, z: 150, angle: 0, health: 100, alive: true },
+        { x: 0, z: 160, angle: 0, health: 100, alive: true },
+      ],
+    });
+    state = stepMatch(state, 0.1, { forward: 0, turn: 0 });
+    expect(state.revival.active).toBe(true);
+    expect(state.fortress.active).toBe(true);
+    const shot = shoot(state);
+    expect(shot.killed).toBe(true);
+    expect(shot.state.fortress.chopperIncoming).toBe(true);
+    let next = shot.state;
+    for (let i = 0; i < 40 && next.fortress.chopperIncoming; i += 1) {
+      next = stepMatch(next, 0.1, { forward: 0, turn: 0 });
+    }
+    expect(next.squad[0].state).toBe("active");
+    expect(next.squad[0].armor).toBe(50);
+  });
+
   it("picks up a nearby crate and switches weapon", () => {
     const state = withState({
       loot: [{ x: 1, z: 0, weapon: "ar", ammo: 30, taken: false }],
