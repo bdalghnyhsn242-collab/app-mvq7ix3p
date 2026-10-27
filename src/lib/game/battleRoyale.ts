@@ -334,24 +334,25 @@ export function shoot(state: MatchState): { state: MatchState; hit: boolean; kil
     }
   });
   const ammo = { ...state.ammo, [state.weapon]: state.ammo[state.weapon] - 1 };
+  const base = {
+    ...state,
+    ammo,
+    cooldown: weapon.cooldown,
+    player: { ...state.player, angle: state.player.angle + weapon.recoil },
+  };
   if (targetIndex === -1) {
-    return { state: { ...state, ammo, cooldown: weapon.cooldown }, hit: false, killed: false };
+    return { state: base, hit: false, killed: false };
   }
+  const falloff = Math.max(0.35, 1 - (weapon.bulletDrop * Math.max(0, targetDist - 12)) / 10);
   const bots = state.bots.map((bot, i) => {
     if (i !== targetIndex) {
       return bot;
     }
-    const health = bot.health - weapon.damage;
+    const health = bot.health - weapon.damage * falloff;
     return { ...bot, health, alive: health > 0 };
   });
   return {
-    state: {
-      ...state,
-      ammo,
-      cooldown: weapon.cooldown,
-      bots,
-      status: bots.every((bot) => !bot.alive) ? "won" : state.status,
-    },
+    state: { ...base, bots, status: bots.every((bot) => !bot.alive) ? "won" : state.status },
     hit: true,
     killed: !bots[targetIndex].alive,
   };
