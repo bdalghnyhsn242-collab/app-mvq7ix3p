@@ -24,7 +24,7 @@ type AppLayoutProps = {
 };
 
 const navItems = [
-  { path: "/", label: "Home", icon: Home },
+  { path: "/", label: "الرئيسية", icon: Home },
 ];
 
 function initials(nameOrEmail: string) {
@@ -37,20 +37,20 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const { theme, setTheme } = useTheme();
 
   if (session.isLoading) {
-    return <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Loading...</div>;
+    return <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">جارٍ التحميل…</div>;
   }
 
   if (AUTH_ENABLED && !isAuthenticated) {
     return <Navigate to="/auth" replace />;
   }
 
-  const userName = session.user?.full_name || session.user?.email || "Guest";
+  const userName = session.user?.full_name || session.user?.email || "زائر";
   const userEmail = session.user?.email || "";
 
   async function handleSignOut() {
     const { error } = await signOut();
     if (!error) {
-      toast.success("Signed out");
+      toast.success("تم تسجيل الخروج");
     }
   }
 
@@ -64,7 +64,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 <span className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
                   <Bot className="h-4 w-4" />
                 </span>
-                <span className="hidden sm:inline">{import.meta.env.VITE_APP_NAME || "App Base"}</span>
+                <span className="hidden sm:inline">{import.meta.env.VITE_APP_NAME || "اللعبة"}</span>
               </Link>
               <nav className="hidden items-center gap-1 md:flex">
                 {navItems.map((item) => {
@@ -96,13 +96,13 @@ export default function AppLayout({ children }: AppLayoutProps) {
                     size="icon"
                     type="button"
                     onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                    aria-label="Toggle theme"
+                    aria-label="تبديل المظهر"
                   >
                     <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
                     <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Toggle theme</TooltipContent>
+                    <TooltipContent>تبديل المظهر</TooltipContent>
               </Tooltip>
 
               <DropdownMenu>
@@ -122,7 +122,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                       {userEmail ? (
                         <span className="truncate text-xs font-normal text-muted-foreground">{userEmail}</span>
                       ) : (
-                        <span className="truncate text-xs font-normal text-muted-foreground">Auth disabled</span>
+                        <span className="truncate text-xs font-normal text-muted-foreground">وضع الزائر</span>
                       )}
                     </div>
                   </DropdownMenuLabel>
@@ -130,13 +130,13 @@ export default function AppLayout({ children }: AppLayoutProps) {
                   <DropdownMenuItem asChild>
                     <Link to="/settings">
                       <UserRound className="mr-2 h-4 w-4" />
-                      Account settings
+                      إعدادات الحساب
                     </Link>
                   </DropdownMenuItem>
                   {AUTH_ENABLED ? (
                     <DropdownMenuItem onClick={handleSignOut}>
                       <LogOut className="mr-2 h-4 w-4" />
-                      Sign out
+                      تسجيل الخروج
                     </DropdownMenuItem>
                   ) : null}
                 </DropdownMenuContent>
