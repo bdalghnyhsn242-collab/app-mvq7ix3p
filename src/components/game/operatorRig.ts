@@ -124,7 +124,14 @@ export class OperatorRig {
     return {
       loaded: this.gltfRoot !== null,
       addedToScene: this.gltfRoot !== null && this.gltfRoot.parent === this.group,
-      proceduralHidden: !this.procedural.visible,
+      // Coherent by construction: the fallback counts as hidden only when
+      // the real body is a verified child of this rig's group. A loaded
+      // body that lost its place can never report "hidden: yes" while
+      // "added: no" — that contradiction masked the mounting failure.
+      proceduralHidden:
+        this.gltfRoot !== null &&
+        this.gltfRoot.parent === this.group &&
+        !this.procedural.visible,
       meshes,
       bones,
     };
@@ -132,7 +139,19 @@ export class OperatorRig {
 
   async upgrade(): Promise<boolean> {
     if (this.gltfRoot) {
-      return true;
+      // Self-heal: a loaded body that somehow lost its place in the rig
+      // group is re-attached instead of being reported as mounted while
+      // the procedural model is what is actually visible.
+      if (this.gltfRoot.parent !== this.group) {
+        console.warn(
+          "🎮 [LastStand:Rig] النموذج المحمّل غير تابع لمجموعة المشغّل — إعادة التركيب",
+        );
+        this.group.add(this.gltfRoot);
+      }
+      if (this.gltfRoot.parent === this.group && this.procedural.visible) {
+        this.procedural.visible = false;
+      }
+      return this.gltfRoot.parent === this.group && !this.procedural.visible;
     }
     // Concurrent callers (initial attempt + retry timer) must share one
     // run, otherwise two clones of the same GLB get added to the group.
@@ -189,6 +208,11 @@ export class OperatorRig {
         this.usesBoneDriver = true;
       }
       this.group.add(instance.root);
+      if (instance.root.parent !== this.group) {
+        throw new Error("تعذر إضافة نموذج المشغّل إلى مجموعته (parent mismatch)");
+      }
+      // Hide the procedural fallback only AFTER the real body is a
+      // verified child of the rig group — never on a load/parse success.
       this.procedural.visible = false;
       riggedOperatorTotal += 1;
       console.info(
