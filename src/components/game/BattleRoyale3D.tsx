@@ -588,6 +588,16 @@ export default function BattleRoyale3D() {
           current.player.z,
         );
         playerMesh.rotation.y = current.player.angle;
+        const pdx = current.player.x - Number(playerMesh.userData.px ?? current.player.x);
+        const pdz = current.player.z - Number(playerMesh.userData.pz ?? current.player.z);
+        animateSoldier(playerMesh, {
+          time: now / 1000,
+          speed01: Math.min(1, Math.hypot(pdx, pdz) / Math.max(dt, 0.001) / 18),
+          swimming: isSwimming(current.player.x, current.player.z),
+          driving: current.playerVehicle >= 0,
+        });
+        playerMesh.userData.px = current.player.x;
+        playerMesh.userData.pz = current.player.z;
         playerMesh.visible = current.status !== "lost" && deployment.phase !== "plane";
         playerChute.visible = deployment.phase === "falling" && deployment.chute;
         playerChute.position.set(current.player.x, playerY + 2.6, current.player.z);
@@ -602,6 +612,15 @@ export default function BattleRoyale3D() {
             mesh.position.set(mate.x, mateY, mate.z);
             mesh.rotation.y = mate.angle;
             mesh.rotation.z = mate.state === "downed" ? Math.PI / 2.2 : 0;
+            const sdx = mate.x - Number(mesh.userData.px ?? mate.x);
+            const sdz = mate.z - Number(mesh.userData.pz ?? mate.z);
+            animateSoldier(mesh, {
+              time: now / 1000,
+              speed01: Math.min(1, Math.hypot(sdx, sdz) / Math.max(dt, 0.001) / 16),
+              swimming: isSwimming(mate.x, mate.z),
+            });
+            mesh.userData.px = mate.x;
+            mesh.userData.pz = mate.z;
           }
         });
         deployPlane.visible = deployment.phase === "plane";
@@ -627,6 +646,14 @@ export default function BattleRoyale3D() {
             lod.position.set(bot.x, terrainHeight(bot.x, bot.z), bot.z);
             lod.rotation.y = bot.angle;
             lod.update(camera);
+            const bdx = bot.x - Number(lod.userData.px ?? bot.x);
+            const bdz = bot.z - Number(lod.userData.pz ?? bot.z);
+            animateSoldier(lod, {
+              time: now / 1000,
+              speed01: Math.min(1, Math.hypot(bdx, bdz) / Math.max(dt, 0.001) / 9),
+            });
+            lod.userData.px = bot.x;
+            lod.userData.pz = bot.z;
           }
         });
         lootMeshes.forEach((mesh, index) => {
@@ -716,6 +743,9 @@ export default function BattleRoyale3D() {
         }
         zoneRing.position.set(current.zone.x, 0.05, current.zone.z);
         zoneRing.scale.setScalar(current.zone.radius);
+        sun.position.set(current.player.x + 45, 70, current.player.z + 28);
+        sun.target.position.set(current.player.x, 0, current.player.z);
+        sun.target.updateMatrixWorld();
         camera.position.set(
           current.player.x - Math.sin(current.player.angle) * 22,
           playerY + (deployment.phase === "landed" ? 13 : 9),
