@@ -112,27 +112,27 @@ export class OperatorRig {
     try {
       clipsGltf = body.animations.length > 0 ? body : await loadOperatorClipsGltf();
       const instance = createOperatorInstance(this.variant, body, clipsGltf);
-    // A real textured humanoid is always preferable to the procedural
-    // fallback. When no clip matches its skeleton, the generic bone
-    // driver animates it instead of leaving a static T-pose.
-    normalizeHumanoidHeight(instance.root, 1.8);
-    this.gltfRoot = instance.root;
-    if (instance.hasMappedClips) {
-      this.animator = new OperatorAnimator(instance.root, instance.clips);
-      if (this.lastMotion) {
-        this.animator.setState(selectOperatorState(this.lastMotion));
+      // A real textured humanoid is always preferable to the procedural
+      // fallback. When no clip matches its skeleton, the generic bone
+      // driver animates it instead of leaving a static T-pose.
+      normalizeHumanoidHeight(instance.root, 1.8);
+      this.gltfRoot = instance.root;
+      if (instance.hasMappedClips) {
+        this.animator = new OperatorAnimator(instance.root, instance.clips);
+        if (this.lastMotion) {
+          this.animator.setState(selectOperatorState(this.lastMotion));
+        }
+        this.usesBoneDriver = false;
+      } else {
+        this.usesBoneDriver = true;
       }
-      this.usesBoneDriver = false;
-    } else {
-      this.usesBoneDriver = true;
-    }
-    this.group.add(instance.root);
-    this.procedural.visible = false;
-    console.info(
-      `🎮 [LastStand:Rig] تم تركيب النموذج البشري الحقيقي (${this.variant}) — وضع الحركة: ${this.animationMode}`,
-    );
-    void this.attachWeapon();
-    return true;
+      this.group.add(instance.root);
+      this.procedural.visible = false;
+      console.info(
+        `🎮 [LastStand:Rig] تم تركيب النموذج البشري الحقيقي (${this.variant}) — وضع الحركة: ${this.animationMode}`,
+      );
+      void this.attachWeapon();
+      return true;
     } catch (error) {
       console.warn(
         "🎮 [LastStand:Rig] فشل تركيب النموذج بعد تحميله (استنساخ/تطبيع/حركات):",
