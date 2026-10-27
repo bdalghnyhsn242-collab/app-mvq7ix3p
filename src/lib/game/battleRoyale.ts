@@ -906,9 +906,12 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
         extra += blastDamage(blast.x, blast.z, next.x, next.z);
       }
       if (extra > 0) {
+        const mateDome = domeAbsorb(shield, next.x, next.z, extra);
+        shield = drainDome(shield, mateDome.absorbed);
+        const leaked = mateDome.leaked;
         const armorBefore = next.armor;
-        next.armor = Math.max(0, armorBefore - extra);
-        next.health -= Math.max(0, extra - armorBefore);
+        next.armor = Math.max(0, armorBefore - leaked);
+        next.health -= Math.max(0, leaked - armorBefore);
         if (next.health <= 0) {
           return knockDown(next);
         }
@@ -930,14 +933,45 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
     },
   );
 
+  if (medevac.active && medevac.onStation && !medevac.healed) {
+    squad = squad.map((mate, mateIndex) =>
+      mateIndex === medevac.mateIndex && mate.state === "downed"
+        ? { ...mate, health: mate.health + medEvacHealPerSecond() * dt }
+        : mate,
+    );
+  }
+  if (medevac.healed) {
+    squad = squad.map((mate, mateIndex) =>
+      mateIndex === medevac.mateIndex && mate.state === "downed"
+        ? {
+            ...mate,
+            state: "active" as const,
+            health: MEDEVAC_REVIVE_HEALTH,
+            bleedTimer: 0,
+            reviveProgress: 0,
+          }
+        : mate,
+    );
+  }
+
   let revival = state.revival;
   if (!revival.active && shouldTriggerRevival(squad)) {
     revival = triggerRevival(player);
   }
+  if (revival.active && !state.revival.active) {
+    fortress = activateFortress(revival.zone);
+  }
   revival = stepRevival(revival, dt, player);
   if (revival.succeeded) {
-    squad = respawnSquad(squad, player);
     revival = createRevivalState();
+    if (!fortress.chopperIncoming) {
+      fortress = { ...fortress, chopperIncoming: true, chopperTimer: FORTRESS_CHOPPER_TIME };
+    }
+  }
+  fortress = stepFortress(fortress, dt, player);
+  if (fortress.chopperIncoming && fortress.chopperTimer <= 0) {
+    squad = fortressRespawnSquad(squad, player);
+    fortress = createFortressState();
   }
 
   const next: MatchState = {
