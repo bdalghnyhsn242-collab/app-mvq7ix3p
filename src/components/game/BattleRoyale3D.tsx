@@ -36,6 +36,9 @@ type Hud = {
   weapon: string;
   ammo: number;
   crates: number;
+  vehicle: string | null;
+  speed: number;
+  airdrop: boolean;
   status: MatchStatus;
 };
 
@@ -105,6 +108,7 @@ export default function BattleRoyale3D() {
   const stateRef = useRef<MatchState | null>(null);
   const keysRef = useRef<Set<string>>(new Set());
   const shootRef = useRef(false);
+  const enterRef = useRef(false);
   const [hud, setHud] = useState<Hud>({
     health: 100,
     alive: BOT_COUNT,
@@ -112,6 +116,9 @@ export default function BattleRoyale3D() {
     weapon: WEAPONS.pistol.name,
     ammo: 24,
     crates: LOOT_COUNT,
+    vehicle: null,
+    speed: 0,
+    airdrop: false,
     status: "idle",
   });
 
@@ -124,6 +131,9 @@ export default function BattleRoyale3D() {
       weapon: WEAPONS.pistol.name,
       ammo: 24,
       crates: LOOT_COUNT,
+      vehicle: null,
+      speed: 0,
+      airdrop: false,
       status: "running",
     });
   }, []);
