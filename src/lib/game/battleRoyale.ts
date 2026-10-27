@@ -433,6 +433,13 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
     };
   }
 
+  const tracers = state.tracers
+    .map((tracer) => ({ ...tracer, life: tracer.life - dt }))
+    .filter((tracer) => tracer.life > 0);
+  const explosions = state.explosions
+    .map((explosion) => ({ ...explosion, timer: explosion.timer - dt }))
+    .filter((explosion) => explosion.timer > 0);
+
   let vehicles = state.vehicles;
   let playerVehicle = state.playerVehicle;
 
@@ -456,7 +463,7 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
   }
 
   if (playerVehicle >= 0) {
-    const driven = stepVehicle(vehicles[playerVehicle], dt, input);
+    const driven = coolTurret(stepVehicle(vehicles[playerVehicle], dt, input), dt);
     vehicles = vehicles.map((v, i) => (i === playerVehicle ? driven : v));
     player.x = driven.x;
     player.z = driven.z;
@@ -490,6 +497,15 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
   });
 
   let health = player.health;
+  const squadHits: Record<number, number> = {};
+  const blasts: { x: number; z: number }[] = [];
+  const wreckVehicle = (index: number) => {
+    const vehicle = vehicles[index];
+    vehicles = vehicles.map((v, i) => (i === index ? destroyVehicle(v) : v));
+    explosions.push({ x: vehicle.x, z: vehicle.z, timer: EXPLOSION_DURATION });
+    blasts.push({ x: vehicle.x, z: vehicle.z });
+    health -= blastDamage(vehicle.x, vehicle.z, player.x, player.z);
+  };
   const bots = state.bots.map((bot, botIndex) => {
     if (!bot.alive) {
       return bot;
@@ -508,10 +524,46 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
       while (diff < -Math.PI) {
         diff += Math.PI * 2;
       }
-      const driven = stepVehicle(vehicle, dt, {
-        forward: dist > 6 ? 1 : 0.35,
-        turn: Math.max(-1, Math.min(1, diff * 2)),
-      });
+      const desiredTurn = Math.max(-1, Math.min(1, diff * 2));
+      let driven = coolTurret(
+        stepVehicle(vehicle, dt, {
+          forward: dist > 6 ? 1 : 0.35,
+          turn: steerAround(vehicle.x, vehicle.z, vehicle.angle, desiredTurn),
+        }),
+        dt,
+      );
+      if (hasTurret(driven.kind) && !driven.wreck && dist < TURRET_RANGE && driven.turretCooldown <= 0) {
+        driven = { ...driven, turretCooldown: TURRET_INTERVAL, turretFlash: 0.12 };
+        let targetX = player.x;
+        let targetZ = player.z;
+        let mateIndex = -1;
+        state.squad.forEach((mate, mi) => {
+          if (mate.state !== "active") {
+            return;
+          }
+          if (Math.hypot(mate.x - driven.x, mate.z - driven.z) < dist) {
+            targetX = mate.x;
+            targetZ = mate.z;
+            mateIndex = mi;
+          }
+        });
+        tracers.push({ x1: driven.x, z1: driven.z, x2: targetX, z2: targetZ, life: TRACER_LIFE });
+        if (tracers.length > 24) {
+          tracers.shift();
+        }
+        if (mateIndex >= 0) {
+          squadHits[mateIndex] = (squadHits[mateIndex] ?? 0) + TURRET_DAMAGE;
+        } else if (playerVehicle >= 0) {
+          const damaged = damageVehicle(vehicles[playerVehicle], TURRET_DAMAGE);
+          vehicles = vehicles.map((v, i) => (i === playerVehicle ? damaged : v));
+          if (damaged.health <= 0) {
+            wreckVehicle(playerVehicle);
+            playerVehicle = -1;
+          }
+        } else {
+          health -= TURRET_DAMAGE;
+        }
+      }
       vehicles = vehicles.map((v, i) => (i === drivenIndex ? driven : v));
       next.x = driven.x;
       next.z = driven.z;
@@ -522,10 +574,8 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
           const damaged = damageVehicle(vehicles[playerVehicle], RUNOVER_DAMAGE_PER_SECOND * dt);
           vehicles = vehicles.map((v, i) => (i === playerVehicle ? damaged : v));
           if (damaged.health <= 0) {
-            const wreckIndex = playerVehicle;
+            wreckVehicle(playerVehicle);
             playerVehicle = -1;
-            vehicles = vehicles.map((v, i) => (i === wreckIndex ? { ...v, driverBot: -1 } : v));
-            health -= 15;
           }
         } else {
           health -= RUNOVER_DAMAGE_PER_SECOND * dt;
@@ -566,10 +616,8 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
       const damaged = damageVehicle(vehicles[playerVehicle], CONTACT_DAMAGE_PER_SECOND * dt * 2);
       vehicles = vehicles.map((v, i) => (i === playerVehicle ? damaged : v));
       if (damaged.health <= 0) {
-        const destroyedIndex = playerVehicle;
+        wreckVehicle(playerVehicle);
         playerVehicle = -1;
-        vehicles = vehicles.map((v, i) => (i === destroyedIndex ? { ...v, driverBot: -1 } : v));
-        health -= 15;
       }
     } else {
       health -= CONTACT_DAMAGE_PER_SECOND * dt;
