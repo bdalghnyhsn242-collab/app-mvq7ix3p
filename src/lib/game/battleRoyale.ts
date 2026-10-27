@@ -366,6 +366,7 @@ export function createMatchState(squadSize: SquadSize = 1): MatchState {
       ammo: weapon === "shotgun" ? 8 : weapon === "dmr" ? 10 : weapon === "lmg" ? 60 : 30,
       taken: false,
       attachment: i % 3 === 0 ? attachmentForIndex(i) : undefined,
+      beacon: i === 2,
     });
   }
   BUILDING_POSITIONS.forEach((position, i) => {
@@ -403,6 +404,10 @@ export function createMatchState(squadSize: SquadSize = 1): MatchState {
     airdrop: createAirdropState(),
     weather: createWeatherState(),
     drone: createDroneState(),
+    radio: createRadioTowerState(),
+    beacon: createBeaconState(),
+    dust: createDustStormState(),
+    revival: createRevivalState(),
     attachments: {},
     squadSize,
     squad: createSquad(squadSize),
