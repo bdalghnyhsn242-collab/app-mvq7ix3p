@@ -219,9 +219,9 @@ export default function BattleRoyale3D() {
         zoneRing.position.set(current.zone.x, 0.05, current.zone.z);
         zoneRing.scale.setScalar(current.zone.radius);
         camera.position.set(
-          current.player.x - Math.sin(current.player.angle) * 13,
-          terrainHeight(current.player.x, current.player.z) + 8,
-          current.player.z - Math.cos(current.player.angle) * 13,
+          current.player.x - Math.sin(current.player.angle) * 22,
+          terrainHeight(current.player.x, current.player.z) + 13,
+          current.player.z - Math.cos(current.player.angle) * 22,
         );
         camera.lookAt(
           current.player.x,
@@ -230,9 +230,11 @@ export default function BattleRoyale3D() {
         );
       } else {
         const orbit = now / 5000;
-        camera.position.set(Math.sin(orbit) * 55, 26, Math.cos(orbit) * 55);
+        camera.position.set(Math.sin(orbit) * 190, 70, Math.cos(orbit) * 190);
         camera.lookAt(0, 0, 0);
       }
+      forest.update(now / 1000, camera);
+      dust.rotation.y = now * 0.004;
       water.update(now / 1000);
       renderer.render(scene, camera);
       hudTimer += dt;
