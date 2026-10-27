@@ -269,6 +269,30 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
     return state;
   }
   const player = { ...state.player };
+
+  if (state.deployment.phase !== "landed") {
+    let deployment = stepDeployment(state.deployment, dt);
+    const airborne = { ...state.player };
+    if (deployment.phase === "plane") {
+      airborne.x = deployment.plane.x;
+      airborne.z = deployment.plane.z;
+      airborne.angle = deployment.plane.angle;
+      if (input.drop || Math.hypot(airborne.x, airborne.z) > ISLAND_RADIUS + 30) {
+        deployment = { ...deployment, phase: "falling" };
+      }
+    } else {
+      airborne.x += Math.sin(deployment.plane.angle) * 6 * dt;
+      airborne.z += Math.cos(deployment.plane.angle) * 6 * dt;
+    }
+    return {
+      ...state,
+      player: airborne,
+      deployment,
+      airdrop: stepAirdrops(state.airdrop, dt),
+      time: state.time + dt,
+    };
+  }
+
   let vehicles = state.vehicles;
   let playerVehicle = state.playerVehicle;
 
@@ -278,7 +302,11 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
       playerVehicle = -1;
     } else {
       const idx = vehicles.findIndex(
-        (v) => !v.occupied && v.health > 0 && Math.hypot(v.x - player.x, v.z - player.z) < 5,
+        (v) =>
+          !v.occupied &&
+          v.driverBot < 0 &&
+          v.health > 0 &&
+          Math.hypot(v.x - player.x, v.z - player.z) < 5,
       );
       if (idx >= 0) {
         playerVehicle = idx;
@@ -321,11 +349,59 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
     return { ...crate, taken: true };
   });
 
-  const bots = state.bots.map((bot) => {
+  let health = player.health;
+  const bots = state.bots.map((bot, botIndex) => {
     if (!bot.alive) {
       return bot;
     }
     const next = { ...bot };
+    const drivenIndex = vehicles.findIndex((v) => v.driverBot === botIndex);
+    if (drivenIndex >= 0) {
+      const vehicle = vehicles[drivenIndex];
+      const dx = player.x - vehicle.x;
+      const dz = player.z - vehicle.z;
+      const dist = Math.hypot(dx, dz) || 1;
+      let diff = Math.atan2(dx, dz) - vehicle.angle;
+      while (diff > Math.PI) {
+        diff -= Math.PI * 2;
+      }
+      while (diff < -Math.PI) {
+        diff += Math.PI * 2;
+      }
+      const driven = stepVehicle(vehicle, dt, {
+        forward: dist > 6 ? 1 : 0.35,
+        turn: Math.max(-1, Math.min(1, diff * 2)),
+      });
+      vehicles = vehicles.map((v, i) => (i === drivenIndex ? driven : v));
+      next.x = driven.x;
+      next.z = driven.z;
+      next.angle = driven.angle;
+      clampToIsland(next);
+      if (dist < 2.8 && Math.abs(driven.speed) > 4) {
+        if (playerVehicle >= 0) {
+          const damaged = damageVehicle(vehicles[playerVehicle], RUNOVER_DAMAGE_PER_SECOND * dt);
+          vehicles = vehicles.map((v, i) => (i === playerVehicle ? damaged : v));
+          if (damaged.health <= 0) {
+            playerVehicle = -1;
+            health -= 15;
+          }
+        } else {
+          health -= RUNOVER_DAMAGE_PER_SECOND * dt;
+        }
+      }
+      return next;
+    }
+    const seekIndex = vehicles.findIndex(
+      (v) =>
+        v.driverBot < 0 &&
+        !v.occupied &&
+        v.health > 0 &&
+        Math.hypot(v.x - next.x, v.z - next.z) < AI_VEHICLE_SEEK_RADIUS,
+    );
+    if (seekIndex >= 0) {
+      vehicles = vehicles.map((v, i) => (i === seekIndex ? { ...v, driverBot: botIndex } : v));
+      return next;
+    }
     const dx = player.x - next.x;
     const dz = player.z - next.z;
     const dist = Math.hypot(dx, dz) || 1;
@@ -337,7 +413,6 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
     return next;
   });
 
-  let health = player.health;
   if (Math.hypot(player.x - zone.x, player.z - zone.z) > zone.radius) {
     health -= ZONE_DAMAGE_PER_SECOND * dt;
   }
@@ -350,6 +425,7 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
       vehicles = vehicles.map((v, i) => (i === playerVehicle ? damaged : v));
       if (damaged.health <= 0) {
         playerVehicle = -1;
+        vehicles = vehicles.map((v, i) => (i === playerVehicle ? { ...v, driverBot: -1 } : v));
         health -= 15;
       }
     } else {
