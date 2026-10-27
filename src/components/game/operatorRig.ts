@@ -39,6 +39,10 @@ export type OperatorRigStatus = {
   proceduralHidden: boolean;
   meshes: number;
   bones: number;
+  /** Name of the animation clip currently playing (null when none). */
+  clipName: string | null;
+  /** True while the AnimationMixer received updates recently (<0.5s). */
+  mixerUpdating: boolean;
 };
 
 export function operatorVariantFor(camo: string, gender: SoldierGender): OperatorVariant {
@@ -134,6 +138,10 @@ export class OperatorRig {
         !this.procedural.visible,
       meshes,
       bones,
+      clipName: this.animator?.currentClipName ?? null,
+      mixerUpdating: this.animator
+        ? performance.now() - this.animator.stats.lastUpdateAt < 500
+        : false,
     };
   }
 
