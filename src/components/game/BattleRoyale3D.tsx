@@ -707,6 +707,10 @@ export default function BattleRoyale3D() {
         // can never dress a failed mount as a successful one.
         meshes: playerMounted ? best.meshes : 0,
         bones: playerMounted ? best.bones : 0,
+        // Animation diagnostics: the clip actually playing on the mounted
+        // rig and whether its AnimationMixer is receiving updates.
+        clipName: playerMounted ? best.clipName : null,
+        mixerUpdating: playerMounted ? best.mixerUpdating : false,
         source:
           loadedSourceFor(bodyKey) ??
           loadedSourceFor("body:male") ??
