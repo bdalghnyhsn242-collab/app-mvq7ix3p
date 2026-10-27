@@ -629,7 +629,7 @@ export default function BattleRoyale3D() {
       </div>
 
       <div className="flex flex-wrap items-center justify-center gap-4">
-        {hud.deployPhase !== "landed" ? (
+        {hud.status === "running" && hud.deployPhase !== "landed" ? (
           <Button onClick={() => (dropRef.current = true)}>
             🪂 القفز (F) — {hud.altitude}م
           </Button>
