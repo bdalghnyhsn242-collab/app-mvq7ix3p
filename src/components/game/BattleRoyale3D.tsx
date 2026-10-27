@@ -170,6 +170,7 @@ export default function BattleRoyale3D() {
       altitude: DEPLOY_PLANE_ALTITUDE,
       squad: [],
       status: "running",
+    });
   }, []);
 
   useEffect(() => {
