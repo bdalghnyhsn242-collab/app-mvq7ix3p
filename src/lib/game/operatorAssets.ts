@@ -59,23 +59,118 @@ export const CHARACTER_CDN_SOURCES: Record<OperatorVariant, string | null> = {
 export const WEAPON_CDN_URL =
   "https://cdn.jsdelivr.net/gh/trebeljahr/quaternius-showcase@main/public/glb/modular_sci_fi_guns_pack/AR_1.glb";
 
-const LOAD_TIMEOUT_MS = 8000;
+const LOAD_TIMEOUT_MS = 20000;
+/** Failed source sets are retried after this cooldown instead of being
+ * cached as `null` for the whole session (the old behaviour locked the
+ * procedural cube fallback in permanently after one bad moment). */
+const FAILED_RETRY_COOLDOWN_MS = 15000;
 
 const gltfCache = new Map<string, Promise<GLTF | null>>();
+const failedAt = new Map<string, number>();
+
+export type OperatorAssetDiagnostic = {
+  time: string;
+  level: "info" | "warn" | "error";
+  message: string;
+};
+
+const diagnostics: OperatorAssetDiagnostic[] = [];
+
+function logAsset(level: "info" | "warn" | "error", message: string): void {
+  diagnostics.push({ time: new Date().toISOString(), level, message });
+  if (diagnostics.length > 80) {
+    diagnostics.splice(0, diagnostics.length - 80);
+  }
+  const tag = "🎮 [LastStand:Model]";
+  if (level === "error") {
+    console.error(tag, message);
+  } else if (level === "warn") {
+    console.warn(tag, message);
+  } else {
+    console.info(tag, message);
+  }
+}
+
+/** Console + in-memory diagnostics for the operator asset pipeline. */
+export function getOperatorDiagnostics(): {
+  entries: OperatorAssetDiagnostic[];
+  lastError: string | null;
+} {
+  const lastError =
+    [...diagnostics].reverse().find((entry) => entry.level !== "info")?.message ?? null;
+  return { entries: [...diagnostics], lastError };
+}
+
+/** Exposes live diagnostics on `window.__LAST_STAND_MODEL_DIAGNOSTICS`. */
+export function installOperatorDiagnosticsProbe(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  (window as unknown as Record<string, unknown>).__LAST_STAND_MODEL_DIAGNOSTICS = {
+    entries: () => getOperatorDiagnostics().entries,
+    lastError: () => getOperatorDiagnostics().lastError,
+    clearCache: () => {
+      resetOperatorAssetCache();
+      failedAt.clear();
+    },
+  };
+}
+
+function describeScene(root: THREE.Object3D): string {
+  let meshes = 0;
+  let bones = 0;
+  let vertices = 0;
+  const materials = new Set<THREE.Material>();
+  root.traverse((child) => {
+    if ((child as THREE.Bone).isBone) {
+      bones += 1;
+    }
+    const mesh = child as THREE.Mesh;
+    if (!mesh.isMesh) {
+      return;
+    }
+    meshes += 1;
+    vertices += mesh.geometry?.attributes?.position?.count ?? 0;
+    const list = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    for (const material of list) {
+      if (material) {
+        materials.add(material);
+      }
+    }
+  });
+  const size = new THREE.Vector3();
+  new THREE.Box3().setFromObject(root).getSize(size);
+  return `${meshes} meshes / ${materials.size} materials / ${bones} bones / ${vertices} vertices / height≈${size.y.toFixed(2)}m`;
+}
 
 function loadWithTimeout(url: string): Promise<GLTF> {
+  logAsset("info", `بدء تحميل: ${url}`);
   return new Promise((resolve, reject) => {
-    const timer = window.setTimeout(() => reject(new Error("timeout")), LOAD_TIMEOUT_MS);
+    const timer = window.setTimeout(
+      () => reject(new Error(`انتهت مهلة ${LOAD_TIMEOUT_MS / 1000}ث أثناء تحميل ${url}`)),
+      LOAD_TIMEOUT_MS,
+    );
     new GLTFLoader().load(
       url,
       (gltf) => {
         window.clearTimeout(timer);
+        logAsset("info", `تم تحميل وتحليل الملف: ${url}`);
         resolve(gltf);
       },
       undefined,
       (error) => {
         window.clearTimeout(timer);
-        reject(error);
+        const message =
+          error instanceof Error
+            ? error.message
+            : typeof (error as ErrorEvent | undefined)?.message === "string"
+              ? (error as ErrorEvent).message
+              : String(error ?? "خطأ غير معروف");
+        logAsset(
+          "error",
+          `فشل تحميل ${url} — السبب: ${message} (شبكة/CORS/مسار/تحليل — انظر رسالة المتصفح الأصلية في Network)`,
+        );
+        reject(error instanceof Error ? error : new Error(message));
       },
     );
   });
@@ -87,12 +182,56 @@ async function loadFirstAvailable(
 ): Promise<GLTF | null> {
   for (const url of urls) {
     try {
-      return await loader(url);
+      const gltf = await loader(url);
+      logAsset(
+        "info",
+        `نجح المصدر ${url} — المحتوى: ${describeScene(gltf.scene)} / ${gltf.animations.length} مقطع حركة`,
+      );
+      return gltf;
     } catch {
+      // The real error was already logged by loadWithTimeout.
       continue;
     }
   }
+  logAsset("error", `فشلت جميع المصادر (${urls.length}): ${urls.join(" | ")}`);
   return null;
+}
+
+/** Adds a raw.githubusercontent.com mirror next to every jsdelivr URL. */
+function withRawFallback(url: string): string[] {
+  const raw = url
+    .replace("https://cdn.jsdelivr.net/gh/", "https://raw.githubusercontent.com/")
+    .replace("@main/", "/main/");
+  return raw === url ? [url] : [url, raw];
+}
+
+function cachedOrLoad(
+  key: string,
+  urls: string[],
+  loader: (url: string) => Promise<GLTF>,
+): Promise<GLTF | null> {
+  const cached = gltfCache.get(key);
+  if (cached) {
+    return cached;
+  }
+  const lastFailure = failedAt.get(key) ?? 0;
+  if (Date.now() - lastFailure < FAILED_RETRY_COOLDOWN_MS) {
+    logAsset("warn", `مصادر «${key}» فشلت مؤخرًا — إعادة المحاولة بعد فترة تهدئة قصيرة`);
+    return Promise.resolve(null);
+  }
+  const promise = loadFirstAvailable(urls, loader);
+  void promise.then((result) => {
+    if (result) {
+      failedAt.delete(key);
+    } else {
+      failedAt.set(key, Date.now());
+      // Do not keep the failed promise cached: the next rig (or a manual
+      // window.__LAST_STAND_MODEL_DIAGNOSTICS.clearCache()) retries.
+      gltfCache.delete(key);
+    }
+  });
+  gltfCache.set(key, promise);
+  return promise;
 }
 
 /**
