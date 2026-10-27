@@ -277,13 +277,29 @@ export default function BattleRoyale3D() {
     zoneRing.rotation.x = -Math.PI / 2;
     scene.add(zoneRing);
 
-    const playerMesh = makeSoldier(0x22c55e);
-    scene.add(playerMesh);
+    const playerMeshMale = makeSoldier(0x22c55e, "woodland", "male");
+    const playerMeshFemale = makeSoldier(0x22c55e, "woodland", "female");
+    scene.add(playerMeshMale, playerMeshFemale);
     const botMeshes = Array.from({ length: BOT_COUNT }, (_, index) => {
       const variant = index % 3 === 0 ? "ghillie" : index % 3 === 1 ? "desert" : "woodland";
-      const bot = makeSoldier(0xb4543b, variant);
-      scene.add(bot);
-      return bot;
+      const botGender: SoldierGender = index % 2 === 0 ? "male" : "female";
+      const lod = new THREE.LOD();
+      lod.addLevel(makeSoldier(0xb4543b, variant, botGender), 0);
+      const low = new THREE.Group();
+      const torso = new THREE.Mesh(
+        new THREE.CapsuleGeometry(0.38, 0.9, 3, 6),
+        new THREE.MeshLambertMaterial({ color: 0x6e4634 }),
+      );
+      torso.position.y = 0.95;
+      const head = new THREE.Mesh(
+        new THREE.SphereGeometry(0.24, 6, 6),
+        new THREE.MeshLambertMaterial({ color: 0x6e4634 }),
+      );
+      head.position.y = 1.68;
+      low.add(torso, head);
+      lod.addLevel(low, BOT_LOD_DISTANCE);
+      scene.add(lod);
+      return lod;
     });
     const squadMeshes = Array.from({ length: 4 }, (_, index) => {
       const mate = makeSoldier(0x16a34a, index % 2 === 0 ? "woodland" : "desert");
