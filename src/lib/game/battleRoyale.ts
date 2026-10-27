@@ -6,10 +6,30 @@ export const PLAYER_SPEED = 10;
 export const TURN_SPEED = 2.4;
 export const BOT_SPEED = 5;
 export const BOT_COUNT = 6;
-export const SHOOT_RANGE = 20;
-export const SHOOT_ARC = 0.45;
 export const ZONE_DAMAGE_PER_SECOND = 8;
 export const CONTACT_DAMAGE_PER_SECOND = 25;
+
+export type WeaponId = "pistol" | "rifle" | "shotgun";
+export type Weapon = {
+  id: WeaponId;
+  name: string;
+  range: number;
+  arc: number;
+  damage: number;
+  cooldown: number;
+};
+export const WEAPONS: Record<WeaponId, Weapon> = {
+  pistol: { id: "pistol", name: "مسدس", range: 18, arc: 0.35, damage: 50, cooldown: 0.5 },
+  rifle: { id: "rifle", name: "بندقية", range: 26, arc: 0.25, damage: 34, cooldown: 0.25 },
+  shotgun: { id: "shotgun", name: "خرطوش", range: 10, arc: 0.6, damage: 100, cooldown: 0.8 },
+};
+export const LOOT_COUNT = 8;
+export const PICKUP_RADIUS = 1.8;
+export type Loot = { x: number; z: number; weapon: WeaponId; ammo: number; taken: boolean };
+
+export function lootWeaponForIndex(index: number): WeaponId {
+  return index % 3 === 0 ? "rifle" : index % 3 === 1 ? "shotgun" : "pistol";
+}
 
 export type Soldier = { x: number; z: number; angle: number; health: number; alive: boolean };
 export type MatchStatus = "idle" | "running" | "won" | "lost";
@@ -18,6 +38,10 @@ export type MatchState = {
   player: Soldier;
   bots: Soldier[];
   zone: { x: number; z: number; radius: number };
+  weapon: WeaponId;
+  ammo: Record<WeaponId, number>;
+  cooldown: number;
+  loot: Loot[];
   time: number;
   status: MatchStatus;
 };
