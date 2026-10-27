@@ -30,6 +30,7 @@ describe("battle royale core logic", () => {
     expect(state.deployment.phase).toBe("plane");
     expect(state.squad).toHaveLength(0);
     expect(state.bots).toHaveLength(BOT_COUNT);
+    expect(state.bots.every((bot) => Math.hypot(bot.x, bot.z) < ISLAND_RADIUS)).toBe(true);
     expect(state.zone.radius).toBe(ZONE_START_RADIUS);
     expect(state.status).toBe("running");
   });
