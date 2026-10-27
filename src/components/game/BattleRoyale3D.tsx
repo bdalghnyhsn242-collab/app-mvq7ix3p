@@ -10,6 +10,7 @@ import {
   ZONE_START_RADIUS,
   createMatchState,
   lootWeaponForIndex,
+  WEAPONS,
   shoot,
   stepMatch,
   type MatchState,
@@ -17,7 +18,15 @@ import {
   type WeaponId,
 } from "@/lib/game/battleRoyale";
 
-type Hud = { health: number; alive: number; zone: number; status: MatchStatus };
+type Hud = {
+  health: number;
+  alive: number;
+  zone: number;
+  weapon: string;
+  ammo: number;
+  crates: number;
+  status: MatchStatus;
+};
 
 const LOOT_COLORS: Record<WeaponId, number> = {
   pistol: 0xfbbf24,
@@ -73,12 +82,23 @@ export default function BattleRoyale3D() {
     health: 100,
     alive: BOT_COUNT,
     zone: ZONE_START_RADIUS,
+    weapon: WEAPONS.pistol.name,
+    ammo: 24,
+    crates: LOOT_COUNT,
     status: "idle",
   });
 
   const start = useCallback(() => {
     stateRef.current = createMatchState();
-    setHud({ health: 100, alive: BOT_COUNT, zone: ZONE_START_RADIUS, status: "running" });
+    setHud({
+      health: 100,
+      alive: BOT_COUNT,
+      zone: ZONE_START_RADIUS,
+      weapon: WEAPONS.pistol.name,
+      ammo: 24,
+      crates: LOOT_COUNT,
+      status: "running",
+    });
   }, []);
 
   useEffect(() => {
@@ -233,6 +253,9 @@ export default function BattleRoyale3D() {
           health: Math.max(0, Math.round(current.player.health)),
           alive: current.bots.filter((bot) => bot.alive).length,
           zone: Math.round(current.zone.radius),
+          weapon: WEAPONS[current.weapon].name,
+          ammo: current.ammo[current.weapon],
+          crates: current.loot.filter((crate) => !crate.taken).length,
           status: current.status,
         });
       }
