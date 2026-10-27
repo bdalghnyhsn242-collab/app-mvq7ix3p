@@ -631,7 +631,6 @@ export default function BattleRoyale3D() {
       const variant = index % 3 === 0 ? "ghillie" : index % 3 === 1 ? "desert" : "woodland";
       const botGender: SoldierGender = index % 2 === 0 ? "male" : "female";
       const botRig = new OperatorRig(variant, botGender);
-      void botRig.upgrade();
       const lod = new THREE.LOD();
       lod.addLevel(botRig.group, 0);
       const low = new THREE.Group();
@@ -1038,6 +1037,10 @@ export default function BattleRoyale3D() {
           lod.visible = bot.alive && (!far || radarReveal);
           if (lod.visible) {
             const botRig = lod.userData.rig as OperatorRig;
+            if (!botRig.skeletal && !botRig.upgradeAttempted) {
+              botRig.upgradeAttempted = true;
+              void botRig.upgrade();
+            }
             lod.position.set(bot.x, terrainHeight(bot.x, bot.z), bot.z);
             lod.rotation.y = bot.angle;
             lod.update(camera);
