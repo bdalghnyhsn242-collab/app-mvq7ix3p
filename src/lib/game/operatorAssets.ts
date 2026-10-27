@@ -342,21 +342,34 @@ async function loadBodyGltf(
   return gltf;
 }
 
+/** Ordered body sources: local override, real soldier, stylized fallback. */
+export function operatorBodySources(variant: OperatorVariant): string[] {
+  const urls = [OPERATOR_MODEL_URLS[variant]];
+  const soldier = SOLDIER_CDN_SOURCES[variant];
+  if (soldier) {
+    urls.push(...withRawFallback(soldier));
+  }
+  const character = CHARACTER_CDN_SOURCES[variant];
+  if (character) {
+    urls.push(...withRawFallback(character));
+  }
+  return urls;
+}
+
 /**
- * Loads the operator body: local override first, then the CC0 textured
- * character from the CDN. The animation library is clips-only (see
- * loadOperatorClipsGltf) and is never used as a visible body.
+ * Loads the operator body: local override first, then the real textured
+ * soldier, then the stylized CC0 character. The animation library is
+ * clips-only (see loadOperatorClipsGltf) and is never used as a body.
  */
 export function loadOperatorGltf(
   variant: OperatorVariant,
   loader: (url: string) => Promise<GLTF> = loadWithTimeout,
 ): Promise<GLTF | null> {
-  const urls = [OPERATOR_MODEL_URLS[variant]];
-  const character = CHARACTER_CDN_SOURCES[variant];
-  if (character) {
-    urls.push(...withRawFallback(character));
-  }
-  return cachedOrLoad(`body:${variant}`, urls, (url) => loadBodyGltf(url, loader));
+  return cachedOrLoad(
+    `body:${variant}`,
+    operatorBodySources(variant),
+    (url) => loadBodyGltf(url, loader),
+  );
 }
 
 /** Loads the shared CC0 animation-library clips (cached across variants). */
