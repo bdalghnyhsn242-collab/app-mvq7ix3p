@@ -561,3 +561,101 @@ describe("battle royale core logic", () => {
     expect(next.player.health).toBeLessThan(100);
   });
 });
+
+describe("first-person-feel combat systems", () => {
+  it("completes a reload moving rounds from reserve into the magazine", () => {
+    let state = withState({});
+    state = shoot(state).state;
+    expect(state.magazine.pistol).toBe(11);
+    const started = reloadWeapon(state);
+    expect(started.reloadTimer).toBe(RELOAD_TIME);
+    let reloaded = started;
+    for (let i = 0; i < 20; i += 1) {
+      reloaded = stepMatch(reloaded, 0.1, { forward: 0, turn: 0 });
+    }
+    expect(reloaded.reloadTimer).toBe(0);
+    expect(reloaded.magazine.pistol).toBe(fullMagazine("pistol"));
+    expect(reloaded.ammo.pistol).toBe(24 - 1);
+  });
+
+  it("switches only between owned weapons", () => {
+    let state = withState({
+      loot: [{ x: 1, z: 0, weapon: "ar", ammo: 30, taken: false }],
+    });
+    state = stepMatch(state, 0.1, { forward: 0, turn: 0 });
+    expect(state.owned).toContain("ar");
+    const swapped = switchWeapon(state, "ar");
+    expect(swapped.weapon).toBe("ar");
+    expect(swapped.magazine.ar).toBe(fullMagazine("ar"));
+    expect(switchWeapon(state, "dmr").weapon).toBe(state.weapon);
+  });
+
+  it("jumps and lands back on the terrain", () => {
+    let state = stepMatch(withState({}), 0.1, { forward: 0, turn: 0, jump: true });
+    expect(state.jumpAir).toBeGreaterThan(0);
+    for (let i = 0; i < 40 && state.jumpAir > 0; i += 1) {
+      state = stepMatch(state, 0.1, { forward: 0, turn: 0 });
+    }
+    expect(state.jumpAir).toBe(0);
+    expect(state.jumpVy).toBe(0);
+  });
+
+  it("crouches to move slower and reduces recoil", () => {
+    const standing = stepMatch(withState({}), 1, { forward: 1, turn: 0 });
+    const crouched = stepMatch(withState({}), 1, { forward: 1, turn: 0, crouch: true });
+    const standingDist = Math.hypot(standing.player.x, standing.player.z);
+    const crouchedDist = Math.hypot(crouched.player.x, crouched.player.z);
+    expect(crouchedDist).toBeLessThan(standingDist);
+    expect(crouched.crouching).toBe(true);
+    const recoilStanding = shoot(withState({})).state.player.angle;
+    const recoilCrouched = shoot(withState({ crouching: true })).state.player.angle;
+    expect(Math.abs(recoilCrouched)).toBeLessThan(Math.abs(recoilStanding));
+  });
+
+  it("lets nearby bots open fire on the player with tracers and damage", () => {
+    let state = withState({
+      bots: [{ x: 12, z: 0, angle: 0, health: 100, alive: true }],
+    });
+    let sawTracer = false;
+    let damaged = false;
+    for (let i = 0; i < 120 && !damaged; i += 1) {
+      state = stepMatch(state, 0.1, { forward: 0, turn: 0 });
+      if (state.tracers.length > 0) {
+        sawTracer = true;
+      }
+      if (state.player.health < 100) {
+        damaged = true;
+      }
+    }
+    expect(sawTracer).toBe(true);
+    expect(damaged).toBe(true);
+    expect(state.bots[0].fireTimer ?? 0).toBeGreaterThanOrEqual(0);
+  });
+
+  it("picks up armor plates and absorbs damage before health", () => {
+    let state = withState({
+      loot: [{ x: 1, z: 0, weapon: "pistol", ammo: 5, taken: false, armor: true }],
+    });
+    state = stepMatch(state, 0.1, { forward: 0, turn: 0 });
+    expect(state.loot[0].taken).toBe(true);
+    expect(state.playerArmor).toBe(ARMOR_PICKUP_AMOUNT);
+    const hit = damagePlayer(state.player, 30);
+    expect(hit.armor).toBe(ARMOR_PICKUP_AMOUNT - 30);
+    expect(hit.health).toBe(100);
+    const drained = damagePlayer(hit, 40);
+    expect(drained.armor).toBe(0);
+    expect(drained.health).toBe(80);
+  });
+
+  it("routes bot fire through armor before health", () => {
+    let state = withState({
+      playerArmor: 100,
+      bots: [{ x: 10, z: 0, angle: 0, health: 100, alive: true }],
+    });
+    for (let i = 0; i < 200 && state.playerArmor >= 100; i += 1) {
+      state = stepMatch(state, 0.1, { forward: 0, turn: 0 });
+    }
+    expect(state.playerArmor).toBeLessThan(100);
+    expect(state.player.health).toBe(100);
+  });
+});
