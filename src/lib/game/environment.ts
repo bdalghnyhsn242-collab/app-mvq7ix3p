@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { ISLAND_RADIUS, terrainHeight } from "./battleRoyale";
+import { ISLAND_RADIUS, forestDensity, terrainHeight } from "./battleRoyale";
 
 export function createTerrain(): THREE.Mesh {
   const size = ISLAND_RADIUS * 2.6;
@@ -71,6 +71,61 @@ export function createRocks(count = 90): THREE.Group {
     group.add(rock);
   }
   return group;
+}
+
+export function createForest(): {
+  group: THREE.Group;
+  update: (time: number, camera: THREE.Camera) => void;
+} {
+  const group = new THREE.Group();
+  const random = seededRandom(9021);
+  const foliage: THREE.Mesh[] = [];
+  const trunkMat = new THREE.MeshLambertMaterial({ color: 0x5b4630 });
+  const leafMat = new THREE.MeshLambertMaterial({ color: 0x2f6b34, flatShading: true });
+  const leafMatLow = new THREE.MeshLambertMaterial({ color: 0x356e38 });
+  let placed = 0;
+  let attempts = 0;
+  while (placed < 130 && attempts < 900) {
+    attempts += 1;
+    const x = (random() * 2 - 1) * (ISLAND_RADIUS - 8);
+    const z = (random() * 2 - 1) * (ISLAND_RADIUS - 8);
+    const h = terrainHeight(x, z);
+    if (h < 0.8 || h > 20 || forestDensity(x, z) < 0.55) {
+      continue;
+    }
+    const lod = new THREE.LOD();
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.34, 3.2, 6), trunkMat);
+    trunk.position.y = 1.6;
+    const crown = new THREE.Group();
+    for (let c = 0; c < 3; c += 1) {
+      const cone = new THREE.Mesh(new THREE.ConeGeometry(1.6 - c * 0.4, 2.2, 7), leafMat);
+      cone.position.y = 3.2 + c * 1.5;
+      crown.add(cone);
+      foliage.push(cone);
+    }
+    const high = new THREE.Group();
+    high.add(trunk, crown);
+    const low = new THREE.Mesh(new THREE.ConeGeometry(1.5, 5.5, 5), leafMatLow);
+    low.position.y = 3;
+    lod.addLevel(high, 0);
+    lod.addLevel(low, 90);
+    lod.position.set(x, h, z);
+    lod.scale.setScalar(0.8 + random() * 1.6);
+    lod.rotation.y = random() * Math.PI * 2;
+    group.add(lod);
+    placed += 1;
+  }
+  return {
+    group,
+    update: (time: number, camera: THREE.Camera) => {
+      for (let i = 0; i < foliage.length; i += 1) {
+        foliage[i].rotation.z = Math.sin(time * 1.6 + i * 0.7) * 0.05;
+      }
+      group.children.forEach((child) => {
+        (child as THREE.LOD).update(camera);
+      });
+    },
+  };
 }
 
 export function createRuins(): THREE.Group {
