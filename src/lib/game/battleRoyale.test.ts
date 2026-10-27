@@ -4,9 +4,12 @@ import {
   LOOT_COUNT,
   ISLAND_RADIUS,
   ZONE_START_RADIUS,
+  BUILDING_POSITIONS,
   createMatchState,
+  landedDeployment,
   forestDensity,
   movementSpeed,
+  isSwimming,
   terrainHeight,
   shoot,
   stepMatch,
@@ -14,18 +17,32 @@ import {
 } from "./battleRoyale";
 import { blowTire, createVehicles, stepVehicle } from "./vehicles";
 import { createAirdropState, stepAirdrops } from "./airdrops";
+import { BLEED_OUT_TIME, REVIVE_TIME, createSquad, knockDown, stepSquad } from "./squad";
 
 function withState(overrides: Partial<MatchState>): MatchState {
-  return { ...createMatchState(), ...overrides };
+  return { ...createMatchState(), deployment: landedDeployment(), ...overrides };
 }
 
 describe("battle royale core logic", () => {
-  it("starts the player at the island center with bots around", () => {
+  it("starts on the deployment plane with bots around", () => {
     const state = createMatchState();
-    expect(state.player).toMatchObject({ x: 0, z: 0, health: 100 });
+    expect(state.deployment.phase).toBe("plane");
+    expect(state.squad).toHaveLength(0);
     expect(state.bots).toHaveLength(BOT_COUNT);
     expect(state.zone.radius).toBe(ZONE_START_RADIUS);
     expect(state.status).toBe("running");
+  });
+
+  it("deploys the squad from the plane and lands with a parachute", () => {
+    let state = createMatchState(5);
+    expect(state.squad).toHaveLength(4);
+    state = stepMatch(state, 1, { forward: 0, turn: 0, drop: true });
+    expect(state.deployment.phase).toBe("falling");
+    for (let i = 0; i < 40; i += 1) {
+      state = stepMatch(state, 1, { forward: 0, turn: 0 });
+    }
+    expect(state.deployment.phase).toBe("landed");
+    expect(state.deployment.chute).toBe(false);
   });
 
   it("moves the player forward along its facing direction", () => {
@@ -88,7 +105,7 @@ describe("battle royale core logic", () => {
 
   it("spawns loot crates on the island", () => {
     const state = createMatchState();
-    expect(state.loot).toHaveLength(LOOT_COUNT);
+    expect(state.loot).toHaveLength(LOOT_COUNT + BUILDING_POSITIONS.length);
     expect(state.loot.every((crate) => Math.hypot(crate.x, crate.z) < ISLAND_RADIUS)).toBe(true);
   });
 
@@ -188,5 +205,54 @@ describe("battle royale core logic", () => {
 
   it("slows movement in shallow water near the shore", () => {
     expect(movementSpeed(0, 0)).toBeGreaterThan(movementSpeed(ISLAND_RADIUS - 1, 0));
+  });
+
+  it("swims slower than walking in deep water", () => {
+    expect(isSwimming(0, 0)).toBe(false);
+    expect(movementSpeed(ISLAND_RADIUS - 1, 0)).toBeGreaterThan(0);
+  });
+
+  it("knocks down teammates instead of killing them", () => {
+    const squad = createSquad(2);
+    const downed = knockDown({ ...squad[0], health: 0 });
+    expect(downed.state).toBe("downed");
+    expect(downed.bleedTimer).toBe(BLEED_OUT_TIME);
+  });
+
+  it("revives a downed teammate after holding the revive input", () => {
+    const squad = [knockDown({ ...createSquad(2)[0], x: 1, z: 0 })];
+    let next = squad;
+    for (let i = 0; i < REVIVE_TIME * 10; i += 1) {
+      next = stepSquad(next, 0.1, { x: 0, z: 0 }, { revive: true }, { x: 0, z: 0, radius: 200 });
+    }
+    expect(next[0].state).toBe("active");
+    expect(next[0].health).toBeGreaterThan(0);
+  });
+
+  it("bleeds out downed teammates who are not revived", () => {
+    const squad = [knockDown({ ...createSquad(2)[0], x: 50, z: 0 })];
+    const next = stepSquad(
+      squad,
+      BLEED_OUT_TIME + 1,
+      { x: 0, z: 0 },
+      { revive: false },
+      { x: 0, z: 0, radius: 200 },
+    );
+    expect(next[0].state).toBe("out");
+  });
+
+  it("lets AI bots commandeer vehicles and pursue the player", () => {
+    const vehicles = createVehicles();
+    vehicles[0] = { ...vehicles[0], x: 6, z: 0 };
+    const state = withState({
+      bots: [{ x: 4, z: 0, angle: 0, health: 100, alive: true }],
+      vehicles,
+    });
+    const entered = stepMatch(state, 0.1, { forward: 0, turn: 0 });
+    expect(entered.vehicles[0].driverBot).toBe(0);
+    const before = entered.vehicles[0].x;
+    const pursuing = stepMatch(entered, 1, { forward: 0, turn: 0 });
+    expect(pursuing.vehicles[0].speed).toBeGreaterThan(0);
+    expect(pursuing.vehicles[0].x).not.toBe(before);
   });
 });
