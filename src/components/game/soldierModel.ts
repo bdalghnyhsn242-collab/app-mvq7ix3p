@@ -2,7 +2,13 @@ import * as THREE from "three";
 
 export type SoldierVariant = "woodland" | "desert" | "ghillie";
 
-export function makeSoldier(color: number, variant: SoldierVariant = "woodland"): THREE.Group {
+export type SoldierGender = "male" | "female";
+
+export function makeSoldier(
+  color: number,
+  variant: SoldierVariant = "woodland",
+  gender: SoldierGender = "male",
+): THREE.Group {
   const group = new THREE.Group();
   const clothColor = variant === "desert" ? 0xc2a36b : variant === "ghillie" ? 0x3d5a2a : color;
   const cloth = new THREE.MeshLambertMaterial({ color: clothColor });
@@ -49,6 +55,17 @@ export function makeSoldier(color: number, variant: SoldierVariant = "woodland")
     body, vest, plate, pouchA, pouchB, backpack,
     head, helmet, mount, nvg, goggles, headsetL, headsetR, gun, magazine,
   );
+  if (gender === "female") {
+    body.scale.set(0.82, 1, 0.82);
+    vest.scale.set(0.85, 1, 0.95);
+    const hairMat = new THREE.MeshLambertMaterial({ color: 0x2e2118 });
+    const bun = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 8), hairMat);
+    bun.position.set(0, 1.8, -0.28);
+    const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.05, 0.55, 6), hairMat);
+    tail.position.set(0, 1.52, -0.36);
+    tail.rotation.x = 0.3;
+    group.add(bun, tail);
+  }
   if (variant === "ghillie") {
     const stripMat = new THREE.MeshLambertMaterial({ color: 0x2f4a1f, flatShading: true });
     for (let s = 0; s < 7; s += 1) {
