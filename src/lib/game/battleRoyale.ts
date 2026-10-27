@@ -325,6 +325,9 @@ export type Loot = {
   taken: boolean;
   attachment?: AttachmentId;
   beacon?: boolean;
+  shield?: boolean;
+  sentry?: boolean;
+  medevac?: boolean;
 };
 
 export function lootWeaponForIndex(index: number): WeaponId {
@@ -414,6 +417,8 @@ export function createMatchState(squadSize: SquadSize = 1): MatchState {
       taken: false,
       attachment: i % 3 === 0 ? attachmentForIndex(i) : undefined,
       beacon: i === 2,
+      shield: i === 3,
+      sentry: i === 5,
     });
   }
   BUILDING_POSITIONS.forEach((position, i) => {
@@ -455,6 +460,11 @@ export function createMatchState(squadSize: SquadSize = 1): MatchState {
     beacon: createBeaconState(),
     dust: createDustStormState(),
     revival: createRevivalState(),
+    shield: createShieldDomeState(),
+    sentry: createSentryState(),
+    medevac: createMedEvacState(),
+    fortress: createFortressState(),
+    gadgets: { shield: 0, sentry: 0, medevac: 0 },
     attachments: {},
     squadSize,
     squad: createSquad(squadSize),
