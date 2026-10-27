@@ -7,6 +7,7 @@ export const FADE_DURATION = 0.25;
 
 export type OperatorMotionInput = {
   speed01: number;
+  sprinting?: boolean;
   swimming?: boolean;
   driving?: boolean;
   downed?: boolean;
@@ -28,7 +29,16 @@ export function selectOperatorState(input: OperatorMotionInput): OperatorState {
   if (input.aiming && input.speed01 < 0.3) {
     return "aim";
   }
-  return input.speed01 > 0.25 ? "sprint" : "idle";
+  // Three locomotion tiers: idle below a slow shuffle, sprint only when
+  // Shift is actually held (or the speed is unmistakably a run), and walk
+  // for everything in between — so the soldier never runs in place.
+  if (input.speed01 < 0.12) {
+    return "idle";
+  }
+  if (input.sprinting || input.speed01 > 0.85) {
+    return "sprint";
+  }
+  return "walk";
 }
 
 export function mixerUpdateInterval(tier: 0 | 1 | 2): number {
@@ -43,6 +53,8 @@ export class OperatorAnimator {
   private mixer: THREE.AnimationMixer;
   private actions = new Map<OperatorState, THREE.AnimationAction>();
   private current: OperatorState | null = null;
+  private updateCount = 0;
+  private lastUpdateAt = 0;
 
   constructor(
     root: THREE.Object3D,
@@ -63,6 +75,16 @@ export class OperatorAnimator {
 
   get hasActions(): boolean {
     return this.actions.size > 0;
+  }
+
+  /** Name of the clip currently playing, for the HUD diagnostics line. */
+  get currentClipName(): string | null {
+    return this.current ? this.actions.get(this.current)?.getClip().name ?? null : null;
+  }
+
+  /** Mixer heartbeat: total updates and the timestamp of the last one. */
+  get stats(): { updates: number; lastUpdateAt: number } {
+    return { updates: this.updateCount, lastUpdateAt: this.lastUpdateAt };
   }
 
   /** True when a clip exists for this state (mixer can play it). */
@@ -99,6 +121,8 @@ export class OperatorAnimator {
 
   update(dt: number): void {
     this.mixer.update(dt);
+    this.updateCount += 1;
+    this.lastUpdateAt = performance.now();
   }
 
   stopAll(): void {
