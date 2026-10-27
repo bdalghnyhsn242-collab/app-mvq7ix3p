@@ -771,6 +771,12 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
 
   if (playerVehicle >= 0) {
     const driven = coolTurret(stepVehicle(vehicles[playerVehicle], dt, input), dt);
+    // Vehicles collide with obstacles too; resolve before committing the
+    // driven state so the player and the vehicle stay in sync.
+    const drivenPos = { x: driven.x, z: driven.z };
+    resolveCircleCollisions(drivenPos, OBSTACLES, VEHICLE_COLLISION_RADIUS);
+    driven.x = drivenPos.x;
+    driven.z = drivenPos.z;
     vehicles = vehicles.map((v, i) => (i === playerVehicle ? driven : v));
     player.x = driven.x;
     player.z = driven.z;
@@ -800,6 +806,7 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
       player.z += Math.sin(player.angle) * strafe * speed * dt;
       clampToIsland(player);
     }
+    resolveCircleCollisions(player, OBSTACLES, PLAYER_COLLISION_RADIUS);
     if (jumpAir > 0 || jumpVy > 0) {
       jumpVy -= GRAVITY * dt;
       jumpAir += jumpVy * dt;
