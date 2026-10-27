@@ -93,6 +93,12 @@ describe("CC0 asset pipeline guards", () => {
     const adventurerIndex = sources.findIndex((url) => url.includes("Adventurer.glb"));
     expect(soldierIndex).toBeGreaterThan(-1);
     expect(adventurerIndex).toBeGreaterThan(soldierIndex);
+    // The raw mirror must be a valid URL for the r169 tag (regression:
+    // the old "@main/"-only replacement left "@r169" inside the path).
+    expect(sources).toContain(
+      "https://raw.githubusercontent.com/mrdoob/three.js/r169/examples/models/gltf/Soldier.glb",
+    );
+    expect(sources).toContain("https://threejs.org/examples/models/gltf/Soldier.glb");
   });
 
   it("keeps the stylized character first for the female body", () => {
