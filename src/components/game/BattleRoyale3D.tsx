@@ -23,6 +23,16 @@ import { ATTACHMENTS } from "@/lib/game/arsenal";
 import { dayPhase } from "@/lib/game/weather";
 import { EXPANSION_LOOT_COUNT } from "@/lib/game/worldExpansion";
 import {
+  TOWER_TERMINAL,
+  TOWER_CAPTURE_TIME,
+  radarRevealActive,
+} from "@/lib/game/radioTowerSystem";
+import { BEACON_COUNTDOWN } from "@/lib/game/beaconDropSystem";
+import {
+  CHALLENGE_ZONE_CAPTURE_TIME,
+  CHALLENGE_WINDOW,
+} from "@/lib/game/squadRevivalSystem";
+import {
   BOT_COUNT,
   LOOT_COUNT,
   BUILDING_POSITIONS,
@@ -77,6 +87,14 @@ type Hud = {
   phase: string;
   droneAlert: boolean;
   attachment: string | null;
+  radioCapture: number;
+  radioJam: boolean;
+  beaconHeld: number;
+  beaconActive: boolean;
+  dustStorm: boolean;
+  revivalActive: boolean;
+  revivalProgress: number;
+  revivalTimer: number;
 };
 
 const LOOT_COLORS: Record<WeaponId, number> = {
@@ -203,6 +221,14 @@ export default function BattleRoyale3D() {
     phase: "day",
     droneAlert: false,
     attachment: null,
+    radioCapture: 0,
+    radioJam: false,
+    beaconHeld: 0,
+    beaconActive: false,
+    dustStorm: false,
+    revivalActive: false,
+    revivalProgress: 0,
+    revivalTimer: 0,
   });
 
   const start = useCallback((size: SquadSize, operatorGender: OperatorGender) => {
