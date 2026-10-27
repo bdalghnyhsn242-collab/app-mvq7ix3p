@@ -24,6 +24,8 @@ import {
   damagePlayer,
   fullMagazine,
   ARMOR_PICKUP_AMOUNT,
+  PLAYER_COLLISION_RADIUS,
+  resolveCircleCollisions,
   type MatchState,
 } from "./battleRoyale";
 import { TOWER_TERMINAL, TOWER_CAPTURE_TIME } from "./radioTowerSystem";
@@ -669,5 +671,31 @@ describe("first-person-feel combat systems", () => {
     }
     expect(state.playerArmor).toBeLessThan(100);
     expect(state.player.health).toBeGreaterThan(70);
+  });
+
+  it("pushes the player out of overlapping obstacles", () => {
+    const point = { x: 0, z: 0 };
+    expect(
+      resolveCircleCollisions(point, [{ x: 0.5, z: 0, r: 1.5 }], PLAYER_COLLISION_RADIUS),
+    ).toBe(true);
+    expect(Math.hypot(point.x - 0.5, point.z)).toBeGreaterThanOrEqual(
+      1.5 + PLAYER_COLLISION_RADIUS - 1e-6,
+    );
+    const clear = { x: 0, z: 0 };
+    expect(
+      resolveCircleCollisions(clear, [{ x: 30, z: 0, r: 2 }], PLAYER_COLLISION_RADIUS),
+    ).toBe(false);
+    expect(clear.x).toBe(0);
+    expect(clear.z).toBe(0);
+  });
+
+  it("collides the walking player with buildings", () => {
+    const building = BUILDING_POSITIONS[0];
+    const state = withState({
+      player: { x: building.x, z: building.z, angle: 0, health: 100, alive: true },
+    });
+    const next = stepMatch(state, 0.1, { forward: 1, turn: 0 });
+    const dist = Math.hypot(next.player.x - building.x, next.player.z - building.z);
+    expect(dist).toBeGreaterThanOrEqual(7);
   });
 });
