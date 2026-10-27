@@ -68,10 +68,27 @@ export function createMatchState(): MatchState {
       alive: true,
     });
   }
+  const loot: Loot[] = [];
+  for (let i = 0; i < LOOT_COUNT; i += 1) {
+    const angle = (i / LOOT_COUNT) * Math.PI * 2 + 0.4;
+    const radius = 8 + (i % 4) * 7;
+    const weapon = lootWeaponForIndex(i);
+    loot.push({
+      x: Math.cos(angle) * radius,
+      z: Math.sin(angle) * radius,
+      weapon,
+      ammo: weapon === "rifle" ? 30 : weapon === "shotgun" ? 8 : 24,
+      taken: false,
+    });
+  }
   return {
     player: { x: 0, z: 0, angle: 0, health: 100, alive: true },
     bots,
     zone: { x: 0, z: 0, radius: ZONE_START_RADIUS },
+    weapon: "pistol",
+    ammo: { pistol: 24, rifle: 0, shotgun: 0 },
+    cooldown: 0,
+    loot,
     time: 0,
     status: "running",
   };
@@ -93,6 +110,18 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
     ...state.zone,
     radius: Math.max(ZONE_MIN_RADIUS, state.zone.radius - ZONE_SHRINK_RATE * dt),
   };
+
+  const cooldown = Math.max(0, state.cooldown - dt);
+  let weapon = state.weapon;
+  const ammo = { ...state.ammo };
+  const loot = state.loot.map((crate) => {
+    if (crate.taken || Math.hypot(crate.x - player.x, crate.z - player.z) > PICKUP_RADIUS) {
+      return crate;
+    }
+    weapon = crate.weapon;
+    ammo[crate.weapon] += crate.ammo;
+    return { ...crate, taken: true };
+  });
 
   const bots = state.bots.map((bot) => {
     if (!bot.alive) {
@@ -123,6 +152,10 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
     player: { ...player, health },
     bots,
     zone,
+    weapon,
+    ammo,
+    cooldown,
+    loot,
     time: state.time + dt,
     status: "running",
   };
