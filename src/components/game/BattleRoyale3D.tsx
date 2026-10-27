@@ -1773,9 +1773,10 @@ export default function BattleRoyale3D() {
             </span>
             {modelStatus === "fallback" && modelStatusReason ? (
               <span className="w-fit max-w-72 rounded bg-amber-950/90 px-1.5 py-0.5 text-[10px] leading-snug text-amber-100">
-            {(["pistol", "smg", "ar", "dmr", "lmg", "shotgun"] as WeaponId[]).map((id, index) => (
+                {modelStatusReason}
               </span>
             ) : null}
+            {(["pistol", "smg", "ar", "dmr", "lmg", "shotgun"] as WeaponId[]).map((id, index) => (
               <span
                 key={id}
                 className={cn(
