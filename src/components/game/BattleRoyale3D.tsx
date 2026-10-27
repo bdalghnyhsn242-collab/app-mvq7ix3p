@@ -586,9 +586,9 @@ export default function BattleRoyale3D() {
       const current = state;
       if (current) {
         const deployment = current.deployment;
-        const playerMesh = genderRef.current === "female" ? playerMeshFemale : playerMeshMale;
-        playerMeshMale.visible = false;
-        playerMeshFemale.visible = false;
+        const playerRig = genderRef.current === "female" ? playerRigFemale : playerRigMale;
+        playerRigMale.group.visible = false;
+        playerRigFemale.group.visible = false;
         let playerY = terrainHeight(current.player.x, current.player.z);
         if (deployment.phase === "plane") {
           playerY = DEPLOY_PLANE_ALTITUDE;
@@ -597,23 +597,26 @@ export default function BattleRoyale3D() {
         } else if (isSwimming(current.player.x, current.player.z)) {
           playerY = -0.5;
         }
-        playerMesh.position.set(
+        playerRig.group.position.set(
           current.player.x,
           playerY,
           current.player.z,
         );
-        playerMesh.rotation.y = current.player.angle;
-        const pdx = current.player.x - Number(playerMesh.userData.px ?? current.player.x);
-        const pdz = current.player.z - Number(playerMesh.userData.pz ?? current.player.z);
-        animateSoldier(playerMesh, {
+        playerRig.group.rotation.y = current.player.angle;
+        const pdx = current.player.x - Number(playerRig.group.userData.px ?? current.player.x);
+        const pdz = current.player.z - Number(playerRig.group.userData.pz ?? current.player.z);
+        playerRig.update(
+          {
           time: now / 1000,
           speed01: Math.min(1, Math.hypot(pdx, pdz) / Math.max(dt, 0.001) / 18),
           swimming: isSwimming(current.player.x, current.player.z),
           driving: current.playerVehicle >= 0,
-        });
-        playerMesh.userData.px = current.player.x;
-        playerMesh.userData.pz = current.player.z;
-        playerMesh.visible = current.status !== "lost" && deployment.phase !== "plane";
+          },
+          dt,
+        );
+        playerRig.group.userData.px = current.player.x;
+        playerRig.group.userData.pz = current.player.z;
+        playerRig.group.visible = current.status !== "lost" && deployment.phase !== "plane";
         playerChute.visible = deployment.phase === "falling" && deployment.chute;
         playerChute.position.set(current.player.x, playerY + 2.6, current.player.z);
         squadMeshes.forEach((mesh, index) => {
@@ -621,21 +624,26 @@ export default function BattleRoyale3D() {
           const showMate = Boolean(
             mate && mate.state !== "out" && current.deployment.phase === "landed",
           );
-          mesh.visible = showMate;
+          rig... 
           if (showMate && mate) {
             const mateY = isSwimming(mate.x, mate.z) ? -0.5 : terrainHeight(mate.x, mate.z);
-            mesh.position.set(mate.x, mateY, mate.z);
-            mesh.rotation.y = mate.angle;
-            mesh.rotation.z = mate.state === "downed" ? Math.PI / 2.2 : 0;
-            const sdx = mate.x - Number(mesh.userData.px ?? mate.x);
-            const sdz = mate.z - Number(mesh.userData.pz ?? mate.z);
-            animateSoldier(mesh, {
-              time: now / 1000,
-              speed01: Math.min(1, Math.hypot(sdx, sdz) / Math.max(dt, 0.001) / 16),
-              swimming: isSwimming(mate.x, mate.z),
-            });
-            mesh.userData.px = mate.x;
-            mesh.userData.pz = mate.z;
+            const rig = squadMeshes[index];
+            rig.group.position.set(mate.x, mateY, mate.z);
+            rig.group.rotation.y = mate.angle;
+            rig.group.rotation.z = mate.state === "downed" ? Math.PI / 2.2 : 0;
+            const sdx = mate.x - Number(rig.group.userData.px ?? mate.x);
+            const sdz = mate.z - Number(rig.group.userData.pz ?? mate.z);
+            rig.update(
+              {
+                time: now / 1000,
+                speed01: Math.min(1, Math.hypot(sdx, sdz) / Math.max(dt, 0.001) / 16),
+                swimming: isSwimming(mate.x, mate.z),
+                downed: mate.state === "downed",
+              },
+              dt,
+            );
+            rig.group.userData.px = mate.x;
+            rig.group.userData.pz = mate.z;
           }
         });
         deployPlane.visible = deployment.phase === "plane";
