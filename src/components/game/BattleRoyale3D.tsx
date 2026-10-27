@@ -511,6 +511,7 @@ export default function BattleRoyale3D() {
     let last = performance.now();
     let hudTimer = 0;
     let lobbyHudTimer = 0;
+    let aimTimer = 0;
     const loop = (now: number) => {
       frame = window.requestAnimationFrame(loop);
       const dt = Math.min((now - last) / 1000, 0.05);
@@ -520,6 +521,7 @@ export default function BattleRoyale3D() {
         if (shootRef.current) {
           shootRef.current = false;
           lobby = lobbyShoot(lobby).state;
+          aimTimer = 0.6;
         }
         lobbyRef.current = lobby;
         const showFemale = lobby.gender === "female";
@@ -528,8 +530,15 @@ export default function BattleRoyale3D() {
         const inspect = Math.sin(now / 2400) * 0.5;
         lobbyMaleRig.group.rotation.y = inspect;
         lobbyFemaleRig.group.rotation.y = inspect;
-        lobbyMaleRig.update({ time: now / 1000, speed01: 0.12 }, dt);
-        lobbyFemaleRig.update({ time: now / 1000, speed01: 0.12 }, dt);
+        aimTimer = Math.max(0, aimTimer - dt);
+        lobbyMaleRig.update(
+          { time: now / 1000, speed01: 0.12, aiming: aimTimer > 0 },
+          dt,
+        );
+        lobbyFemaleRig.update(
+          { time: now / 1000, speed01: 0.12, aiming: aimTimer > 0 },
+          dt,
+        );
         lobbyTargets.forEach((mesh, index) => {
           const target = lobby.targets[index];
           if (!target) {
