@@ -136,7 +136,10 @@ export function createForest(): {
     treeLods,
     update: (time: number, camera: THREE.Camera) => {
       for (let i = 0; i < foliage.length; i += 1) {
-        foliage[i].rotation.z = Math.sin(time * 1.6 + i * 0.7) * 0.05;
+        // Upgraded trees detach the procedural crowns; skip dead references.
+        if (foliage[i].parent) {
+          foliage[i].rotation.z = Math.sin(time * 1.6 + i * 0.7) * 0.05;
+        }
       }
       group.children.forEach((child) => {
         (child as THREE.LOD).update(camera);
@@ -387,9 +390,15 @@ export async function upgradeRocksWithRealRocks(rocks: THREE.Group): Promise<boo
   const previous = [...rocks.children] as THREE.Mesh[];
   previous.forEach((rock, index) => {
     const clone = instantiateEnvironmentModel(templates[index % templates.length]);
+    // Match the procedural rock's footprint: the raw upstream scale does
+    // not match the dodecahedron sizes used procedurally.
+    const originalBox = new THREE.Box3().setFromObject(rock);
+    const originalSize = new THREE.Vector3();
+    originalBox.getSize(originalSize);
+    const target = Math.max(originalSize.x, originalSize.y, originalSize.z);
+    fitModelToSize(clone, Math.max(0.8, target));
     clone.position.copy(rock.position);
     clone.rotation.copy(rock.rotation);
-    clone.scale.copy(rock.scale);
     rocks.remove(rock);
     rocks.add(clone);
   });
