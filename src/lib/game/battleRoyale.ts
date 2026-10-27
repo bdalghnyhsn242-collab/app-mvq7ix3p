@@ -233,6 +233,44 @@ import {
   type RevivalState,
 } from "./squadRevivalSystem";
 import {
+  DOME_MAX_INTEGRITY,
+  domeAbsorb,
+  drainDome,
+  createShieldDomeState,
+  deployShieldDome,
+  stepShieldDome,
+  type ShieldDomeState,
+} from "./shieldDomeSystem";
+import {
+  SENTRY_MELEE_DPS,
+  SENTRY_STUN_SLOW,
+  SENTRY_STUN_TIME,
+  canRetrieveSentry,
+  createSentryState,
+  damageSentry,
+  deploySentry,
+  stepSentry,
+  type SentryTurretState,
+} from "./sentryTurretSystem";
+import {
+  MEDEVAC_REVIVE_HEALTH,
+  createMedEvacState,
+  deployMedEvac,
+  medEvacHealPerSecond,
+  stepMedEvac,
+  type MedEvacState,
+} from "./medEvacDroneSystem";
+import {
+  FORTRESS_CHOPPER_TIME,
+  activateFortress,
+  createFortressState,
+  fortressCooldownFactor,
+  fortressDamageFactor,
+  fortressRespawnSquad,
+  stepFortress,
+  type FortressState,
+} from "./squadFortressSystem";
+import {
   expansionLootSpots,
   expansionObstacles,
 } from "./worldExpansion";
@@ -303,6 +341,9 @@ export type MatchInput = {
   drop?: boolean;
   revive?: boolean;
   beacon?: boolean;
+  shield?: boolean;
+  sentry?: boolean;
+  medevac?: boolean;
 };
 export type Tracer = { x1: number; z1: number; x2: number; z2: number; life: number };
 export type Explosion = { x: number; z: number; timer: number };
@@ -323,6 +364,11 @@ export type MatchState = {
   beacon: BeaconState;
   dust: DustStormState;
   revival: RevivalState;
+  shield: ShieldDomeState;
+  sentry: SentryTurretState;
+  medevac: MedEvacState;
+  fortress: FortressState;
+  gadgets: { shield: number; sentry: number; medevac: number };
   attachments: Partial<Record<WeaponId, AttachmentId>>;
   squadSize: SquadSize;
   squad: Teammate[];
