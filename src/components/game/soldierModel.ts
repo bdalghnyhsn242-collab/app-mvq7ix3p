@@ -245,6 +245,10 @@ export type SoldierMotion = {
   speed01: number;
   swimming?: boolean;
   driving?: boolean;
+  downed?: boolean;
+  aiming?: boolean;
+  reloading?: boolean;
+  jumping?: boolean;
 };
 
 export function animateSoldier(group: THREE.Group, motion: SoldierMotion): void {
