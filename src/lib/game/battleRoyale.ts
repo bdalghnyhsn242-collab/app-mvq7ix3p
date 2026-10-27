@@ -11,6 +11,22 @@ export const CONTACT_DAMAGE_PER_SECOND = 25;
 export const WATER_LEVEL = 0;
 export const WATER_SPEED_FACTOR = 0.55;
 export const SHALLOW_DEPTH = 0.35;
+export const SWIM_DEPTH = 1.1;
+export const SWIM_SPEED_FACTOR = 0.45;
+export const DEPLOY_PLANE_ALTITUDE = 55;
+export const DEPLOY_PLANE_SPEED = 46;
+export const FALL_SPEED_FAST = 24;
+export const FALL_SPEED_CHUTE = 6;
+export const CHUTE_ALTITUDE = 40;
+export const AI_VEHICLE_SEEK_RADIUS = 14;
+export const RUNOVER_DAMAGE_PER_SECOND = 45;
+
+export const BUILDING_POSITIONS = [
+  { x: 42, z: -34 },
+  { x: -58, z: 26 },
+  { x: 24, z: 64 },
+  { x: -34, z: -62 },
+] as const;
 
 function hash2(x: number, z: number): number {
   const s = Math.sin(x * 127.1 + z * 311.7) * 43758.5453;
@@ -52,14 +68,62 @@ export function forestDensity(x: number, z: number): number {
 
 export function movementSpeed(x: number, z: number): number {
   const height = terrainHeight(x, z);
+  if (height < WATER_LEVEL - SWIM_DEPTH) {
+    return PLAYER_SPEED * SWIM_SPEED_FACTOR;
+  }
   if (height < WATER_LEVEL + SHALLOW_DEPTH) {
     return PLAYER_SPEED * WATER_SPEED_FACTOR;
   }
   return PLAYER_SPEED;
 }
 
+export function isSwimming(x: number, z: number): boolean {
+  return terrainHeight(x, z) < WATER_LEVEL - SWIM_DEPTH;
+}
+
+export type DeployPhase = "plane" | "falling" | "landed";
+export type Deployment = {
+  phase: DeployPhase;
+  altitude: number;
+  chute: boolean;
+  plane: { x: number; z: number; angle: number };
+};
+
+export function createDeployment(): Deployment {
+  return {
+    phase: "plane",
+    altitude: DEPLOY_PLANE_ALTITUDE,
+    chute: false,
+    plane: { x: -240, z: -170, angle: 0.62 },
+  };
+}
+
+export function landedDeployment(): Deployment {
+  return { phase: "landed", altitude: 0, chute: false, plane: { x: 0, z: 0, angle: 0 } };
+}
+
+export function stepDeployment(deployment: Deployment, dt: number): Deployment {
+  const next = { ...deployment, plane: { ...deployment.plane } };
+  if (next.phase === "plane") {
+    next.plane.x += Math.sin(next.plane.angle) * DEPLOY_PLANE_SPEED * dt;
+    next.plane.z += Math.cos(next.plane.angle) * DEPLOY_PLANE_SPEED * dt;
+    return next;
+  }
+  if (next.phase === "falling") {
+    next.chute = next.altitude < CHUTE_ALTITUDE;
+    next.altitude -= (next.chute ? FALL_SPEED_CHUTE : FALL_SPEED_FAST) * dt;
+    if (next.altitude <= 0) {
+      next.altitude = 0;
+      next.phase = "landed";
+      next.chute = false;
+    }
+  }
+  return next;
+}
+
 import { createVehicles, damageVehicle, stepVehicle, type Vehicle } from "./vehicles";
 import { createAirdropState, stepAirdrops, type AirdropState } from "./airdrops";
+import { createSquad, knockDown, stepSquad, type SquadSize, type Teammate } from "./squad";
 
 export type WeaponId = "pistol" | "smg" | "ar" | "dmr" | "lmg" | "shotgun";
 export type Weapon = {
