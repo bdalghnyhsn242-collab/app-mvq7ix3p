@@ -677,6 +677,12 @@ export default function BattleRoyale3D() {
         airdropGroup.visible = false;
         deployPlane.visible = false;
         playerChute.visible = false;
+        tracerPool.forEach((line) => {
+          line.visible = false;
+        });
+        blastPool.forEach((mesh) => {
+          mesh.visible = false;
+        });
         squadMeshes.forEach((mesh) => {
           mesh.visible = false;
         });
