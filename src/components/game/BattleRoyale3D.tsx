@@ -1092,6 +1092,42 @@ export default function BattleRoyale3D() {
           );
           revivalRing.scale.setScalar(CHALLENGE_ZONE_RADIUS);
         }
+        domeGroup.visible = current.shield.active;
+        if (current.shield.active) {
+          domeGroup.position.set(
+            current.shield.x,
+            terrainHeight(current.shield.x, current.shield.z),
+            current.shield.z,
+          );
+          domeGroup.scale.setScalar(DOME_RADIUS);
+          (domeMesh.material as THREE.MeshBasicMaterial).opacity =
+            0.1 + (current.shield.integrity / 120) * 0.12 + Math.sin(now / 260) * 0.03;
+        }
+        sentryMesh.visible = current.sentry.deployed;
+        if (current.sentry.deployed) {
+          sentryMesh.position.set(
+            current.sentry.x,
+            terrainHeight(current.sentry.x, current.sentry.z),
+            current.sentry.z,
+          );
+          sentryMesh.rotation.y = now / 900;
+          const flash = sentryMesh.getObjectByName("sentryFlash");
+          if (flash) {
+            flash.visible = current.sentry.flash > 0;
+          }
+        }
+        medevacMesh.visible = Boolean(current.medevac.active && current.medevac.drone);
+        if (current.medevac.active && current.medevac.drone) {
+          medevacMesh.position.set(
+            current.medevac.drone.x,
+            terrainHeight(current.medevac.drone.x, current.medevac.drone.z) +
+              current.medevac.drone.altitude,
+            current.medevac.drone.z,
+          );
+          medRotors.forEach((rotor, i) => {
+            rotor.rotation.y = now / (40 + i * 4);
+          });
+        }
         sun.position.set(current.player.x + 45, 70, current.player.z + 28);
         sun.target.position.set(current.player.x, 0, current.player.z);
         sun.target.updateMatrixWorld();
@@ -1132,6 +1168,9 @@ export default function BattleRoyale3D() {
         beaconSmoke.visible = false;
         beaconCrateGroup.visible = false;
         revivalRing.visible = false;
+        domeGroup.visible = false;
+        sentryMesh.visible = false;
+        medevacMesh.visible = false;
       }
       forest.update(now / 1000, camera);
       dust.rotation.y = now * 0.004;
