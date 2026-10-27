@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { makeSoldier } from "@/components/game/soldierModel";
 import {
   createCheckpoints,
+  createBuildings,
   createForest,
   createRocks,
   createRuins,
@@ -17,17 +18,22 @@ import {
   BOT_COUNT,
   LOOT_COUNT,
   ZONE_START_RADIUS,
+  DEPLOY_PLANE_ALTITUDE,
+  isSwimming,
   createMatchState,
+  landedDeployment,
   lootWeaponForIndex,
   terrainHeight,
   WEAPONS,
   shoot,
   stepMatch,
+  type DeployPhase,
   type MatchState,
   type MatchStatus,
   type WeaponId,
 } from "@/lib/game/battleRoyale";
 import { VEHICLE_SPECS, type VehicleKind } from "@/lib/game/vehicles";
+import { SQUAD_SIZES, type SquadSize, type Teammate } from "@/lib/game/squad";
 
 type Hud = {
   health: number;
@@ -39,6 +45,10 @@ type Hud = {
   vehicle: string | null;
   speed: number;
   airdrop: boolean;
+  swimming: boolean;
+  deployPhase: DeployPhase;
+  altitude: number;
+  squad: Teammate[];
   status: MatchStatus;
 };
 
@@ -103,12 +113,29 @@ function HoldButton({ label, onHold }: { label: string; onHold: (active: boolean
   );
 }
 
+function makePlaneMesh(): THREE.Group {
+  const material = new THREE.MeshLambertMaterial({ color: 0x5b6b78 });
+  const group = new THREE.Group();
+  const fuselage = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 12, 10), material);
+  fuselage.rotation.x = Math.PI / 2;
+  const wing = new THREE.Mesh(new THREE.BoxGeometry(16, 0.25, 2.4), material);
+  const tail = new THREE.Mesh(new THREE.BoxGeometry(5, 0.2, 1.2), material);
+  tail.position.set(0, 1.2, 5.4);
+  const fin = new THREE.Mesh(new THREE.BoxGeometry(0.2, 2, 1.4), material);
+  fin.position.set(0, 1.4, 5.4);
+  group.add(fuselage, wing, tail, fin);
+  return group;
+}
+
 export default function BattleRoyale3D() {
   const mountRef = useRef<HTMLDivElement | null>(null);
   const stateRef = useRef<MatchState | null>(null);
   const keysRef = useRef<Set<string>>(new Set());
   const shootRef = useRef(false);
   const enterRef = useRef(false);
+  const dropRef = useRef(false);
+  const reviveRef = useRef(false);
+  const [squadSize, setSquadSize] = useState<SquadSize>(1);
   const [hud, setHud] = useState<Hud>({
     health: 100,
     alive: BOT_COUNT,
@@ -119,11 +146,15 @@ export default function BattleRoyale3D() {
     vehicle: null,
     speed: 0,
     airdrop: false,
+    swimming: false,
+    deployPhase: "plane",
+    altitude: DEPLOY_PLANE_ALTITUDE,
+    squad: [],
     status: "idle",
   });
 
-  const start = useCallback(() => {
-    stateRef.current = createMatchState();
+  const start = useCallback((size: SquadSize) => {
+    stateRef.current = createMatchState(size);
     setHud({
       health: 100,
       alive: BOT_COUNT,
@@ -134,8 +165,12 @@ export default function BattleRoyale3D() {
       vehicle: null,
       speed: 0,
       airdrop: false,
+    swimming: false,
+    deployPhase: "plane",
+    altitude: DEPLOY_PLANE_ALTITUDE,
+    squad: [],
       status: "running",
-    });
+  }, []);
   }, []);
 
   useEffect(() => {
