@@ -629,6 +629,11 @@ export default function BattleRoyale3D() {
       </div>
 
       <div className="flex flex-wrap items-center justify-center gap-4">
+        {hud.deployPhase !== "landed" ? (
+          <Button onClick={() => (dropRef.current = true)}>
+            🪂 القفز (F) — {hud.altitude}م
+          </Button>
+        ) : null}
         <Button onClick={() => (shootRef.current = true)}>
           <Crosshair />
           إطلاق النار (مسافة)
@@ -636,6 +641,9 @@ export default function BattleRoyale3D() {
         <Button variant="outline" onClick={() => (enterRef.current = true)}>
           🚙 ركوب/نزول (E)
         </Button>
+        {hud.squad.some((mate) => mate.state === "downed") ? (
+          <HoldButton label="إسعاف (R)" onHold={(active) => (reviveRef.current = active)} />
+        ) : null}
         <div dir="ltr" className="flex items-center gap-1.5">
           <HoldButton label="◀" onHold={holdKey("a")} />
           <div className="flex flex-col gap-1.5">
