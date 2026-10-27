@@ -506,7 +506,7 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
     blasts.push({ x: vehicle.x, z: vehicle.z });
     health -= blastDamage(vehicle.x, vehicle.z, player.x, player.z);
   };
-  const bots = state.bots.map((bot, botIndex) => {
+  let bots = state.bots.map((bot, botIndex) => {
     if (!bot.alive) {
       return bot;
     }
@@ -604,6 +604,20 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
     clampToIsland(next);
     return next;
   });
+  bots = bots.map((bot) => {
+    if (!bot.alive) {
+      return bot;
+    }
+    let damage = 0;
+    for (const blast of blasts) {
+      damage += blastDamage(blast.x, blast.z, bot.x, bot.z);
+    }
+    if (damage <= 0) {
+      return bot;
+    }
+    const nextHealth = bot.health - damage;
+    return { ...bot, health: nextHealth, alive: nextHealth > 0 };
+  });
 
   if (Math.hypot(player.x - zone.x, player.z - zone.z) > zone.radius) {
     health -= ZONE_DAMAGE_PER_SECOND * dt;
@@ -636,11 +650,23 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
   }
 
   const squad = stepSquad(state.squad, dt, player, { revive: Boolean(input.revive) }, zone).map(
-    (mate) => {
+    (mate, mateIndex) => {
       if (mate.state !== "active") {
         return mate;
       }
       const next = { ...mate };
+      let extra = squadHits[mateIndex] ?? 0;
+      for (const blast of blasts) {
+        extra += blastDamage(blast.x, blast.z, next.x, next.z);
+      }
+      if (extra > 0) {
+        const armorBefore = next.armor;
+        next.armor = Math.max(0, armorBefore - extra);
+        next.health -= Math.max(0, extra - armorBefore);
+        if (next.health <= 0) {
+          return knockDown(next);
+        }
+      }
       for (const bot of bots) {
         if (!bot.alive || Math.hypot(bot.x - next.x, bot.z - next.z) >= 1.6) {
           continue;
@@ -672,6 +698,8 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
     squadSize: state.squadSize,
     squad,
     deployment: state.deployment,
+    tracers,
+    explosions,
     time: state.time + dt,
     status: "running",
   };
