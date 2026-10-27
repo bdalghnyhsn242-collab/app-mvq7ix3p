@@ -77,7 +77,64 @@ export type CloudSaveResult = {
   saved: boolean;
   matchId?: string;
   reason?: string;
+  /** True when the result was persisted to this device after a cloud failure. */
+  savedLocally?: boolean;
 };
+
+export type LocalMatchRecord = {
+  savedAt: string;
+  playerName: string;
+  status: MatchEndStatus;
+  score: number;
+  kills: number;
+  durationSeconds: number;
+  squadSize: number;
+  squadSurvivors: number;
+};
+
+const LOCAL_MATCHES_KEY = "last-stand:match-history";
+const LOCAL_MATCHES_LIMIT = 50;
+
+/** Reads the on-device match history (oldest last, newest first). */
+export function loadLocalMatches(): LocalMatchRecord[] {
+  try {
+    const raw = window.localStorage.getItem(LOCAL_MATCHES_KEY);
+    if (!raw) {
+      return [];
+    }
+    const parsed = JSON.parse(raw) as LocalMatchRecord[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Persists a finished match on this device. Works without any account or
+ * network; returns null when storage is unavailable (private mode).
+ */
+export function saveMatchLocally(
+  summary: MatchSummary,
+  playerName: string = "مقاتل مجهول",
+): LocalMatchRecord | null {
+  try {
+    const record: LocalMatchRecord = {
+      savedAt: new Date().toISOString(),
+      playerName,
+      status: summary.status,
+      score: computeLeaderboardScore(summary),
+      kills: Math.max(0, Math.round(summary.kills)),
+      durationSeconds: Math.max(0, Math.round(summary.durationSeconds)),
+      squadSize: Math.max(1, Math.round(summary.squadSize)),
+      squadSurvivors: Math.max(0, Math.round(summary.squadSurvivors)),
+    };
+    const next = [record, ...loadLocalMatches()].slice(0, LOCAL_MATCHES_LIMIT);
+    window.localStorage.setItem(LOCAL_MATCHES_KEY, JSON.stringify(next));
+    return record;
+  } catch {
+    return null;
+  }
+}
 
 export type LeaderboardEntry = {
   player_name: string;
@@ -129,8 +186,12 @@ export async function saveMatchResult(
   squad: SquadMateStat[],
   playerName: string = "مقاتل مجهول",
 ): Promise<CloudSaveResult> {
+  const localFallback = (reason: string): CloudSaveResult => {
+    const record = saveMatchLocally(summary, playerName);
+    return { saved: false, reason, savedLocally: record !== null };
+  };
   if (!isCloudConfigured || !cloudClient) {
-    return { saved: false, reason: "not-configured" };
+    return localFallback("not-configured");
   }
   try {
     const row = buildMatchStatsRow(summary, playerName);
@@ -140,7 +201,7 @@ export async function saveMatchResult(
       .select("id")
       .single();
     if (error) {
-      return { saved: false, reason: error.message };
+      return localFallback(error.message);
     }
     const matchId = String((data as { id: string }).id);
     const squadRows = buildSquadPerformanceRows(matchId, squad);
@@ -149,16 +210,13 @@ export async function saveMatchResult(
         .from(CLOUD_TABLES.squadPerformances)
         .insert(squadRows);
       if (squadError) {
-        return { saved: false, matchId, reason: squadError.message };
+        return localFallback(squadError.message);
       }
     }
     await upsertLeaderboard(summary, row.score as number, playerName);
     return { saved: true, matchId };
   } catch (error) {
-    return {
-      saved: false,
-      reason: error instanceof Error ? error.message : "unknown-error",
-    };
+    return localFallback(error instanceof Error ? error.message : "unknown-error");
   }
 }
 
