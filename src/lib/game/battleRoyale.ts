@@ -277,7 +277,14 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
       airborne.x = deployment.plane.x;
       airborne.z = deployment.plane.z;
       airborne.angle = deployment.plane.angle;
-      if (input.drop || Math.hypot(airborne.x, airborne.z) > ISLAND_RADIUS + 30) {
+      const headingAway =
+        airborne.x * Math.sin(deployment.plane.angle) +
+        airborne.z * Math.cos(deployment.plane.angle) >
+        0;
+      if (
+        input.drop ||
+        (headingAway && Math.hypot(airborne.x, airborne.z) > ISLAND_RADIUS + 30)
+      ) {
         deployment = { ...deployment, phase: "falling" };
       }
     } else {
