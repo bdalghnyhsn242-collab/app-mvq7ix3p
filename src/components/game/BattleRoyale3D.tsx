@@ -866,6 +866,7 @@ export default function BattleRoyale3D() {
           shootRef.current = false;
           lobby = lobbyShoot(lobby).state;
           aimTimer = 0.6;
+          playGunshot(0.18);
         }
         lobbyRef.current = lobby;
         const showFemale = lobby.gender === "female";
@@ -948,12 +949,22 @@ export default function BattleRoyale3D() {
           camYawRef.current = state.player.angle;
         }
         if (shootRef.current) {
-          state = shoot(state).state;
+          const shot = shoot(state);
+          state = shot.state;
           shootRef.current = false;
           aimTimer = 0.6;
+          playGunshot();
+          flashTimer = 0.06;
+          if (shot.hit) {
+            playHitMarker();
+          }
         }
         if (reloadRef.current) {
+          const before = state.reloadTimer;
           state = reloadWeapon(state);
+          if (before === 0 && state.reloadTimer > 0) {
+            playReload();
+          }
         }
         if (switchRef.current) {
           state = switchWeapon(state, switchRef.current);
