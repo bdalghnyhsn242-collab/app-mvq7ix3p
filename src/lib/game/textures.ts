@@ -279,3 +279,258 @@ export function hairMaterial(): THREE.MeshStandardMaterial {
     new THREE.MeshStandardMaterial({ color: 0x2e2118, roughness: 0.55, metalness: 0.05 }),
   );
 }
+
+/** Grayscale mottling multiplied over the terrain's vertex colors. */
+export function groundDetailTexture(): THREE.Texture | null {
+  const key = "ground-detail";
+  if (textureCache.has(key)) {
+    return textureCache.get(key) ?? null;
+  }
+  const { canvas, ctx } = createCanvas(256);
+  if (!ctx) {
+    textureCache.set(key, null);
+    return null;
+  }
+  const random = seeded(8123);
+  ctx.fillStyle = "#b4b4b4";
+  ctx.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 2600; i += 1) {
+    const shade = 118 + Math.floor(random() * 110);
+    ctx.fillStyle = `rgb(${shade},${shade},${shade})`;
+    const s = 1 + random() * 4;
+    ctx.fillRect(random() * 256, random() * 256, s, s);
+  }
+  for (let i = 0; i < 70; i += 1) {
+    ctx.fillStyle = random() > 0.5 ? "rgba(70,70,70,0.22)" : "rgba(235,235,235,0.18)";
+    ctx.beginPath();
+    ctx.ellipse(
+      random() * 256,
+      random() * 256,
+      6 + random() * 22,
+      4 + random() * 14,
+      random() * Math.PI,
+      0,
+      Math.PI * 2,
+    );
+    ctx.fill();
+  }
+  const texture = finalize(canvas, 48);
+  textureCache.set(key, texture);
+  return texture;
+}
+
+/** Aged plaster with brick courses and stains for walls. */
+export function plasterTexture(): THREE.Texture | null {
+  const key = "plaster";
+  if (textureCache.has(key)) {
+    return textureCache.get(key) ?? null;
+  }
+  const { canvas, ctx } = createCanvas(256);
+  if (!ctx) {
+    textureCache.set(key, null);
+    return null;
+  }
+  const random = seeded(3311);
+  ctx.fillStyle = "#c9c2b2";
+  ctx.fillRect(0, 0, 256, 256);
+  ctx.strokeStyle = "rgba(96,86,70,0.5)";
+  ctx.lineWidth = 2;
+  for (let y = 10; y < 256; y += 22) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(256, y);
+    ctx.stroke();
+    const offset = (y / 22) % 2 === 0 ? 0 : 24;
+    for (let x = offset; x < 256; x += 48) {
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x, y - 22);
+      ctx.stroke();
+    }
+  }
+  for (let i = 0; i < 40; i += 1) {
+    ctx.fillStyle = random() > 0.5 ? "rgba(120,104,80,0.25)" : "rgba(240,236,224,0.3)";
+    ctx.beginPath();
+    ctx.ellipse(
+      random() * 256,
+      random() * 256,
+      4 + random() * 18,
+      3 + random() * 10,
+      random() * Math.PI,
+      0,
+      Math.PI * 2,
+    );
+    ctx.fill();
+  }
+  const texture = finalize(canvas, 2);
+  textureCache.set(key, texture);
+  return texture;
+}
+
+/** Weathered roof tiles in staggered rows. */
+export function roofTileTexture(): THREE.Texture | null {
+  const key = "roof-tile";
+  if (textureCache.has(key)) {
+    return textureCache.get(key) ?? null;
+  }
+  const { canvas, ctx } = createCanvas(256);
+  if (!ctx) {
+    textureCache.set(key, null);
+    return null;
+  }
+  const random = seeded(6411);
+  ctx.fillStyle = "#7a4a30";
+  ctx.fillRect(0, 0, 256, 256);
+  for (let y = 0; y < 256; y += 18) {
+    ctx.fillStyle = "rgba(40,22,12,0.55)";
+    ctx.fillRect(0, y + 14, 256, 4);
+    for (let x = ((y / 18) % 2) * 16; x < 256; x += 32) {
+      ctx.fillStyle = "rgba(255,200,150,0.12)";
+      ctx.beginPath();
+      ctx.ellipse(x + 16, y + 8, 14, 7, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  for (let i = 0; i < 30; i += 1) {
+    ctx.fillStyle = "rgba(30,18,10,0.3)";
+    ctx.fillRect(random() * 256, random() * 256, 3 + random() * 8, 2 + random() * 5);
+  }
+  const texture = finalize(canvas, 3);
+  textureCache.set(key, texture);
+  return texture;
+}
+
+/** Rough wooden planks for crates and beams. */
+export function woodPlankTexture(): THREE.Texture | null {
+  const key = "wood-plank";
+  if (textureCache.has(key)) {
+    return textureCache.get(key) ?? null;
+  }
+  const { canvas, ctx } = createCanvas(256);
+  if (!ctx) {
+    textureCache.set(key, null);
+    return null;
+  }
+  const random = seeded(9109);
+  ctx.fillStyle = "#8a6b3e";
+  ctx.fillRect(0, 0, 256, 256);
+  for (let x = 0; x < 256; x += 36) {
+    ctx.fillStyle = "rgba(50,34,16,0.6)";
+    ctx.fillRect(x, 0, 3, 256);
+  }
+  for (let i = 0; i < 220; i += 1) {
+    ctx.fillStyle = random() > 0.5 ? "rgba(60,42,20,0.35)" : "rgba(180,150,100,0.25)";
+    ctx.fillRect(random() * 256, random() * 256, 2 + random() * 20, 1.5);
+  }
+  const texture = finalize(canvas, 2);
+  textureCache.set(key, texture);
+  return texture;
+}
+
+/** Burlap sacking for sandbags and tent canvas. */
+export function sandbagTexture(): THREE.Texture | null {
+  const key = "sandbag";
+  if (textureCache.has(key)) {
+    return textureCache.get(key) ?? null;
+  }
+  const { canvas, ctx } = createCanvas(128);
+  if (!ctx) {
+    textureCache.set(key, null);
+    return null;
+  }
+  const random = seeded(5171);
+  ctx.fillStyle = "#9b8b5e";
+  ctx.fillRect(0, 0, 128, 128);
+  ctx.strokeStyle = "rgba(110,96,60,0.5)";
+  ctx.lineWidth = 1.5;
+  for (let y = 0; y < 128; y += 6) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(128, y);
+    ctx.stroke();
+  }
+  for (let i = 0; i < 120; i += 1) {
+    ctx.fillStyle = random() > 0.5 ? "rgba(70,60,36,0.3)" : "rgba(200,186,140,0.3)";
+    ctx.fillRect(random() * 128, random() * 128, 2 + random() * 5, 1.5);
+  }
+  const texture = finalize(canvas, 2);
+  textureCache.set(key, texture);
+  return texture;
+}
+
+/** Stained concrete with cracks for runways, pads, and ruins. */
+export function concreteTexture(): THREE.Texture | null {
+  const key = "concrete";
+  if (textureCache.has(key)) {
+    return textureCache.get(key) ?? null;
+  }
+  const { canvas, ctx } = createCanvas(256);
+  if (!ctx) {
+    textureCache.set(key, null);
+    return null;
+  }
+  const random = seeded(2277);
+  ctx.fillStyle = "#8d8d85";
+  ctx.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 1800; i += 1) {
+    const shade = 110 + Math.floor(random() * 80);
+    ctx.fillStyle = `rgb(${shade},${shade},${shade - 6})`;
+    ctx.fillRect(random() * 256, random() * 256, 2, 2);
+  }
+  ctx.strokeStyle = "rgba(50,50,46,0.5)";
+  ctx.lineWidth = 1.5;
+  for (let i = 0; i < 8; i += 1) {
+    ctx.beginPath();
+    let x = random() * 256;
+    let y = random() * 256;
+    ctx.moveTo(x, y);
+    for (let s = 0; s < 5; s += 1) {
+      x += (random() - 0.5) * 60;
+      y += (random() - 0.5) * 60;
+      ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
+  const texture = finalize(canvas, 4);
+  textureCache.set(key, texture);
+  return texture;
+}
+
+/** Corrugated rusted metal for hangars, towers, and beams. */
+export function rustTexture(): THREE.Texture | null {
+  const key = "rust";
+  if (textureCache.has(key)) {
+    return textureCache.get(key) ?? null;
+  }
+  const { canvas, ctx } = createCanvas(256);
+  if (!ctx) {
+    textureCache.set(key, null);
+    return null;
+  }
+  const random = seeded(7789);
+  ctx.fillStyle = "#6e4a2f";
+  ctx.fillRect(0, 0, 256, 256);
+  for (let x = 0; x < 256; x += 18) {
+    ctx.fillStyle = "rgba(30,18,10,0.4)";
+    ctx.fillRect(x, 0, 4, 256);
+    ctx.fillStyle = "rgba(200,150,100,0.14)";
+    ctx.fillRect(x + 6, 0, 6, 256);
+  }
+  for (let i = 0; i < 60; i += 1) {
+    ctx.fillStyle = random() > 0.5 ? "rgba(160,80,30,0.4)" : "rgba(40,24,12,0.4)";
+    ctx.beginPath();
+    ctx.ellipse(
+      random() * 256,
+      random() * 256,
+      3 + random() * 14,
+      2 + random() * 9,
+      random() * Math.PI,
+      0,
+      Math.PI * 2,
+    );
+    ctx.fill();
+  }
+  const texture = finalize(canvas, 2);
+  textureCache.set(key, texture);
+  return texture;
+}
