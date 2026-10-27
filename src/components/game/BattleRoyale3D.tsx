@@ -1810,6 +1810,10 @@ export default function BattleRoyale3D() {
         ) : null}
         {mode === "match" && hud.status === "running" ? (
           <div className="pointer-events-none absolute left-3 top-24 z-[5] flex flex-col gap-1">
+            <span className="w-fit rounded bg-slate-900/80 px-1.5 py-0.5 text-[10px] text-slate-300">
+              📦 بناء: {__BUILD_COMMIT__.slice(0, 7)} — الملف:{" "}
+              {modelDiag?.source ? modelDiag.source.split("/").pop() : "—"}
+            </span>
             <span
               className={cn(
                 "w-fit rounded px-1.5 py-0.5 text-[10px] font-semibold",
