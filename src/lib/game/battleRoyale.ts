@@ -514,10 +514,21 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
     .map((explosion) => ({ ...explosion, timer: explosion.timer - dt }))
     .filter((explosion) => explosion.timer > 0);
 
-  const weather = stepWeather(state.weather, dt);
+  const dust = stepDustStorm(state.dust, dt);
+  const weather = withDustStorm(stepWeather(state.weather, dt), dust);
   const effects = weatherEffects(weather);
   const drone = stepDrone(state.drone, dt, player);
   const droneBonus = droneSpotBonus(drone.spottedTimer > 0);
+  const radio = stepRadioTower(state.radio, dt, [
+    { x: player.x, z: player.z },
+    ...state.squad
+      .filter((mate) => mate.state === "active")
+      .map((mate) => ({ x: mate.x, z: mate.z })),
+  ]);
+  let beacon = input.beacon
+    ? deployBeacon(state.beacon, player.x, player.z, Math.floor(state.time))
+    : state.beacon;
+  beacon = stepBeacons(beacon, dt);
 
   let vehicles = state.vehicles;
   let playerVehicle = state.playerVehicle;
@@ -567,17 +578,37 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
   let weapon = state.weapon;
   const ammo = { ...state.ammo };
   const attachments = { ...state.attachments };
+  let beaconHeld = beacon.held;
   const loot = state.loot.map((crate) => {
     if (crate.taken || Math.hypot(crate.x - player.x, crate.z - player.z) > PICKUP_RADIUS) {
       return crate;
     }
     weapon = crate.weapon;
     ammo[crate.weapon] += crate.ammo;
+    if (crate.beacon) {
+      beaconHeld += 1;
+    }
     if (crate.attachment) {
       attachments[crate.weapon] = crate.attachment;
     }
     return { ...crate, taken: true };
   });
+  beacon = { ...beacon, held: beaconHeld };
+  if (beacon.drop?.crate && beacon.drop.crate.landed && !beacon.drop.crate.taken) {
+    const crate = beacon.drop.crate;
+    if (Math.hypot(crate.x - player.x, crate.z - player.z) < BEACON_PICKUP_RADIUS) {
+      const rewards = beaconCrateRewards();
+      weapon = crate.weapon;
+      ammo[crate.weapon] += rewards.ammo;
+      health = Math.min(100, health + rewards.health);
+      beacon = {
+        ...beacon,
+        drop: beacon.drop
+          ? { ...beacon.drop, crate: { ...crate, taken: true } }
+          : null,
+      };
+    }
+  }
 
   let health = player.health;
   const squadHits: Record<number, number> = {};
