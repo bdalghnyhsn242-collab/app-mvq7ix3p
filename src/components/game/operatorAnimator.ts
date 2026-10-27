@@ -73,7 +73,10 @@ export class OperatorAnimator {
   /** Fades out the current clip so direct bone posing can take over. */
   pause(): void {
     if (this.current) {
-      this.actions.get(this.current)?.fadeOut(0.15);
+      // stop() (not fadeOut): the mixer is not updated while the bone
+      // driver poses the skeleton, so a fadeOut would never progress and
+      // the stale action would re-blend into the next clip switch.
+      this.actions.get(this.current)?.stop();
       this.current = null;
     }
   }
