@@ -424,8 +424,9 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
       const damaged = damageVehicle(vehicles[playerVehicle], CONTACT_DAMAGE_PER_SECOND * dt * 2);
       vehicles = vehicles.map((v, i) => (i === playerVehicle ? damaged : v));
       if (damaged.health <= 0) {
+        const destroyedIndex = playerVehicle;
         playerVehicle = -1;
-        vehicles = vehicles.map((v, i) => (i === playerVehicle ? { ...v, driverBot: -1 } : v));
+        vehicles = vehicles.map((v, i) => (i === destroyedIndex ? { ...v, driverBot: -1 } : v));
         health -= 15;
       }
     } else {
@@ -444,6 +445,29 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
     }
   }
 
+  const squad = stepSquad(state.squad, dt, player, { revive: Boolean(input.revive) }, zone).map(
+    (mate) => {
+      if (mate.state !== "active") {
+        return mate;
+      }
+      let next = { ...mate };
+      for (const bot of bots) {
+        if (!bot.alive || Math.hypot(bot.x - next.x, bot.z - next.z) >= 1.6) {
+          continue;
+        }
+        if (next.armor > 0) {
+          next.armor = Math.max(0, next.armor - CONTACT_DAMAGE_PER_SECOND * dt);
+        } else {
+          next.health -= CONTACT_DAMAGE_PER_SECOND * dt;
+        }
+        if (next.health <= 0) {
+          return knockDown(next);
+        }
+      }
+      return next;
+    },
+  );
+
   const next: MatchState = {
     player: { ...player, health },
     bots,
@@ -455,6 +479,9 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
     vehicles,
     playerVehicle,
     airdrop,
+    squadSize: state.squadSize,
+    squad,
+    deployment: state.deployment,
     time: state.time + dt,
     status: "running",
   };
