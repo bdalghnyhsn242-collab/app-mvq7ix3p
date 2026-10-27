@@ -208,6 +208,7 @@ import {
   expansionLootSpots,
   expansionObstacles,
 } from "./worldExpansion";
+export { EXPANSION_LOOT_COUNT } from "./worldExpansion";
 
 export type WeaponId = "pistol" | "smg" | "ar" | "dmr" | "lmg" | "shotgun";
 export type Weapon = {
