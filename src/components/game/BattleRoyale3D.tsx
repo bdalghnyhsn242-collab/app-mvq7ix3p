@@ -527,12 +527,46 @@ export default function BattleRoyale3D() {
                 style={{ width: `${hud.health}%` }}
               />
             </div>
+            {hud.squad.map((mate, index) => (
+              <div key={index} className="space-y-0.5">
+                <p className="text-[10px] font-medium text-white drop-shadow">
+                  رفيق {index + 1}:{" "}
+                  {mate.state === "downed"
+                    ? "ساقط 🩸"
+                    : mate.state === "out"
+                      ? "خارج القتال"
+                      : `${Math.round(mate.health)}%`}
+                </p>
+                <div className="h-1.5 overflow-hidden rounded-full bg-slate-800">
+                  <div
+                    className={cn(
+                      "h-full",
+                      mate.state === "downed" ? "bg-amber-500" : "bg-emerald-500",
+                    )}
+                    style={{
+                      width: `${Math.max(0, Math.min(100, mate.health))}%`,
+                    }}
+                  />
+                </div>
+                {mate.state === "downed" ? (
+                  <div className="h-1 overflow-hidden rounded-full bg-slate-800">
+                    <div
+                      className="h-full bg-sky-400"
+                      style={{ width: `${(mate.reviveProgress / 5) * 100}%` }}
+                    />
+                  </div>
+                ) : null}
+              </div>
+            ))}
           </div>
           <div className="flex gap-2">
             <Badge className="bg-slate-900/80 text-white">أحياء: {hud.alive}</Badge>
             <Badge className="bg-slate-900/80 text-white">المنطقة: {hud.zone}م</Badge>
             {hud.airdrop ? (
               <Badge className="bg-amber-600/90 text-white">📦 إسقاط جوي!</Badge>
+            ) : null}
+            {hud.swimming ? (
+              <Badge className="bg-cyan-700/90 text-white">🏊 سباحة</Badge>
             ) : null}
           </div>
         </div>
@@ -555,7 +589,18 @@ export default function BattleRoyale3D() {
                 <p className="max-w-sm text-sm text-slate-300">
                   انزل إلى الجزيرة، أقصِ كل الأعداء، وابقَ داخل المنطقة الآمنة قبل أن تنكمش!
                 </p>
-                <Button size="lg" onClick={start}>
+                <div className="flex flex-wrap justify-center gap-2">
+                  {SQUAD_SIZES.map((size) => (
+                    <Button
+                      key={size}
+                      variant={size === squadSize ? "default" : "outline"}
+                      onClick={() => setSquadSize(size)}
+                    >
+                      {size === 1 ? "منفرد" : size === 2 ? "ثنائي" : size === 3 ? "ثلاثي" : "فرقة 5"}
+                    </Button>
+                  ))}
+                </div>
+                <Button size="lg" onClick={() => start(squadSize)}>
                   <Play />
                   ابدأ المعركة
                 </Button>
@@ -564,7 +609,7 @@ export default function BattleRoyale3D() {
             {hud.status === "won" ? (
               <>
                 <p className="text-2xl font-bold text-white">الفوز! 🏆</p>
-                <Button size="lg" onClick={start}>
+                <Button size="lg" onClick={() => start(squadSize)}>
                   <RotateCcw />
                   جولة جديدة
                 </Button>
@@ -573,7 +618,7 @@ export default function BattleRoyale3D() {
             {hud.status === "lost" ? (
               <>
                 <p className="text-2xl font-bold text-white">تمت إقصاؤك 💀</p>
-                <Button size="lg" onClick={start}>
+                <Button size="lg" onClick={() => start(squadSize)}>
                   <RotateCcw />
                   حاول مرة أخرى
                 </Button>
