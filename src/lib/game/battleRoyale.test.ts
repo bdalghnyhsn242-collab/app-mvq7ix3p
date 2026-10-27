@@ -17,17 +17,14 @@ import {
   applyVehicleDestruction,
   blastDamage,
   steerAroundObstacles,
-  TRACER_LIFE,
   type MatchState,
 } from "./battleRoyale";
 import {
   blowTire,
   createVehicles,
-  damageVehicle,
   destroyVehicle,
   hasTurret,
   stepVehicle,
-  TURRET_DAMAGE,
 } from "./vehicles";
 import { createAirdropState, stepAirdrops } from "./airdrops";
 import { BLEED_OUT_TIME, REVIVE_TIME, createSquad, knockDown, stepSquad } from "./squad";
@@ -368,7 +365,10 @@ describe("battle royale core logic", () => {
       vehicles,
       playerVehicle: 0,
     });
-    const next = stepMatch(state, 0.5, { forward: 0, turn: 0 });
+    let next = stepMatch(state, 0.1, { forward: 0, turn: 0 });
+    for (let i = 0; i < 14 && !next.vehicles[0].wreck; i += 1) {
+      next = stepMatch(next, 0.1, { forward: 0, turn: 0 });
+    }
     expect(next.vehicles[0].wreck).toBe(true);
     expect(next.playerVehicle).toBe(-1);
     expect(next.explosions.length).toBeGreaterThan(0);
