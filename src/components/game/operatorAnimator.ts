@@ -11,6 +11,8 @@ export type OperatorMotionInput = {
   driving?: boolean;
   downed?: boolean;
   aiming?: boolean;
+  reloading?: boolean;
+  jumping?: boolean;
 };
 
 export function selectOperatorState(input: OperatorMotionInput): OperatorState {
