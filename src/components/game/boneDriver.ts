@@ -67,12 +67,6 @@ function collectHumanoidBones(root: THREE.Object3D): RigCache | null {
     rigCache.set(root, { bones: emptyBones(), records: [] });
     return rigCache.get(root) ?? null;
   }
-  const bySide = (pattern: RegExp): Record<Side, THREE.Object3D | null> => {
-    const matches = found.filter((bone) => pattern.test(bone.name));
-    const pick = (side: Side) =>
-      matches.find((bone) => sideOf(bone.name) === side) ?? null;
-    return { left: pick("left"), right: pick("right"), center: pick("center") };
-  };
   const forearmMatches = found.filter((bone) => /forearm|lowerarm|elbow/i.test(bone.name));
   const arms: Record<Side, THREE.Object3D | null> = {
     left: null,
