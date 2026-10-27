@@ -873,7 +873,7 @@ export function shoot(state: MatchState): { state: MatchState; hit: boolean; kil
     };
   }
 
-  const weapon = WEAPONS[state.weapon];
+  const weapon = applyAttachment(WEAPONS[state.weapon], state.attachments[state.weapon]);
   if (state.cooldown > 0 || state.ammo[state.weapon] <= 0) {
     return { state, hit: false, killed: false };
   }
