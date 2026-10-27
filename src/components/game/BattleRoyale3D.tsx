@@ -619,21 +619,20 @@ export default function BattleRoyale3D() {
         playerRig.group.visible = current.status !== "lost" && deployment.phase !== "plane";
         playerChute.visible = deployment.phase === "falling" && deployment.chute;
         playerChute.position.set(current.player.x, playerY + 2.6, current.player.z);
-        squadMeshes.forEach((mesh, index) => {
+        squadMeshes.forEach((squadRig, index) => {
           const mate = current.squad[index];
           const showMate = Boolean(
             mate && mate.state !== "out" && current.deployment.phase === "landed",
           );
-          rig... 
+          squadRig.group.visible = showMate;
           if (showMate && mate) {
             const mateY = isSwimming(mate.x, mate.z) ? -0.5 : terrainHeight(mate.x, mate.z);
-            const rig = squadMeshes[index];
-            rig.group.position.set(mate.x, mateY, mate.z);
-            rig.group.rotation.y = mate.angle;
-            rig.group.rotation.z = mate.state === "downed" ? Math.PI / 2.2 : 0;
-            const sdx = mate.x - Number(rig.group.userData.px ?? mate.x);
-            const sdz = mate.z - Number(rig.group.userData.pz ?? mate.z);
-            rig.update(
+            squadRig.group.position.set(mate.x, mateY, mate.z);
+            squadRig.group.rotation.y = mate.angle;
+            squadRig.group.rotation.z = mate.state === "downed" ? Math.PI / 2.2 : 0;
+            const sdx = mate.x - Number(squadRig.group.userData.px ?? mate.x);
+            const sdz = mate.z - Number(squadRig.group.userData.pz ?? mate.z);
+            squadRig.update(
               {
                 time: now / 1000,
                 speed01: Math.min(1, Math.hypot(sdx, sdz) / Math.max(dt, 0.001) / 16),
@@ -642,8 +641,8 @@ export default function BattleRoyale3D() {
               },
               dt,
             );
-            rig.group.userData.px = mate.x;
-            rig.group.userData.pz = mate.z;
+            squadRig.group.userData.px = mate.x;
+            squadRig.group.userData.pz = mate.z;
           }
         });
         deployPlane.visible = deployment.phase === "plane";
@@ -824,8 +823,8 @@ export default function BattleRoyale3D() {
           spark.active = false;
           spark.points.visible = false;
         });
-        squadMeshes.forEach((mesh) => {
-          mesh.visible = false;
+        squadMeshes.forEach((squadRig) => {
+          squadRig.group.visible = false;
         });
       }
       forest.update(now / 1000, camera);
