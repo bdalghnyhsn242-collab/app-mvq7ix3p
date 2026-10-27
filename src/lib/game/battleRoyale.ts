@@ -493,6 +493,7 @@ export function createMatchState(squadSize: SquadSize = 1): MatchState {
       ammo: weapon === "shotgun" ? 8 : weapon === "dmr" ? 10 : weapon === "lmg" ? 60 : 30,
       taken: false,
       attachment: i % 3 === 0 ? attachmentForIndex(i) : undefined,
+      armor: i % 4 === 1,
       beacon: i === 2,
       shield: i === 3,
       sentry: i === 5,
@@ -1271,8 +1272,11 @@ export function shoot(state: MatchState): { state: MatchState; hit: boolean; kil
 
   const weapon = applyAttachment(WEAPONS[state.weapon], state.attachments[state.weapon]);
   const stormRange = weapon.range * weatherEffects(state.weather).rangeFactor;
-  if (state.cooldown > 0 || state.ammo[state.weapon] <= 0) {
+  if (state.cooldown > 0) {
     return { state, hit: false, killed: false };
+  }
+  if (state.magazine[state.weapon] <= 0) {
+    return { state: reloadWeapon(state), hit: false, killed: false };
   }
   const targetIndex = findTargetIndex(state.bots, state.player, stormRange, weapon.arc);
   const targetDist =
@@ -1282,7 +1286,10 @@ export function shoot(state: MatchState): { state: MatchState; hit: boolean; kil
           state.bots[targetIndex].z - state.player.z,
         )
       : 0;
-  const ammo = { ...state.ammo, [state.weapon]: state.ammo[state.weapon] - 1 };
+  const magazine = {
+    ...state.magazine,
+    [state.weapon]: state.magazine[state.weapon] - 1,
+  };
   const aimX =
     targetIndex >= 0
       ? state.bots[targetIndex].x
@@ -1300,10 +1307,13 @@ export function shoot(state: MatchState): { state: MatchState; hit: boolean; kil
   });
   const base = {
     ...state,
-    ammo,
+    magazine,
     cooldown: weapon.cooldown * fortressCooldownFactor(state.fortress),
     tracers,
-    player: { ...state.player, angle: state.player.angle + weapon.recoil },
+    player: {
+      ...state.player,
+      angle: state.player.angle + weapon.recoil * (state.crouching ? 0.5 : 1),
+    },
   };
   if (targetIndex === -1) {
     return { state: base, hit: false, killed: false };
