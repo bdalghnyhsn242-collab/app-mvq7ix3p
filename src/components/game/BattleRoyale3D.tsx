@@ -22,6 +22,7 @@ import {
   BOT_CULL_DISTANCE,
   BOT_LOD_DISTANCE,
   DEPLOY_PLANE_ALTITUDE,
+  EXPLOSION_DURATION,
   isSwimming,
   createMatchState,
   lootWeaponForIndex,
@@ -106,6 +107,14 @@ function makeVehicleMesh(kind: VehicleKind): THREE.Group {
     turret.position.set(0, 2, -1.1);
     group.add(turret);
   }
+  const flash = new THREE.Mesh(
+    new THREE.SphereGeometry(0.3, 6, 6),
+    new THREE.MeshBasicMaterial({ color: 0xffe08a }),
+  );
+  flash.name = "turretFlash";
+  flash.position.set(0, 2, -1.1);
+  flash.visible = false;
+  group.add(flash);
   return group;
 }
 
@@ -309,6 +318,28 @@ export default function BattleRoyale3D() {
     const vehicleMeshes = Array.from({ length: 3 }, (_, index) => {
       const kinds: VehicleKind[] = ["uaz", "pickup", "buggy"];
       const mesh = makeVehicleMesh(kinds[index]);
+      scene.add(mesh);
+      return mesh;
+    });
+    const tracerPool = Array.from({ length: 16 }, () => {
+      const geometry = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(),
+        new THREE.Vector3(),
+      ]);
+      const line = new THREE.Line(
+        geometry,
+        new THREE.LineBasicMaterial({ color: 0xffd54a, transparent: true, opacity: 0.9 }),
+      );
+      line.visible = false;
+      scene.add(line);
+      return line;
+    });
+    const blastPool = Array.from({ length: 6 }, () => {
+      const mesh = new THREE.Mesh(
+        new THREE.SphereGeometry(1, 10, 10),
+        new THREE.MeshBasicMaterial({ color: 0xff7a1a, transparent: true, opacity: 1 }),
+      );
+      mesh.visible = false;
       scene.add(mesh);
       return mesh;
     });
@@ -556,7 +587,60 @@ export default function BattleRoyale3D() {
           }
           mesh.position.set(vehicle.x, terrainHeight(vehicle.x, vehicle.z), vehicle.z);
           mesh.rotation.y = vehicle.angle;
-          mesh.rotation.x = Math.max(-0.08, Math.min(0.08, vehicle.speed * 0.004));
+          mesh.rotation.x = vehicle.wreck
+            ? 0.16
+            : Math.max(-0.08, Math.min(0.08, vehicle.speed * 0.004));
+          const flash = mesh.getObjectByName("turretFlash");
+          if (flash) {
+            flash.visible = vehicle.turretFlash > 0;
+          }
+          if (vehicle.wreck && !mesh.userData.wrecked) {
+            mesh.userData.wrecked = true;
+            mesh.traverse((child) => {
+              const meshChild = child as THREE.Mesh;
+              if (meshChild.isMesh) {
+                const material = meshChild.material as THREE.MeshLambertMaterial;
+                if (material.color) {
+                  material.color.setHex(0x1c1c1c);
+                }
+              }
+            });
+          }
+        });
+        current.tracers.forEach((tracer, index) => {
+          const line = tracerPool[index];
+          if (!line) {
+            return;
+          }
+          line.visible = true;
+          const position = line.geometry.attributes.position as THREE.BufferAttribute;
+          position.setXYZ(0, tracer.x1, 1.4, tracer.z1);
+          position.setXYZ(1, tracer.x2, 1.4, tracer.z2);
+          position.needsUpdate = true;
+        });
+        for (let i = current.tracers.length; i < tracerPool.length; i += 1) {
+          tracerPool[i].visible = false;
+        }
+        current.explosions.forEach((explosion, index) => {
+          const mesh = blastPool[index];
+          if (!mesh) {
+            return;
+          }
+          mesh.visible = true;
+          const progress = 1 - explosion.timer / EXPLOSION_DURATION;
+          mesh.position.set(
+            explosion.x,
+            terrainHeight(explosion.x, explosion.z) + 1 + progress * 3,
+            explosion.z,
+          );
+          mesh.scale.setScalar(1 + progress * 6);
+          (mesh.material as THREE.MeshBasicMaterial).opacity = Math.max(0, 1 - progress);
+        });
+        for (let i = current.explosions.length; i < blastPool.length; i += 1) {
+          blastPool[i].visible = false;
+        });
+        if (false) {
+          // unreachable guard kept for pool symmetry
         });
         planeMesh.position.set(
           current.airdrop.plane.x,
