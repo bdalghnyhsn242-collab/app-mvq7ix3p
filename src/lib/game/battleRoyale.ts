@@ -333,11 +333,58 @@ export type Loot = {
   ammo: number;
   taken: boolean;
   attachment?: AttachmentId;
+  armor?: boolean;
   beacon?: boolean;
   shield?: boolean;
   sentry?: boolean;
   medevac?: boolean;
 };
+
+export function fullMagazine(weapon: WeaponId): number {
+  return WEAPONS[weapon].magazine;
+}
+
+export function createMagazineState(): Record<WeaponId, number> {
+  return {
+    pistol: WEAPONS.pistol.magazine,
+    smg: 0,
+    ar: 0,
+    dmr: 0,
+    lmg: 0,
+    shotgun: 0,
+  };
+}
+
+/** Refills the current magazine from reserve ammo; returns the reloaded state. */
+export function reloadWeapon(state: MatchState): MatchState {
+  if (state.reloadTimer > 0) {
+    return state;
+  }
+  const magSize = fullMagazine(state.weapon);
+  if (state.magazine[state.weapon] >= magSize || state.ammo[state.weapon] <= 0) {
+    return state;
+  }
+  return { ...state, reloadTimer: RELOAD_TIME };
+}
+
+/** Switches to an owned weapon and cancels any reload in progress. */
+export function switchWeapon(state: MatchState, id: WeaponId): MatchState {
+  if (!state.owned.includes(id) || id === state.weapon) {
+    return state;
+  }
+  return { ...state, weapon: id, reloadTimer: 0, cooldown: Math.max(state.cooldown, 0.25) };
+}
+
+/** Applies damage to the player, absorbing with armor first. */
+export function damagePlayer(player: Soldier, amount: number): Soldier {
+  if (amount <= 0) {
+    return player;
+  }
+  const armor = player.armor ?? 0;
+  const absorbed = Math.min(armor, amount);
+  const health = player.health - (amount - absorbed);
+  return { ...player, armor: armor - absorbed, health };
+}
 
 export function lootWeaponForIndex(index: number): WeaponId {
   const cycle: WeaponId[] = ["ar", "smg", "shotgun", "dmr", "lmg", "pistol"];
@@ -480,6 +527,13 @@ export function createMatchState(squadSize: SquadSize = 1): MatchState {
     zone: { x: 0, z: 0, radius: ZONE_START_RADIUS },
     weapon: "pistol",
     ammo: { pistol: 24, smg: 0, ar: 0, dmr: 0, lmg: 0, shotgun: 0 },
+    magazine: createMagazineState(),
+    owned: ["pistol"],
+    playerArmor: 0,
+    crouching: false,
+    jumpVy: 0,
+    jumpAir: 0,
+    reloadTimer: 0,
     cooldown: 0,
     loot,
     vehicles: createVehicles(),
