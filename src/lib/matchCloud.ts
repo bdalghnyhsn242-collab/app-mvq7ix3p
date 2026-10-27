@@ -81,6 +81,58 @@ export type CloudSaveResult = {
   savedLocally?: boolean;
 };
 
+/** Raw fetch/HTTP failures that mean "the cloud server was unreachable". */
+const NETWORK_ERROR_PATTERN =
+  /failed to fetch|networkerror|fetch failed|load failed|network request failed/i;
+/** Failures that mean the cloud tables were never created (migration missing). */
+const SCHEMA_ERROR_PATTERN =
+  /does not exist|relation|schema cache|pgrst20|pgrst205/i;
+
+/**
+ * Translates a raw cloud failure into a clear Arabic explanation so the
+ * player is never shown a cryptic English "TypeError: Failed to fetch".
+ */
+export function describeCloudError(reason: string | undefined): string {
+  if (!reason || reason === "not-configured") {
+    return "الحفظ السحابي غير مُهيّأ — النتيجة محفوظة على هذا الجهاز فقط";
+  }
+  if (NETWORK_ERROR_PATTERN.test(reason)) {
+    return "تعذر الوصول لخادم السحابة — الشبكة غير متاحة أو مشروع Supabase متوقف مؤقتًا";
+  }
+  if (SCHEMA_ERROR_PATTERN.test(reason)) {
+    return "جداول السحابة غير مُهيّأة — طبّق ملف الترحيل supabase/migrations/20260504000000_game_cloud_tables.sql";
+  }
+  return reason;
+}
+
+function isNetworkError(message: string): boolean {
+  return NETWORK_ERROR_PATTERN.test(message);
+}
+
+/** Postgres unique-violation: the row already exists from a lost response. */
+function isDuplicateKeyError(message: string): boolean {
+  return /duplicate key|23505/i.test(message);
+}
+
+/** crypto.randomUUID with an RFC4122-v4 fallback for older browsers. */
+function randomUuid(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
+const SAVE_RETRY_DELAY_MS = 1500;
+
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export type LocalMatchRecord = {
   savedAt: string;
   playerName: string;
@@ -193,23 +245,47 @@ export async function saveMatchResult(
   if (!isCloudConfigured || !cloudClient) {
     return localFallback("not-configured");
   }
+  // Stable client-generated ids make a retried insert idempotent: if the
+  // first attempt actually landed but its response was lost (the classic
+  // "Failed to fetch" after a successful write), the retry hits a
+  // duplicate key (23505) and is treated as success — never saved twice.
+  const matchId = randomUuid();
+  const row = { id: matchId, ...buildMatchStatsRow(summary, playerName) };
+  const squadRows = buildSquadPerformanceRows(matchId, squad).map((squadRow) => ({
+    id: randomUuid(),
+    ...squadRow,
+  }));
   try {
-    const row = buildMatchStatsRow(summary, playerName);
-    const { data, error } = await cloudClient
-      .from(CLOUD_TABLES.matchStats)
-      .insert(row)
-      .select("id")
-      .single();
-    if (error) {
-      return localFallback(error.message);
+    let insertError = "";
+    for (let attempt = 1; attempt <= 2; attempt += 1) {
+      const { error } = await cloudClient
+        .from(CLOUD_TABLES.matchStats)
+        .insert(row);
+      if (!error) {
+        insertError = "";
+        break;
+      }
+      insertError = error.message;
+      if (isDuplicateKeyError(insertError)) {
+        insertError = "";
+        break;
+      }
+      // One safe retry for transient network failures on the FIRST step
+      // only — later steps are never retried so the leaderboard counters
+      // can never be double-incremented by a retry.
+      if (!isNetworkError(insertError) || attempt === 2) {
+        break;
+      }
+      await wait(SAVE_RETRY_DELAY_MS);
     }
-    const matchId = String((data as { id: string }).id);
-    const squadRows = buildSquadPerformanceRows(matchId, squad);
+    if (insertError) {
+      return localFallback(insertError);
+    }
     if (squadRows.length > 0) {
       const { error: squadError } = await cloudClient
         .from(CLOUD_TABLES.squadPerformances)
         .insert(squadRows);
-      if (squadError) {
+      if (squadError && !isDuplicateKeyError(squadError.message)) {
         return localFallback(squadError.message);
       }
     }
