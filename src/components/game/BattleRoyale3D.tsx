@@ -921,6 +921,11 @@ export default function BattleRoyale3D() {
       let state = stateRef.current;
       if (state && state.status === "running") {
         state = stepMatch(state, dt, input);
+        // Keyboard-only turning rotates the player; keep the orbit camera
+        // yaw locked to the player's facing so A/D turns the view too.
+        if (!usingMouse && state.deployment.phase === "landed") {
+          camYawRef.current = state.player.angle;
+        }
         if (shootRef.current) {
           state = shoot(state).state;
           shootRef.current = false;
@@ -963,8 +968,14 @@ export default function BattleRoyale3D() {
         void saveMatchResult(summary, current.squad).then((result) => {
           if (result.saved) {
             toast.success("☁️ حُفظت النتيجة في لوحة المتصدرين السحابية");
-          } else if (result.reason !== "not-configured") {
-            toast.error("تعذر الحفظ السحابي: " + (result.reason ?? ""));
+            return;
+          }
+          if (result.savedLocally) {
+            const detail =
+              result.reason && result.reason !== "not-configured"
+                ? ` — تعذر الاتصال بالسحابة (${result.reason})`
+                : "";
+            toast.info("💾 حُفظت النتيجة محليًا على هذا الجهاز" + detail);
           }
         });
       }
