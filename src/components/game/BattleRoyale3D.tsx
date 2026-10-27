@@ -1469,7 +1469,7 @@ export default function BattleRoyale3D() {
         </div>
         {mode === "lobby" ? (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2.5 overflow-y-auto bg-slate-950/60 p-4 text-center backdrop-blur-sm">
-            <p className="text-2xl font-bold text-white">ساحة الانتظار 🏕️</p>
+            <p className="text-2xl font-bold text-white">الصمود الأخير — ساحة الانتظار 🏕️</p>
             <p className="text-sm font-medium text-amber-300">
               الإقلاع خلال {Math.ceil(lobbyHud.countdown)} ثانية — 100 لاعب في الجيم
             </p>
@@ -1524,6 +1524,7 @@ export default function BattleRoyale3D() {
             {hud.status === "won" ? (
               <>
                 <p className="text-2xl font-bold text-white">الفوز! 🏆</p>
+                <p className="text-sm text-slate-300">الصمود الأخير — Last Stand</p>
                 <Button size="lg" onClick={() => start(squadSize, gender)}>
                   <RotateCcw />
                   جولة جديدة
@@ -1533,6 +1534,7 @@ export default function BattleRoyale3D() {
             {hud.status === "lost" ? (
               <>
                 <p className="text-2xl font-bold text-white">تمت إقصاؤك 💀</p>
+                <p className="text-sm text-slate-300">الصمود الأخير — Last Stand</p>
                 <Button size="lg" onClick={() => start(squadSize, gender)}>
                   <RotateCcw />
                   حاول مرة أخرى
