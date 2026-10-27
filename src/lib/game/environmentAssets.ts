@@ -110,8 +110,11 @@ export function loadEnvironmentGltf(
     return cached;
   }
   const { local, cdn } = environmentAssetUrl(category, file);
+  const raw = cdn
+    .replace("https://cdn.jsdelivr.net/gh/", "https://raw.githubusercontent.com/")
+    .replace(/@([^/]+)\//, "/$1/");
   const promise = (async () => {
-    for (const url of [local, cdn]) {
+    for (const url of raw === cdn ? [local, cdn] : [local, cdn, raw]) {
       try {
         return await loader(url);
       } catch {
