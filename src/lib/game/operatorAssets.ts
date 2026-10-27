@@ -61,6 +61,9 @@ export const OPERATOR_CDN_SOURCES: Record<OperatorVariant, string> = {
 const SOLDIER_CDN_URL =
   "https://cdn.jsdelivr.net/gh/mrdoob/three.js@r169/examples/models/gltf/Soldier.glb";
 
+/** Official three.js site mirror of the same file (CORS-enabled). */
+const SOLDIER_MIRROR_URL = "https://threejs.org/examples/models/gltf/Soldier.glb";
+
 export const SOLDIER_CDN_SOURCES: Record<OperatorVariant, string | null> = {
   male: SOLDIER_CDN_URL,
   female: null,
@@ -137,6 +140,7 @@ function describeScene(root: THREE.Object3D): string {
   let meshes = 0;
   let bones = 0;
   let vertices = 0;
+  let texturedMaterials = 0;
   const materials = new Set<THREE.Material>();
   root.traverse((child) => {
     if ((child as THREE.Bone).isBone) {
@@ -152,12 +156,15 @@ function describeScene(root: THREE.Object3D): string {
     for (const material of list) {
       if (material) {
         materials.add(material);
+        if ((material as THREE.MeshStandardMaterial).map) {
+          texturedMaterials += 1;
+        }
       }
     }
   });
   const size = new THREE.Vector3();
   new THREE.Box3().setFromObject(root).getSize(size);
-  return `${meshes} meshes / ${materials.size} materials / ${bones} bones / ${vertices} vertices / height≈${size.y.toFixed(2)}m`;
+  return `${meshes} meshes / ${materials.size} materials (بخرائط نسيج: ${texturedMaterials}) / ${bones} bones / ${vertices} vertices / height≈${size.y.toFixed(2)}m`;
 }
 
 function countMeshes(root: THREE.Object3D): number {
@@ -238,8 +245,12 @@ async function fetchModelBuffer(url: string): Promise<ArrayBuffer> {
 }
 
 async function loadWithTimeout(url: string): Promise<GLTF> {
-  logAsset("info", `بدء تحميل: ${url}`);
+  logAsset("info", `⬇️ [تنزيل] بدء: ${url}`);
   const buffer = await fetchModelBuffer(url);
+  logAsset(
+    "info",
+    `⬇️ [تنزيل] نجح — ${(buffer.byteLength / 1024).toFixed(0)} كيلوبايت من ${url}`,
+  );
   // Relative URIs (external .bin / textures) resolve against the model URL.
   const basePath = url.slice(0, url.lastIndexOf("/") + 1);
   return await new Promise<GLTF>((resolve, reject) => {
@@ -247,12 +258,12 @@ async function loadWithTimeout(url: string): Promise<GLTF> {
       buffer,
       basePath,
       (gltf) => {
-        logAsset("info", `تم تحميل وتحليل الملف: ${url}`);
+        logAsset("info", `🧩 [تحليل GLB] نجح: ${url}`);
         resolve(gltf);
       },
       (error) => {
         const message = error instanceof Error ? error.message : String(error);
-        logAsset("error", `فشل تحليل ${url} — السبب: ${message}`);
+        logAsset("error", `🧩 [تحليل GLB] فشل ${url} — السبب: ${message}`);
         reject(new Error(message));
       },
     );
@@ -288,7 +299,9 @@ async function loadFirstAvailable(
 function withRawFallback(url: string): string[] {
   const raw = url
     .replace("https://cdn.jsdelivr.net/gh/", "https://raw.githubusercontent.com/")
-    .replace("@main/", "/main/");
+    // Works for every ref tag (@main, @r169, …) — the previous literal
+    // "@main/" replacement left "@r169" inside the raw URL, corrupting it.
+    .replace(/@([^/]+)\//, "/$1/");
   return raw === url ? [url] : [url, raw];
 }
 
@@ -348,6 +361,7 @@ export function operatorBodySources(variant: OperatorVariant): string[] {
   const soldier = SOLDIER_CDN_SOURCES[variant];
   if (soldier) {
     urls.push(...withRawFallback(soldier));
+    urls.push(SOLDIER_MIRROR_URL);
   }
   const character = CHARACTER_CDN_SOURCES[variant];
   if (character) {
