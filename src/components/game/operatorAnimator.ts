@@ -82,6 +82,14 @@ export class OperatorAnimator {
     return this.current ? this.actions.get(this.current)?.getClip().name ?? null : null;
   }
 
+  /** All mapped clips with their tactical state, for the HUD diagnostics. */
+  get availableClips(): { state: OperatorState; name: string }[] {
+    return [...this.actions.entries()].map(([state, action]) => ({
+      state,
+      name: action.getClip().name,
+    }));
+  }
+
   /** Mixer heartbeat: total updates and the timestamp of the last one. */
   get stats(): { updates: number; lastUpdateAt: number } {
     return { updates: this.updateCount, lastUpdateAt: this.lastUpdateAt };
