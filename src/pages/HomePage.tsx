@@ -15,6 +15,8 @@ export default function HomePage() {
         <div className="mx-auto max-w-xl rounded-lg border bg-card p-4 text-sm text-muted-foreground">
           <p className="font-medium text-foreground">كيف تلعب؟</p>
           <ul className="mt-2 list-inside list-disc space-y-1">
+            <li>تبدأ في ساحة الانتظار: اختر جنس المقاتل (♂/♀) وحجم الفرقة، واختبر الأسلحة على الأهداف (مسافة للإطلاق، 1-6 لتبديل السلاح).</li>
+            <li>بعد انتهاء عدّاد الإقلاع (أو زر «انزل الآن») تنطلق طائرة النقل فوق جزيرة يقطعها 100 مقاتل.</li>
             <li>اختر حجم الفرقة قبل البدء: منفرد، ثنائي، ثلاثي، أو فرقة 5.</li>
             <li>ابدأ على طائرة النقل: اضغط F أو زر «القفز» لاختيار لحظة النزول بالمظلة.</li>
             <li>الرفاق الساقطون (DBNO) يزحفون — اقترب منهم واضغط R باستمرار 5 ثوانٍ لإسعافهم.</li>
