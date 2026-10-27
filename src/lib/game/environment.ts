@@ -153,3 +153,49 @@ export function createRuins(): THREE.Group {
   }
   return group;
 }
+
+export function createCheckpoints(): THREE.Group {
+  const group = new THREE.Group();
+  const random = seededRandom(777);
+  const concrete = new THREE.MeshLambertMaterial({ color: 0x8d8d85 });
+  const sandbag = new THREE.MeshLambertMaterial({ color: 0x9b8b5e });
+  const rust = new THREE.MeshLambertMaterial({ color: 0x6e4a2f });
+  for (let c = 0; c < 3; c += 1) {
+    const angle = (c / 3) * Math.PI * 2 + 0.7;
+    const cx = Math.cos(angle) * 95;
+    const cz = Math.sin(angle) * 95;
+    const base = terrainHeight(cx, cz);
+    for (let s = 0; s < 7; s += 1) {
+      const a = angle + Math.PI + (s - 3) * 0.22;
+      const x = cx + Math.cos(a) * 4;
+      const z = cz + Math.sin(a) * 4;
+      const bag = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.9, 0.8), sandbag);
+      bag.position.set(x, terrainHeight(x, z) + 0.45, z);
+      bag.rotation.y = -a;
+      group.add(bag);
+    }
+    const tower = new THREE.Group();
+    for (let leg = 0; leg < 4; leg += 1) {
+      const legMesh = new THREE.Mesh(new THREE.BoxGeometry(0.22, 6, 0.22), rust);
+      legMesh.position.set((leg % 2 === 0 ? -1 : 1) * 1.1, 3, (leg < 2 ? -1 : 1) * 1.1);
+      tower.add(legMesh);
+    }
+    const platform = new THREE.Mesh(new THREE.BoxGeometry(3, 0.25, 3), rust);
+    platform.position.y = 6;
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(2.4, 1.2, 4), rust);
+    roof.position.y = 7.4;
+    roof.rotation.y = Math.PI / 4;
+    tower.add(platform, roof);
+    tower.position.set(cx, base, cz);
+    group.add(tower);
+    for (let b = 0; b < 3; b += 1) {
+      const barrier = new THREE.Mesh(new THREE.BoxGeometry(2.6, 1, 0.6), concrete);
+      const bx = cx + (random() - 0.5) * 10;
+      const bz = cz + (random() - 0.5) * 10;
+      barrier.position.set(bx, terrainHeight(bx, bz) + 0.5, bz);
+      barrier.rotation.y = random() * Math.PI;
+      group.add(barrier);
+    }
+  }
+  return group;
+}
