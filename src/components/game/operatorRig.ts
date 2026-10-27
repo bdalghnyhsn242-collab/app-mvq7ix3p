@@ -183,6 +183,7 @@ export class OperatorRig {
       }
       this.group.add(instance.root);
       this.procedural.visible = false;
+      riggedOperatorTotal += 1;
       console.info(
         `🎮 [LastStand:Rig] تم تركيب النموذج البشري الحقيقي (${this.variant}) — وضع الحركة: ${this.animationMode}`,
       );
