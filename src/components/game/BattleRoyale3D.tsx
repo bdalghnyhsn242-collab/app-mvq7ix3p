@@ -876,14 +876,19 @@ export default function BattleRoyale3D() {
         return;
       }
       const keys = keysRef.current;
+      const usingMouse = pointerLockedRef.current;
       const input = {
         forward:
           (keys.has("w") || keys.has("arrowup") ? 1 : 0) -
           (keys.has("s") || keys.has("arrowdown") ? 1 : 0),
-        turn: 0,
-        strafe:
-          (keys.has("d") || keys.has("arrowright") ? 1 : 0) -
-          (keys.has("a") || keys.has("arrowleft") ? 1 : 0),
+        turn: usingMouse
+          ? 0
+          : (keys.has("a") || keys.has("arrowleft") ? 1 : 0) -
+            (keys.has("d") || keys.has("arrowright") ? 1 : 0),
+        strafe: usingMouse
+          ? (keys.has("d") || keys.has("arrowright") ? 1 : 0) -
+            (keys.has("a") || keys.has("arrowleft") ? 1 : 0)
+          : 0,
         enter: enterRef.current,
         drop: dropRef.current,
         revive: reviveRef.current,
@@ -891,7 +896,7 @@ export default function BattleRoyale3D() {
         shield: shieldRef.current,
         sentry: sentryRef.current,
         medevac: medevacRef.current,
-        aimAngle: camYawRef.current,
+        aimAngle: usingMouse ? camYawRef.current : undefined,
         jump: jumpRef.current,
         crouch: crouchRef.current,
         sprint: sprintRef.current,
