@@ -88,6 +88,15 @@ function collectHumanoidBones(root: THREE.Object3D): RigCache | null {
       arms[side] = bone;
     }
   }
+  const thighMatches = found.filter((bone) => /thigh|upleg|upperleg/i.test(bone.name));
+  const shinMatches = found.filter(
+    (bone) => /shin|calf|lowerleg|leg/i.test(bone.name) && !thighMatches.includes(bone),
+  );
+  const pickSide = (matches: THREE.Object3D[]): Record<Side, THREE.Object3D | null> => ({
+    left: matches.find((bone) => sideOf(bone.name) === "left") ?? null,
+    right: matches.find((bone) => sideOf(bone.name) === "right") ?? null,
+    center: matches.find((bone) => sideOf(bone.name) === "center") ?? null,
+  });
   const bones: HumanoidBones = {
     hips: firstMatch(found, /hips|pelvis/i),
     spine: firstMatch(found, /spine|chest|torso|upperbody/i),
@@ -98,8 +107,8 @@ function collectHumanoidBones(root: THREE.Object3D): RigCache | null {
       right: forearmMatches.find((bone) => sideOf(bone.name) === "right") ?? null,
       center: null,
     },
-    thighs: bySide(/thigh|upleg|upperleg/i),
-    shins: bySide(/shin|calf|lowerleg|leg/i),
+    thighs: pickSide(thighMatches),
+    shins: pickSide(shinMatches),
   };
   const records: BoneRecord[] = [];
   const track = (bone: THREE.Object3D | null) => {
