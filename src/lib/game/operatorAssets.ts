@@ -177,6 +177,21 @@ export function loadedSourceFor(key: string): string | null {
   return loadedSource.get(key) ?? null;
 }
 
+/**
+ * Soldier.glb faces -Z while the game's forward is +Z, so it needs a
+ * 180° yaw. Everything else keeps its native facing.
+ */
+export function facingYawForSource(url: string | null): number {
+  if (url && /Soldier\.glb/i.test(url)) {
+    return Math.PI;
+  }
+  return 0;
+}
+
+export function bodyFacingYaw(key: string): number {
+  return facingYawForSource(loadedSourceFor(key));
+}
+
 const GLB_MAGIC = [0x67, 0x6c, 0x54, 0x46]; // "glTF"
 
 /**
