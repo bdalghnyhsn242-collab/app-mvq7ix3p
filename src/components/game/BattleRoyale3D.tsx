@@ -864,6 +864,21 @@ export default function BattleRoyale3D() {
         }
         zoneRing.position.set(current.zone.x, 0.05, current.zone.z);
         zoneRing.scale.setScalar(current.zone.radius);
+        updateWeatherVisuals({ scene, sun, hemi, weather: current.weather });
+        rain.update(dt, current.weather.rain, current.player.x, current.player.z);
+        zoneWall.visible = true;
+        zoneWall.position.set(current.zone.x, 23, current.zone.z);
+        zoneWall.scale.set(current.zone.radius, 1, current.zone.radius);
+        (zoneWall.material as THREE.MeshBasicMaterial).opacity =
+          0.12 + Math.sin(now / 300) * 0.04;
+        droneMesh.visible = true;
+        droneMesh.position.set(
+          current.drone.x,
+          terrainHeight(current.drone.x, current.drone.z) + 18,
+          current.drone.z,
+        );
+        droneMesh.rotation.y = -current.drone.orbitAngle;
+        droneMesh.rotation.z = Math.sin(now / 200) * 0.05;
         sun.position.set(current.player.x + 45, 70, current.player.z + 28);
         sun.target.position.set(current.player.x, 0, current.player.z);
         sun.target.updateMatrixWorld();
@@ -898,6 +913,9 @@ export default function BattleRoyale3D() {
         squadMeshes.forEach((squadRig) => {
           squadRig.group.visible = false;
         });
+        rain.points.visible = false;
+        zoneWall.visible = false;
+        droneMesh.visible = false;
       }
       forest.update(now / 1000, camera);
       dust.rotation.y = now * 0.004;
@@ -906,6 +924,7 @@ export default function BattleRoyale3D() {
       hudTimer += dt;
       if (current && hudTimer > 0.1) {
         hudTimer = 0;
+        const attachmentId = current.attachments[current.weapon];
         setHud({
           health: Math.max(0, Math.round(current.player.health)),
           alive: current.bots.filter((bot) => bot.alive).length,
@@ -927,6 +946,10 @@ export default function BattleRoyale3D() {
           altitude: Math.round(current.deployment.altitude),
           squad: current.squad.map((mate) => ({ ...mate })),
           status: current.status,
+          weather: current.weather.kind,
+          phase: dayPhase(current.weather.time),
+          droneAlert: current.drone.spottedTimer > 0,
+          attachment: attachmentId ? ATTACHMENTS[attachmentId].name : null,
         });
       }
     };
