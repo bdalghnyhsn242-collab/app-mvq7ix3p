@@ -331,6 +331,7 @@ export default function BattleRoyale3D() {
     scene.background = new THREE.Color(0x9fc4e8);
     scene.fog = new THREE.Fog(0x9fc4e8, 140, 700);
     const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 1600);
+    const camTarget = new THREE.Vector3();
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
@@ -1362,6 +1363,13 @@ export default function BattleRoyale3D() {
     return () => {
       window.cancelAnimationFrame(frame);
       window.removeEventListener("resize", resize);
+      renderer.domElement.removeEventListener("click", onCanvasClick);
+      document.removeEventListener("pointerlockchange", onPointerLockChange);
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mousedown", onMouseDown);
+      if (document.pointerLockElement) {
+        document.exitPointerLock();
+      }
       renderer.dispose();
       if (renderer.domElement.parentElement === mount) {
         mount.removeChild(renderer.domElement);
