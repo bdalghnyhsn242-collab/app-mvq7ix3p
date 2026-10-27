@@ -242,45 +242,31 @@ export function loadOperatorGltf(
   variant: OperatorVariant,
   loader: (url: string) => Promise<GLTF> = loadWithTimeout,
 ): Promise<GLTF | null> {
-  const cached = gltfCache.get(`body:${variant}`);
-  if (cached) {
-    return cached;
-  }
   const urls = [OPERATOR_MODEL_URLS[variant]];
   const character = CHARACTER_CDN_SOURCES[variant];
   if (character) {
-    urls.push(character);
+    urls.push(...withRawFallback(character));
   }
-  urls.push(OPERATOR_CDN_SOURCES[variant]);
-  const promise = loadFirstAvailable(urls, loader);
-  gltfCache.set(`body:${variant}`, promise);
-  return promise;
+  urls.push(...withRawFallback(OPERATOR_CDN_SOURCES[variant]));
+  return cachedOrLoad(`body:${variant}`, urls, loader);
 }
 
 /** Loads the shared CC0 animation-library clips (cached across variants). */
 export function loadOperatorClipsGltf(
   loader: (url: string) => Promise<GLTF> = loadWithTimeout,
 ): Promise<GLTF | null> {
-  const cached = gltfCache.get("clips");
-  if (cached) {
-    return cached;
-  }
-  const promise = loadFirstAvailable([ANIMATION_LIBRARY_URL], loader);
-  gltfCache.set("clips", promise);
-  return promise;
+  return cachedOrLoad("clips", withRawFallback(ANIMATION_LIBRARY_URL), loader);
 }
 
 /** Loads the CC0 rifle model (local override first, then CDN). */
 export function loadWeaponGltf(
   loader: (url: string) => Promise<GLTF> = loadWithTimeout,
 ): Promise<GLTF | null> {
-  const cached = gltfCache.get("weapon");
-  if (cached) {
-    return cached;
-  }
-  const promise = loadFirstAvailable([WEAPON_MODEL_URL, WEAPON_CDN_URL], loader);
-  gltfCache.set("weapon", promise);
-  return promise;
+  return cachedOrLoad(
+    "weapon",
+    [WEAPON_MODEL_URL, ...withRawFallback(WEAPON_CDN_URL)],
+    loader,
+  );
 }
 
 export function resetOperatorAssetCache(): void {
