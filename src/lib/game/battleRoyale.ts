@@ -175,7 +175,13 @@ export function lootWeaponForIndex(index: number): WeaponId {
 
 export type Soldier = { x: number; z: number; angle: number; health: number; alive: boolean };
 export type MatchStatus = "idle" | "running" | "won" | "lost";
-export type MatchInput = { forward: number; turn: number; enter?: boolean };
+export type MatchInput = {
+  forward: number;
+  turn: number;
+  enter?: boolean;
+  drop?: boolean;
+  revive?: boolean;
+};
 export type MatchState = {
   player: Soldier;
   bots: Soldier[];
@@ -187,6 +193,9 @@ export type MatchState = {
   vehicles: Vehicle[];
   playerVehicle: number;
   airdrop: AirdropState;
+  squadSize: SquadSize;
+  squad: Teammate[];
+  deployment: Deployment;
   time: number;
   status: MatchStatus;
 };
@@ -200,7 +209,7 @@ function clampToIsland(point: { x: number; z: number }) {
   }
 }
 
-export function createMatchState(): MatchState {
+export function createMatchState(squadSize: SquadSize = 1): MatchState {
   const bots: Soldier[] = [];
   for (let i = 0; i < BOT_COUNT; i += 1) {
     const angle = (i / BOT_COUNT) * Math.PI * 2;
@@ -226,6 +235,16 @@ export function createMatchState(): MatchState {
       taken: false,
     });
   }
+  BUILDING_POSITIONS.forEach((position, i) => {
+    const weapon = lootWeaponForIndex(i + 2);
+    loot.push({
+      x: position.x + 2,
+      z: position.z + 2,
+      weapon,
+      ammo: weapon === "shotgun" ? 8 : weapon === "dmr" ? 10 : weapon === "lmg" ? 60 : 30,
+      taken: false,
+    });
+  });
   return {
     player: { x: 0, z: 0, angle: 0, health: 100, alive: true },
     bots,
@@ -237,6 +256,9 @@ export function createMatchState(): MatchState {
     vehicles: createVehicles(),
     playerVehicle: -1,
     airdrop: createAirdropState(),
+    squadSize,
+    squad: createSquad(squadSize),
+    deployment: createDeployment(),
     time: 0,
     status: "running",
   };
