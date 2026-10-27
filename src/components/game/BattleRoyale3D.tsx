@@ -32,7 +32,12 @@ import {
   CHALLENGE_ZONE_CAPTURE_TIME,
   CHALLENGE_ZONE_RADIUS,
 } from "@/lib/game/squadRevivalSystem";
-import { DOME_MAX_INTEGRITY, DOME_RADIUS } from "@/lib/game/shieldDomeSystem";
+import {
+  DOME_MAX_INTEGRITY,
+  DOME_RADIUS,
+} from "@/lib/game/shieldDomeSystem";
+import { SENTRY_MAX_HEALTH } from "@/lib/game/sentryTurretSystem";
+import { FORTRESS_HOLD_TIME } from "@/lib/game/squadFortressSystem";
 import {
   BOT_COUNT,
   LOOT_COUNT,
@@ -101,6 +106,7 @@ type Hud = {
   sentryHealth: number;
   medevacActive: boolean;
   fortressBuff: boolean;
+  fortressHold: number;
   chopperIncoming: boolean;
   gadgets: { shield: number; sentry: number; medevac: number };
 };
@@ -246,6 +252,7 @@ export default function BattleRoyale3D() {
     sentryHealth: 0,
     medevacActive: false,
     fortressBuff: false,
+    fortressHold: 0,
     chopperIncoming: false,
     gadgets: { shield: 0, sentry: 0, medevac: 0 },
   });
@@ -1245,9 +1252,12 @@ export default function BattleRoyale3D() {
             ? Math.max(0, current.shield.integrity / DOME_MAX_INTEGRITY)
             : null,
           sentryDeployed: current.sentry.deployed,
-          sentryHealth: current.sentry.health,
+          sentryHealth: current.sentry.health / SENTRY_MAX_HEALTH,
           medevacActive: current.medevac.active,
           fortressBuff: current.fortress.active && !current.fortress.chopperIncoming,
+          fortressHold: current.fortress.active
+            ? Math.min(1, current.fortress.holdProgress / FORTRESS_HOLD_TIME)
+            : 0,
           chopperIncoming: current.fortress.chopperIncoming,
           gadgets: { ...current.gadgets },
         });
