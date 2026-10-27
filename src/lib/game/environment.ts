@@ -29,53 +29,71 @@ function groundVary(x: number, z: number): number {
   return s - Math.floor(s);
 }
 
+// Island surface palette, shared by the terrain mesh and its unit tests.
+const SAND = new THREE.Color(0xd9c08a);
+const GRASS_LUSH = new THREE.Color(0x3f7a3a);
+const GRASS_DRY = new THREE.Color(0x5c8f46);
+const GRASS_PATCH = new THREE.Color(0x9aa054);
+const ROCK = new THREE.Color(0x8a8378);
+const MUD = new THREE.Color(0x6b5a3e);
+const SEABED = new THREE.Color(0x5e5642);
+const SNOW = new THREE.Color(0xf2f5f7);
+
+/**
+ * Pure surface-color classifier for the island: sand only in the shoreline
+ * band, varied grass inland, mud in riverbeds, a darkening seabed, and
+ * rock/snow caps. Exported so tests can verify the island is NOT the old
+ * all-yellow lowland paint.
+ */
+export function terrainSurfaceColor(
+  x: number,
+  z: number,
+  h: number,
+  target: THREE.Color = new THREE.Color(),
+): THREE.Color {
+  const dist = Math.hypot(x, z);
+  const shoreline = dist > ISLAND_RADIUS - 30;
+  if (h < -0.5) {
+    // Seabed darkens with depth so the water never glows yellow.
+    target.copy(SAND).lerp(SEABED, Math.min(1, -h / 3));
+  } else if (h < 0.9 && shoreline) {
+    // Sand is a shoreline band, not the default for all low ground.
+    target.copy(SAND);
+  } else if (h < 0.2) {
+    // Inland riverbeds and hollows stay mud.
+    target.copy(MUD);
+  } else if (h < 12) {
+    // Varied grass: two greens mottled with dry patches, blending into
+    // the beach right at the waterline.
+    target.copy(GRASS_LUSH).lerp(GRASS_DRY, groundVary(x, z));
+    if (groundVary(x + 31.7, z - 17.3) > 0.86) {
+      target.lerp(GRASS_PATCH, 0.6);
+    }
+    if (h < 1.6) {
+      target.lerp(SAND, 0.35 * ((1.6 - h) / 1.4));
+    }
+  } else {
+    target.copy(ROCK).lerp(GRASS_LUSH, Math.max(0, (16 - h) / 6));
+    if (h > 26) {
+      target.lerp(SNOW, Math.min(1, (h - 26) / 8));
+    }
+  }
+  return target;
+}
+
 export function createTerrain(): THREE.Mesh {
   const size = ISLAND_RADIUS * 2.6;
   const geometry = new THREE.PlaneGeometry(size, size, 150, 150);
   geometry.rotateX(-Math.PI / 2);
   const position = geometry.attributes.position as THREE.BufferAttribute;
   const colors = new Float32Array(position.count * 3);
-  const sand = new THREE.Color(0xd9c08a);
-  const grassLush = new THREE.Color(0x3f7a3a);
-  const grassDry = new THREE.Color(0x5c8f46);
-  const grassPatch = new THREE.Color(0x9aa054);
-  const rock = new THREE.Color(0x8a8378);
-  const mud = new THREE.Color(0x6b5a3e);
-  const seabed = new THREE.Color(0x5e5642);
-  const snow = new THREE.Color(0xf2f5f7);
   const color = new THREE.Color();
   for (let i = 0; i < position.count; i += 1) {
     const x = position.getX(i);
     const z = position.getZ(i);
     const h = terrainHeight(x, z);
     position.setY(i, h);
-    const dist = Math.hypot(x, z);
-    const shoreline = dist > ISLAND_RADIUS - 30;
-    if (h < -0.5) {
-      // Seabed darkens with depth so the water never glows yellow.
-      color.copy(sand).lerp(seabed, Math.min(1, -h / 3));
-    } else if (h < 0.9 && shoreline) {
-      // Sand is a shoreline band, not the default for all low ground.
-      color.copy(sand);
-    } else if (h < 0.2) {
-      // Inland riverbeds and hollows stay mud.
-      color.copy(mud);
-    } else if (h < 12) {
-      // Varied grass: two greens mottled with dry patches, blending into
-      // the beach right at the waterline.
-      color.copy(grassLush).lerp(grassDry, groundVary(x, z));
-      if (groundVary(x + 31.7, z - 17.3) > 0.86) {
-        color.lerp(grassPatch, 0.6);
-      }
-      if (h < 1.6) {
-        color.lerp(sand, 0.35 * ((1.6 - h) / 1.4));
-      }
-    } else {
-      color.copy(rock).lerp(grassLush, Math.max(0, (16 - h) / 6));
-      if (h > 26) {
-        color.lerp(snow, Math.min(1, (h - 26) / 8));
-      }
-    }
+    terrainSurfaceColor(x, z, h, color);
     colors[i * 3] = color.r;
     colors[i * 3 + 1] = color.g;
     colors[i * 3 + 2] = color.b;
