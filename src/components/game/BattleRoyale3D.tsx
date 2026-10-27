@@ -31,7 +31,6 @@ import { BEACON_COUNTDOWN } from "@/lib/game/beaconDropSystem";
 import {
   CHALLENGE_ZONE_CAPTURE_TIME,
   CHALLENGE_ZONE_RADIUS,
-  CHALLENGE_WINDOW,
 } from "@/lib/game/squadRevivalSystem";
 import { DOME_RADIUS } from "@/lib/game/shieldDomeSystem";
 import {
