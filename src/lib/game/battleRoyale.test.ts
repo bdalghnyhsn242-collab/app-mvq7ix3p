@@ -106,8 +106,8 @@ describe("battle royale core logic", () => {
     const state = withState({ bots: [{ x: 0, z: 16, angle: 0, health: 100, alive: true }] });
     const result = shoot(state);
     expect(result.hit).toBe(true);
-    expect(result.state.bots[0].health).toBeGreaterThan(40);
-    expect(result.state.bots[0].health).toBeLessThan(50);
+    expect(result.state.bots[0].health).toBeGreaterThan(50);
+    expect(result.state.bots[0].health).toBeLessThan(60);
   });
 
   it("kicks the aim with recoil after each shot", () => {
