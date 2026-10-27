@@ -4,13 +4,18 @@ import { Crosshair, RotateCcw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { makeSoldier, type SoldierGender } from "@/components/game/soldierModel";
+import {
+  animateSoldier,
+  makeSoldier,
+  type SoldierGender,
+} from "@/components/game/soldierModel";
 import {
   createCheckpoints,
   createBuildings,
   createForest,
   createRocks,
   createRuins,
+  createSunShafts,
   createTerrain,
 } from "@/lib/game/environment";
 import { createWater } from "@/lib/game/water";
@@ -247,22 +252,53 @@ export default function BattleRoyale3D() {
     const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 1600);
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     mount.appendChild(renderer.domElement);
 
     scene.add(new THREE.HemisphereLight(0xbfd9ff, 0x3a6b35, 1.1));
     const sun = new THREE.DirectionalLight(0xfff1d6, 1.2);
     sun.position.set(30, 50, 20);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(2048, 2048);
+    sun.shadow.camera.left = -70;
+    sun.shadow.camera.right = 70;
+    sun.shadow.camera.top = 70;
+    sun.shadow.camera.bottom = -70;
+    sun.shadow.camera.near = 1;
+    sun.shadow.camera.far = 220;
+    sun.shadow.bias = -0.0005;
     scene.add(sun);
+    scene.add(sun.target);
 
     const water = createWater();
     scene.add(water.mesh);
-    scene.add(createTerrain());
-    scene.add(createRocks());
-    scene.add(createRuins());
+    const terrain = createTerrain();
+    terrain.receiveShadow = true;
+    scene.add(terrain);
+    const rocks = createRocks();
+    const ruins = createRuins();
     const forest = createForest();
+    forest.group.traverse((child) => {
+      const meshChild = child as THREE.Mesh;
+      if (meshChild.isMesh) {
+        meshChild.castShadow = true;
+      }
+    });
     scene.add(forest.group);
-    scene.add(createCheckpoints());
-    scene.add(createBuildings());
+    const checkpoints = createCheckpoints();
+    const buildings = createBuildings();
+    for (const chunk of [rocks, ruins, checkpoints, buildings]) {
+      chunk.traverse((child) => {
+        const meshChild = child as THREE.Mesh;
+        if (meshChild.isMesh) {
+          meshChild.castShadow = true;
+          meshChild.receiveShadow = true;
+        }
+      });
+      scene.add(chunk);
+    }
+    scene.add(createSunShafts());
 
     const dustCount = 500;
     const dustPositions = new Float32Array(dustCount * 3);
