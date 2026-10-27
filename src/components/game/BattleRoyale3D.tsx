@@ -52,7 +52,11 @@ import {
 } from "@/lib/game/shieldDomeSystem";
 import { SENTRY_MAX_HEALTH } from "@/lib/game/sentryTurretSystem";
 import { FORTRESS_HOLD_TIME } from "@/lib/game/squadFortressSystem";
-import { saveMatchResult, type MatchSummary } from "@/lib/matchCloud";
+import {
+  describeCloudError,
+  saveMatchResult,
+  type MatchSummary,
+} from "@/lib/matchCloud";
 import { playGunshot, playHitMarker, playReload } from "@/lib/game/sfx";
 import {
   BOT_COUNT,
@@ -1102,11 +1106,11 @@ export default function BattleRoyale3D() {
             return;
           }
           if (result.savedLocally) {
-            const detail =
-              result.reason && result.reason !== "not-configured"
-                ? ` — تعذر الاتصال بالسحابة (${result.reason})`
-                : "";
-            toast.info("💾 حُفظت النتيجة محليًا على هذا الجهاز" + detail);
+            // Honest messaging: local save is never presented as a cloud
+            // success, and the raw English fetch error is translated.
+            toast.info(
+              `💾 حُفظت النتيجة محليًا على هذا الجهاز — ${describeCloudError(result.reason)}`,
+            );
           }
         });
       }
