@@ -9,7 +9,7 @@ import type { SoldierGender } from "@/components/game/soldierModel";
 import {
   OperatorRig,
   lodTierForDistance,
-  riggedOperatorCount,
+  type OperatorRigStatus,
 } from "@/components/game/operatorRig";
 import {
   getOperatorDiagnostics,
@@ -673,10 +673,23 @@ export default function BattleRoyale3D() {
     installOperatorDiagnosticsProbe();
     let maleReal = false;
     let femaleReal = false;
+    // Mounted = the real body is loaded, a verified child of the player's
+    // rig group, the procedural fallback is hidden, and it has meshes.
+    const isPlayerMounted = (status: OperatorRigStatus) =>
+      status.loaded && status.added && status.proceduralHidden && status.meshes > 0;
     const reportModelStatus = () => {
       const male = playerRigMale.status;
       const female = playerRigFemale.status;
-      const best = male.loaded ? male : female;
+      // Report the rig that is actually mounted; when neither is, report
+      // the loaded one so the failure stays visible and honest.
+      const best = isPlayerMounted(male)
+        ? male
+        : isPlayerMounted(female)
+          ? female
+          : male.loaded
+            ? male
+            : female;
+      const playerMounted = isPlayerMounted(male) || isPlayerMounted(female);
       const bodyKey = genderRef.current === "female" ? "body:female" : "body:male";
       setModelDiag({
         loaded: male.loaded || female.loaded,
@@ -688,9 +701,11 @@ export default function BattleRoyale3D() {
           loadedSourceFor(bodyKey) ??
           loadedSourceFor("body:male") ??
           loadedSourceFor("body:female"),
-        rigged: riggedOperatorCount(),
+        // Counts only the player's successfully mounted model meshes —
+        // bot/squad mounts must never make the player look rigged.
+        rigged: playerMounted ? best.meshes : 0,
       });
-      if (maleReal || femaleReal) {
+      if (playerMounted) {
         setModelStatus("real");
         setModelStatusReason(null);
       } else {
@@ -710,13 +725,15 @@ export default function BattleRoyale3D() {
     // moment) must never lock the player into the procedural cubes for the
     // whole session: retry quietly until the real model is in.
     const modelRetryTimer = window.setInterval(() => {
-      if (!maleReal) {
+      // Retry on live mount state (not just the last promise result) so a
+      // detached or half-mounted model is re-attached automatically.
+      if (!isPlayerMounted(playerRigMale.status)) {
         void playerRigMale.upgrade().then((ok) => {
           maleReal = maleReal || ok;
           reportModelStatus();
         });
       }
-      if (!femaleReal) {
+      if (!isPlayerMounted(playerRigFemale.status)) {
         void playerRigFemale.upgrade().then((ok) => {
           femaleReal = femaleReal || ok;
           reportModelStatus();
@@ -1828,7 +1845,9 @@ export default function BattleRoyale3D() {
                 ? `🧍 GLB بشري مُركّب على اللاعب — ${modelDiag.meshes} meshes / ${modelDiag.bones} عظمة`
                 : modelStatus === "loading"
                   ? "⏳ جارٍ تحميل نموذج الشخصية…"
-                  : "⚠️ لم يُركَّب نموذج بشري — المجسم الإجرائي البديل ظاهر"}
+                  : modelDiag?.loaded
+                    ? "⚠️ النموذج مُحمّل لكنه غير مُركّب على اللاعب بعد — جارٍ إعادة التركيب"
+                    : "⚠️ لم يُركَّب نموذج بشري — المجسم الإجرائي البديل ظاهر"}
             </span>
             {modelDiag?.loaded ? (
               <>
@@ -1837,7 +1856,8 @@ export default function BattleRoyale3D() {
                   {modelDiag.hidden ? "نعم" : "لا"}
                 </span>
                 <span className="w-fit max-w-72 truncate rounded bg-slate-900/80 px-1.5 py-0.5 text-[10px] text-slate-200">
-                  المصدر: {modelDiag.source ?? "؟"} — مجسمات بشرية مُركّبة: {modelDiag.rigged}
+                  المصدر: {modelDiag.source ?? "؟"} — meshes نموذج اللاعب المُركّب:{" "}
+                  {modelDiag.rigged}
                 </span>
               </>
             ) : null}
