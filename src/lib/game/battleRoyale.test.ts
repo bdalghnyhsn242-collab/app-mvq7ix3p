@@ -17,6 +17,7 @@ import {
   applyVehicleDestruction,
   blastDamage,
   steerAroundObstacles,
+  EXPANSION_LOOT_COUNT,
   type MatchState,
 } from "./battleRoyale";
 import {
@@ -116,7 +117,9 @@ describe("battle royale core logic", () => {
 
   it("spawns loot crates on the island", () => {
     const state = createMatchState();
-    expect(state.loot).toHaveLength(LOOT_COUNT + BUILDING_POSITIONS.length);
+    expect(state.loot).toHaveLength(
+      LOOT_COUNT + BUILDING_POSITIONS.length + EXPANSION_LOOT_COUNT,
+    );
     expect(state.loot.every((crate) => Math.hypot(crate.x, crate.z) < ISLAND_RADIUS)).toBe(true);
   });
 
