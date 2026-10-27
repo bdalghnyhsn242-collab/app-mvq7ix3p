@@ -5,7 +5,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { makeSoldier } from "@/components/game/soldierModel";
-import { createRocks, createRuins, createTerrain } from "@/lib/game/environment";
+import {
+  createCheckpoints,
+  createForest,
+  createRocks,
+  createRuins,
+  createTerrain,
+} from "@/lib/game/environment";
 import { createWater } from "@/lib/game/water";
 import {
   BOT_COUNT,
@@ -90,15 +96,15 @@ export default function BattleRoyale3D() {
       return;
     }
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x87ceeb);
-    scene.fog = new THREE.Fog(0x87ceeb, 70, 180);
-    const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 400);
+    scene.background = new THREE.Color(0x9fc4e8);
+    scene.fog = new THREE.Fog(0x9fc4e8, 140, 700);
+    const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 1600);
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     mount.appendChild(renderer.domElement);
 
-    scene.add(new THREE.HemisphereLight(0xffffff, 0x3a6b35, 1.1));
-    const sun = new THREE.DirectionalLight(0xffffff, 1.1);
+    scene.add(new THREE.HemisphereLight(0xbfd9ff, 0x3a6b35, 1.1));
+    const sun = new THREE.DirectionalLight(0xfff1d6, 1.2);
     sun.position.set(30, 50, 20);
     scene.add(sun);
 
@@ -107,6 +113,24 @@ export default function BattleRoyale3D() {
     scene.add(createTerrain());
     scene.add(createRocks());
     scene.add(createRuins());
+    const forest = createForest();
+    scene.add(forest.group);
+    scene.add(createCheckpoints());
+
+    const dustCount = 500;
+    const dustPositions = new Float32Array(dustCount * 3);
+    for (let i = 0; i < dustCount; i += 1) {
+      dustPositions[i * 3] = (Math.random() * 2 - 1) * 160;
+      dustPositions[i * 3 + 1] = Math.random() * 14 + 1;
+      dustPositions[i * 3 + 2] = (Math.random() * 2 - 1) * 160;
+    }
+    const dustGeometry = new THREE.BufferGeometry();
+    dustGeometry.setAttribute("position", new THREE.BufferAttribute(dustPositions, 3));
+    const dust = new THREE.Points(
+      dustGeometry,
+      new THREE.PointsMaterial({ color: 0xd8cbb0, size: 0.35, transparent: true, opacity: 0.5 }),
+    );
+    scene.add(dust);
 
     const zoneRing = new THREE.Mesh(
       new THREE.TorusGeometry(1, 0.05, 8, 96),
