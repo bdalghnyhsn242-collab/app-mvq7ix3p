@@ -335,7 +335,14 @@ export function lootWeaponForIndex(index: number): WeaponId {
   return cycle[index % cycle.length];
 }
 
-export type Soldier = { x: number; z: number; angle: number; health: number; alive: boolean };
+export type Soldier = {
+  x: number;
+  z: number;
+  angle: number;
+  health: number;
+  alive: boolean;
+  stunTimer?: number;
+};
 export type MatchStatus = "idle" | "running" | "won" | "lost";
 export type MatchInput = {
   forward: number;
@@ -873,7 +880,7 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
         playerVehicle = -1;
       }
     } else {
-      health -= CONTACT_DAMAGE_PER_SECOND * dt;
+      applyPlayerDamage(CONTACT_DAMAGE_PER_SECOND * dt);
     }
   }
 
