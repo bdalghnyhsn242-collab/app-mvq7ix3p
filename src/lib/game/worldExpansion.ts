@@ -3,6 +3,7 @@ import { ISLAND_RADIUS } from "./battleRoyale";
 
 export const CAMP_POSITION = { x: -72, z: 84 };
 export const AIRPORT_POSITION = { x: 84, z: -78 };
+export const EXPANSION_LOOT_COUNT = 6;
 
 export const CAMP_LOOT_SPOTS = [
   { x: CAMP_POSITION.x - 6, z: CAMP_POSITION.z + 4 },
