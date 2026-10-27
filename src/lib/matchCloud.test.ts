@@ -5,7 +5,9 @@ import {
   buildSquadPerformanceRows,
   computeLeaderboardScore,
   fetchLeaderboard,
+  loadLocalMatches,
   saveMatchResult,
+  saveMatchLocally,
   type MatchSummary,
 } from "./matchCloud";
 import { cloudClient, isCloudConfigured } from "./supabase";
@@ -97,5 +99,30 @@ describe("match cloud persistence", () => {
     expect(result.saved).toBe(false);
     expect(result.reason).toBe("not-configured");
     expect(await fetchLeaderboard(5)).toEqual([]);
+  });
+});
+
+describe("local match history", () => {
+  it("saves and loads matches on the device without any account", () => {
+    window.localStorage.clear();
+    const record = saveMatchLocally(wonSummary, "الصقر");
+    expect(record).not.toBeNull();
+    expect(record?.playerName).toBe("الصقر");
+    expect(record?.score).toBe(computeLeaderboardScore(wonSummary));
+    const history = loadLocalMatches();
+    expect(history).toHaveLength(1);
+    expect(history[0].status).toBe("won");
+    expect(history[0].kills).toBe(12);
+  });
+
+  it("caps the local history at 50 entries with newest first", () => {
+    window.localStorage.clear();
+    for (let i = 0; i < 55; i += 1) {
+      saveMatchLocally({ ...wonSummary, kills: i });
+    }
+    const history = loadLocalMatches();
+    expect(history).toHaveLength(50);
+    expect(history[0].kills).toBe(54);
+    expect(history[49].kills).toBe(5);
   });
 });
