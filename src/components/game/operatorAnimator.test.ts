@@ -69,6 +69,28 @@ describe("operator animation state machine", () => {
     expect(animator.state).toBe(null);
   });
 
+  it("reports playable states and pauses for direct bone posing", () => {
+    const root = new THREE.Object3D();
+    const child = new THREE.Object3D();
+    child.name = "child";
+    root.add(child);
+    const clips: Record<OperatorClipName, THREE.AnimationClip | null> = {
+      idle: makeClip("Idle", child),
+      sprint: null,
+      aim: null,
+      crawl: null,
+      swim: null,
+      drive: null,
+    };
+    const animator = new OperatorAnimator(root, clips);
+    expect(animator.canPlay("idle")).toBe(true);
+    expect(animator.canPlay("sprint")).toBe(false);
+    expect(animator.setState("idle")).toBe(true);
+    animator.update(0.1);
+    animator.pause();
+    expect(animator.state).toBe(null);
+  });
+
   it("maps GLTF clip names to tactical states by heuristics", () => {
     const root = new THREE.Object3D();
     const child = new THREE.Object3D();
