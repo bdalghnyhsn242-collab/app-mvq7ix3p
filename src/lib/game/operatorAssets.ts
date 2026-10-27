@@ -6,6 +6,7 @@ export type OperatorVariant = "male" | "female" | "ghillie";
 
 export type OperatorClipName =
   | "idle"
+  | "walk"
   | "sprint"
   | "aim"
   | "crawl"
@@ -491,18 +492,31 @@ export function clipTracksMatchSkeleton(
 
 const CLIP_HINTS: Record<OperatorClipName, string[]> = {
   idle: ["idle", "stand", "breath"],
-  sprint: ["sprint", "run", "jog", "walk"],
+  walk: ["walk"],
+  sprint: ["sprint", "run", "jog"],
   aim: ["aim", "shoot", "fire", "attack"],
   crawl: ["crawl", "crouch", "downed", "prone"],
   swim: ["swim"],
   drive: ["drive", "sit", "vehicle"],
 };
 
+/**
+ * Rest/bind poses shipped as fake "clips" (Soldier.glb literally contains
+ * a "TPose" clip). Playing one freezes the rig in a static T-pose, so they
+ * must never be picked as a locomotion fallback.
+ */
+const POSE_CLIP_PATTERN = /t[-_. ]?pose|a[-_. ]?pose|rest|bind|reference/i;
+
+function isPoseClip(clip: THREE.AnimationClip): boolean {
+  return POSE_CLIP_PATTERN.test(clip.name);
+}
+
 export function mapOperatorClips(
   clips: THREE.AnimationClip[],
 ): Record<OperatorClipName, THREE.AnimationClip | null> {
   const mapped: Record<OperatorClipName, THREE.AnimationClip | null> = {
     idle: null,
+    walk: null,
     sprint: null,
     aim: null,
     crawl: null,
@@ -521,11 +535,17 @@ export function mapOperatorClips(
       }
     }
   }
-  if (!mapped.idle && clips.length > 0) {
-    mapped.idle = clips[0];
+  // Fallbacks only use real motion clips — never T-pose/A-pose rest clips.
+  const motionClips = clips.filter((clip) => !isPoseClip(clip));
+  if (!mapped.idle) {
+    mapped.idle = motionClips[0] ?? null;
   }
-  if (!mapped.sprint && clips.length > 1) {
-    mapped.sprint = clips[1];
+  if (!mapped.walk) {
+    mapped.walk = motionClips.find((clip) => clip !== mapped.idle) ?? null;
+  }
+  if (!mapped.sprint) {
+    mapped.sprint =
+      motionClips.find((clip) => clip !== mapped.idle && clip !== mapped.walk) ?? null;
   }
   return mapped;
 }
@@ -562,6 +582,20 @@ export function createOperatorInstance(
   }
   const hasMappedClips = Object.values(clips).some(Boolean);
   const mixer = new THREE.AnimationMixer(root);
+  // Ground-truth diagnostics: the clip names come from the loaded file,
+  // never from assumptions, so failures are debuggable in the console.
+  console.info(
+    `🎮 [LastStand:Clips] ${
+      bodyGltf.animations.length > 0
+        ? `مقاطع الملف: [${bodyGltf.animations.map((clip) => clip.name).join(", ")}]`
+        : "لا مقاطع في ملف الجسم"
+    } → الحركات المُعيَّنة: ${
+      (Object.keys(clips) as OperatorClipName[])
+        .filter((key) => clips[key])
+        .map((key) => `${key}=${clips[key]!.name}`)
+        .join(", ") || "لا شيء"
+    }`,
+  );
   return { root, mixer, clips, hasMappedClips };
 }
 
