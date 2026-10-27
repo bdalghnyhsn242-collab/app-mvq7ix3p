@@ -393,6 +393,9 @@ export default function BattleRoyale3D() {
       if (key === " ") {
         shootRef.current = true;
       }
+      if (key === "e") {
+        enterRef.current = true;
+      }
       keysRef.current.add(key);
     };
     const onKeyUp = (event: KeyboardEvent) => {
@@ -490,6 +493,9 @@ export default function BattleRoyale3D() {
         <Button onClick={() => (shootRef.current = true)}>
           <Crosshair />
           إطلاق النار (مسافة)
+        </Button>
+        <Button variant="outline" onClick={() => (enterRef.current = true)}>
+          🚙 ركوب/نزول (E)
         </Button>
         <div dir="ltr" className="flex items-center gap-1.5">
           <HoldButton label="◀" onHold={holdKey("a")} />
