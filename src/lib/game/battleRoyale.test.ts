@@ -10,6 +10,7 @@ import {
   forestDensity,
   movementSpeed,
   isSwimming,
+  PLAYER_SPEED,
   terrainHeight,
   shoot,
   stepMatch,
