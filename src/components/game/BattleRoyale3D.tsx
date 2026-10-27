@@ -6,15 +6,24 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   BOT_COUNT,
+  LOOT_COUNT,
   ZONE_START_RADIUS,
   createMatchState,
+  lootWeaponForIndex,
   shoot,
   stepMatch,
   type MatchState,
   type MatchStatus,
+  type WeaponId,
 } from "@/lib/game/battleRoyale";
 
 type Hud = { health: number; alive: number; zone: number; status: MatchStatus };
+
+const LOOT_COLORS: Record<WeaponId, number> = {
+  pistol: 0xfbbf24,
+  rifle: 0x38bdf8,
+  shotgun: 0xf97316,
+};
 
 function makeSoldier(color: number) {
   const group = new THREE.Group();
@@ -137,6 +146,15 @@ export default function BattleRoyale3D() {
       scene.add(bot);
       return bot;
     });
+    const lootMeshes = Array.from({ length: LOOT_COUNT }, (_, index) => {
+      const crate = new THREE.Mesh(
+        new THREE.BoxGeometry(0.8, 0.8, 0.8),
+        new THREE.MeshLambertMaterial({ color: LOOT_COLORS[lootWeaponForIndex(index)] }),
+      );
+      crate.position.y = 0.5;
+      scene.add(crate);
+      return crate;
+    });
 
     const resize = () => {
       const width = mount.clientWidth || 640;
@@ -184,6 +202,14 @@ export default function BattleRoyale3D() {
           if (bot) {
             mesh.position.set(bot.x, 0, bot.z);
             mesh.rotation.y = bot.angle;
+          }
+        });
+        lootMeshes.forEach((mesh, index) => {
+          const crate = current.loot[index];
+          mesh.visible = Boolean(crate && !crate.taken);
+          if (crate && !crate.taken) {
+            mesh.position.set(crate.x, 0.5, crate.z);
+            mesh.rotation.y = now / 600;
           }
         });
         zoneRing.position.set(current.zone.x, 0.05, current.zone.z);
