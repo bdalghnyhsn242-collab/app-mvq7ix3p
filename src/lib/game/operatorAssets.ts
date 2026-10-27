@@ -177,6 +177,16 @@ function countMeshes(root: THREE.Object3D): number {
   return meshes;
 }
 
+function countBones(root: THREE.Object3D): number {
+  let bones = 0;
+  root.traverse((child) => {
+    if ((child as THREE.Bone).isBone) {
+      bones += 1;
+    }
+  });
+  return bones;
+}
+
 /** The URL that actually produced each cached asset (shown in diagnostics). */
 const loadedSource = new Map<string, string>();
 
@@ -352,6 +362,10 @@ async function loadBodyGltf(
     );
     throw new Error(`no meshes in ${url}`);
   }
+  logAsset(
+    "info",
+    `🦴 [الهيكل العظمي] ${countBones(gltf.scene)} عظمة في ${url.split("/").pop()}`,
+  );
   return gltf;
 }
 
