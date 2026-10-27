@@ -337,6 +337,34 @@ export default function BattleRoyale3D() {
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     mount.appendChild(renderer.domElement);
 
+    const onPointerLockChange = () => {
+      pointerLockedRef.current = document.pointerLockElement === renderer.domElement;
+    };
+    const onMouseMove = (event: MouseEvent) => {
+      if (!pointerLockedRef.current) {
+        return;
+      }
+      camYawRef.current -= event.movementX * 0.0026;
+      camPitchRef.current = Math.max(
+        -0.35,
+        Math.min(1.1, camPitchRef.current + event.movementY * 0.0022),
+      );
+    };
+    const onMouseDown = (event: MouseEvent) => {
+      if (event.button === 0 && pointerLockedRef.current && modeRef.current === "match") {
+        shootRef.current = true;
+      }
+    };
+    const onCanvasClick = () => {
+      if (modeRef.current === "match" && !pointerLockedRef.current) {
+        renderer.domElement.requestPointerLock();
+      }
+    };
+    renderer.domElement.addEventListener("click", onCanvasClick);
+    document.addEventListener("pointerlockchange", onPointerLockChange);
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mousedown", onMouseDown);
+
     const hemi = new THREE.HemisphereLight(0xbfd9ff, 0x3a6b35, 1.1);
     scene.add(hemi);
     const sun = new THREE.DirectionalLight(0xfff1d6, 1.2);
