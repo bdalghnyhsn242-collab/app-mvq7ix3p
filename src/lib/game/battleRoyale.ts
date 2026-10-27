@@ -705,6 +705,10 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
   medevac = stepMedEvac(medevac, dt);
   let fortress = state.fortress;
 
+  let crouching = Boolean(input.crouch);
+  let jumpVy = state.jumpVy;
+  let jumpAir = state.jumpAir;
+
   let vehicles = state.vehicles;
   let playerVehicle = state.playerVehicle;
 
@@ -735,12 +739,33 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
     player.angle = driven.angle;
     clampToIsland(player);
   } else {
-    player.angle += input.turn * TURN_SPEED * dt;
+    if (input.aimAngle !== undefined) {
+      player.angle = input.aimAngle;
+    } else {
+      player.angle += input.turn * TURN_SPEED * dt;
+    }
+    crouching = Boolean(input.crouch) && jumpAir <= 0;
+    let speed = movementSpeed(player.x, player.z) * effects.speedFactor;
+    if (crouching) {
+      speed *= CROUCH_SPEED_FACTOR;
+    } else if (input.sprint) {
+      speed *= SPRINT_SPEED_FACTOR;
+    }
     if (input.forward !== 0) {
-      const speed = movementSpeed(player.x, player.z) * effects.speedFactor;
       player.x += Math.sin(player.angle) * input.forward * speed * dt;
       player.z += Math.cos(player.angle) * input.forward * speed * dt;
       clampToIsland(player);
+    }
+    if (jumpAir > 0 || jumpVy > 0) {
+      jumpVy -= GRAVITY * dt;
+      jumpAir += jumpVy * dt;
+      if (jumpAir <= 0) {
+        jumpAir = 0;
+        jumpVy = 0;
+      }
+    } else if (input.jump) {
+      jumpVy = JUMP_SPEED;
+      jumpAir = 0.001;
     }
   }
 
@@ -752,6 +777,16 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
   const cooldown = Math.max(0, state.cooldown - dt);
   let weapon = state.weapon;
   const ammo = { ...state.ammo };
+  const magazine = { ...state.magazine };
+  let owned = [...state.owned];
+  let playerArmor = state.playerArmor;
+  let reloadTimer = Math.max(0, state.reloadTimer - dt);
+  if (state.reloadTimer > 0 && reloadTimer === 0) {
+    const magSize = fullMagazine(weapon);
+    const take = Math.min(magSize - magazine[weapon], ammo[weapon]);
+    magazine[weapon] += take;
+    ammo[weapon] -= take;
+  }
   const attachments = { ...state.attachments };
   let beaconHeld = beacon.held;
   const loot = state.loot.map((crate) => {
@@ -760,6 +795,13 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
     }
     weapon = crate.weapon;
     ammo[crate.weapon] += crate.ammo;
+    if (!owned.includes(crate.weapon)) {
+      owned.push(crate.weapon);
+    }
+    magazine[crate.weapon] = fullMagazine(crate.weapon);
+    if (crate.armor) {
+      playerArmor = Math.min(MAX_ARMOR, playerArmor + ARMOR_PICKUP_AMOUNT);
+    }
     if (crate.beacon) {
       beaconHeld += 1;
     }
@@ -783,7 +825,10 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
   const applyPlayerDamage = (amount: number) => {
     const dome = domeAbsorb(shield, player.x, player.z, amount);
     shield = drainDome(shield, dome.absorbed);
-    health -= dome.leaked * fortressDamageFactor(fortress);
+    const afterDome = dome.leaked * fortressDamageFactor(fortress);
+    const absorbed = Math.min(playerArmor, afterDome);
+    playerArmor -= absorbed;
+    health -= afterDome - absorbed;
   };
   if (beacon.drop?.crate && beacon.drop.crate.landed && !beacon.drop.crate.taken) {
     const crate = beacon.drop.crate;
