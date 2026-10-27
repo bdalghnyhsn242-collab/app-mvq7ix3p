@@ -5,7 +5,9 @@ export const ZONE_SHRINK_RATE = 1.2;
 export const PLAYER_SPEED = 18;
 export const TURN_SPEED = 2.4;
 export const BOT_SPEED = 9;
-export const BOT_COUNT = 14;
+export const BOT_COUNT = 99;
+export const BOT_CULL_DISTANCE = 170;
+export const BOT_LOD_DISTANCE = 70;
 export const ZONE_DAMAGE_PER_SECOND = 8;
 export const CONTACT_DAMAGE_PER_SECOND = 25;
 export const WATER_LEVEL = 0;
@@ -212,8 +214,8 @@ function clampToIsland(point: { x: number; z: number }) {
 export function createMatchState(squadSize: SquadSize = 1): MatchState {
   const bots: Soldier[] = [];
   for (let i = 0; i < BOT_COUNT; i += 1) {
-    const angle = (i / BOT_COUNT) * Math.PI * 2;
-    const radius = 72 + (i % 3) * 24;
+    const angle = (i / BOT_COUNT) * Math.PI * 2 + (i % 7) * 0.11;
+    const radius = 18 + ((i * 53) % 122);
     bots.push({
       x: Math.cos(angle) * radius,
       z: Math.sin(angle) * radius,
