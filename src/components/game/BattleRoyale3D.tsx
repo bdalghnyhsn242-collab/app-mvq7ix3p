@@ -1392,7 +1392,7 @@ export default function BattleRoyale3D() {
         event.preventDefault();
       }
       if (key === " ") {
-        shootRef.current = true;
+        jumpRef.current = true;
       }
       if (key === "e") {
         enterRef.current = true;
@@ -1401,7 +1401,13 @@ export default function BattleRoyale3D() {
         dropRef.current = true;
       }
       if (key === "r") {
-        reviveRef.current = true;
+        reloadRef.current = true;
+      }
+      if (key === "shift") {
+        sprintRef.current = true;
+      }
+      if (key === "control") {
+        crouchRef.current = true;
       }
       if (key === "q") {
         beaconRef.current = true;
@@ -1415,16 +1421,25 @@ export default function BattleRoyale3D() {
       if (key === "c") {
         medevacRef.current = true;
       }
-      if (modeRef.current === "lobby" && key >= "1" && key <= "6") {
+      if (key >= "1" && key <= "6") {
         const ids: WeaponId[] = ["pistol", "smg", "ar", "dmr", "lmg", "shotgun"];
-        lobbyRef.current = lobbySelectWeapon(lobbyRef.current, ids[Number(key) - 1]);
+        const id = ids[Number(key) - 1];
+        if (modeRef.current === "lobby") {
+          lobbyRef.current = lobbySelectWeapon(lobbyRef.current, id);
+        } else {
+          switchRef.current = id;
+        }
       }
       keysRef.current.add(key);
     };
     const onKeyUp = (event: KeyboardEvent) => {
-      keysRef.current.delete(event.key.toLowerCase());
-      if (event.key.toLowerCase() === "r") {
-        reviveRef.current = false;
+      const lowered = event.key.toLowerCase();
+      keysRef.current.delete(lowered);
+      if (lowered === "shift") {
+        sprintRef.current = false;
+      }
+      if (lowered === "control") {
+        crouchRef.current = false;
       }
     };
     window.addEventListener("keydown", onKeyDown);
