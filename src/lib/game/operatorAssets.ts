@@ -290,8 +290,30 @@ function cachedOrLoad(
 }
 
 /**
+ * A visible BODY must contain at least one mesh. The animation-library GLTF
+ * (skeleton + preview mannequin) is clips-only and must never become the
+ * displayed body — that is exactly what produced "green badge + blocky
+ * mannequin" when the textured character failed.
+ */
+async function loadBodyGltf(
+  url: string,
+  loader: (url: string) => Promise<GLTF>,
+): Promise<GLTF> {
+  const gltf = await loader(url);
+  if (countMeshes(gltf.scene) === 0) {
+    logAsset(
+      "error",
+      `رفض المصدر ${url} كجسم مرئي: لا يحتوي أي mesh (هيكل حركات فقط)`,
+    );
+    throw new Error(`no meshes in ${url}`);
+  }
+  return gltf;
+}
+
+/**
  * Loads the operator body: local override first, then the CC0 textured
- * character from the CDN, then the CC0 rigged animation-library mannequin.
+ * character from the CDN. The animation library is clips-only (see
+ * loadOperatorClipsGltf) and is never used as a visible body.
  */
 export function loadOperatorGltf(
   variant: OperatorVariant,
@@ -302,8 +324,7 @@ export function loadOperatorGltf(
   if (character) {
     urls.push(...withRawFallback(character));
   }
-  urls.push(...withRawFallback(OPERATOR_CDN_SOURCES[variant]));
-  return cachedOrLoad(`body:${variant}`, urls, loader);
+  return cachedOrLoad(`body:${variant}`, urls, (url) => loadBodyGltf(url, loader));
 }
 
 /** Loads the shared CC0 animation-library clips (cached across variants). */
