@@ -973,12 +973,14 @@ export default function BattleRoyale3D() {
         lobbyMaleRig.group.rotation.y = inspect;
         lobbyFemaleRig.group.rotation.y = inspect;
         aimTimer = Math.max(0, aimTimer - dt);
+        // 0.05 keeps the lobby operator in the Idle tier (0.12 would now
+        // count as walking and play the Walk clip in place).
         lobbyMaleRig.update(
-          { time: now / 1000, speed01: 0.12, aiming: aimTimer > 0 },
+          { time: now / 1000, speed01: 0.05, aiming: aimTimer > 0 },
           dt,
         );
         lobbyFemaleRig.update(
-          { time: now / 1000, speed01: 0.12, aiming: aimTimer > 0 },
+          { time: now / 1000, speed01: 0.05, aiming: aimTimer > 0 },
           dt,
         );
         lobbyTargets.forEach((mesh, index) => {
