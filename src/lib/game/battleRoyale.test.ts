@@ -120,6 +120,31 @@ describe("battle royale core logic", () => {
     expect(state.loot.every((crate) => Math.hypot(crate.x, crate.z) < ISLAND_RADIUS)).toBe(true);
   });
 
+  it("initializes weather, drone, and attachment state", () => {
+    const state = createMatchState();
+    expect(state.weather.kind).toBe("clear");
+    expect(state.drone.spottedTimer).toBe(0);
+    expect(state.attachments).toEqual({});
+  });
+
+  it("picks up field attachments with weapon crates", () => {
+    const state = withState({
+      loot: [{ x: 1, z: 0, weapon: "ar", ammo: 30, taken: false, attachment: "scope-4x" }],
+    });
+    const next = stepMatch(state, 0.1, { forward: 0, turn: 0 });
+    expect(next.attachments.ar).toBe("scope-4x");
+  });
+
+  it("extends weapon range with a mounted scope", () => {
+    const state = withState({
+      bots: [{ x: 0, z: 40, angle: 0, health: 100, alive: true }],
+      weapon: "ar",
+      attachments: { ar: "scope-8x" },
+    });
+    const result = shoot(state);
+    expect(result.hit).toBe(true);
+  });
+
   it("picks up a nearby crate and switches weapon", () => {
     const state = withState({
       loot: [{ x: 1, z: 0, weapon: "ar", ammo: 30, taken: false }],
