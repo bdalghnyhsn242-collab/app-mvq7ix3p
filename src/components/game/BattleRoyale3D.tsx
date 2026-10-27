@@ -27,6 +27,7 @@ import {
   type MatchStatus,
   type WeaponId,
 } from "@/lib/game/battleRoyale";
+import { VEHICLE_SPECS, type VehicleKind } from "@/lib/game/vehicles";
 
 type Hud = {
   health: number;
@@ -40,9 +41,46 @@ type Hud = {
 
 const LOOT_COLORS: Record<WeaponId, number> = {
   pistol: 0xfbbf24,
-  rifle: 0x38bdf8,
+  smg: 0xa78bfa,
+  ar: 0x38bdf8,
+  dmr: 0xf43f5e,
+  lmg: 0x22d3ee,
   shotgun: 0xf97316,
 };
+
+const VEHICLE_COLORS: Record<VehicleKind, number> = {
+  uaz: 0x4d5d43,
+  pickup: 0x6b5a3e,
+  buggy: 0xb45309,
+};
+
+function makeVehicleMesh(kind: VehicleKind): THREE.Group {
+  const group = new THREE.Group();
+  const bodyMat = new THREE.MeshLambertMaterial({ color: VEHICLE_COLORS[kind] });
+  const wheelMat = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
+  const body = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.9, 3.6), bodyMat);
+  body.position.y = 0.9;
+  const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.7, 1.4), bodyMat);
+  cabin.position.set(0, 1.6, -0.2);
+  group.add(body, cabin);
+  const wheelGeometry = new THREE.CylinderGeometry(0.42, 0.42, 0.3, 10);
+  wheelGeometry.rotateZ(Math.PI / 2);
+  for (const [wx, wz] of [[-0.95, 1.2], [0.95, 1.2], [-0.95, -1.2], [0.95, -1.2]] as const) {
+    const wheel = new THREE.Mesh(wheelGeometry, wheelMat);
+    wheel.position.set(wx, 0.42, wz);
+    group.add(wheel);
+  }
+  if (kind === "pickup") {
+    const turret = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.12, 0.12, 1.2, 8),
+      new THREE.MeshLambertMaterial({ color: 0x2b2f33 }),
+    );
+    turret.rotation.x = Math.PI / 2;
+    turret.position.set(0, 2, -1.1);
+    group.add(turret);
+  }
+  return group;
+}
 
 function HoldButton({ label, onHold }: { label: string; onHold: (active: boolean) => void }) {
   return (
