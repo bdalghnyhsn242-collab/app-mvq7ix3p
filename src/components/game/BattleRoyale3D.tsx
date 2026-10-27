@@ -669,6 +669,23 @@ export default function BattleRoyale3D() {
       femaleReal = ok;
       reportModelStatus();
     });
+    // A failed first attempt (slow network, SPA-fallback HTML, offline
+    // moment) must never lock the player into the procedural cubes for the
+    // whole session: retry quietly until the real model is in.
+    const modelRetryTimer = window.setInterval(() => {
+      if (!maleReal) {
+        void playerRigMale.upgrade().then((ok) => {
+          maleReal = maleReal || ok;
+          reportModelStatus();
+        });
+      }
+      if (!femaleReal) {
+        void playerRigFemale.upgrade().then((ok) => {
+          femaleReal = femaleReal || ok;
+          reportModelStatus();
+        });
+      }
+    }, 15000);
     // Muzzle flash for the player's weapon.
     const playerFlash = new THREE.Mesh(
       new THREE.SphereGeometry(0.16, 8, 8),
@@ -1463,6 +1480,7 @@ export default function BattleRoyale3D() {
 
     return () => {
       window.cancelAnimationFrame(frame);
+      window.clearInterval(modelRetryTimer);
       window.removeEventListener("resize", resize);
       renderer.domElement.removeEventListener("click", onCanvasClick);
       document.removeEventListener("pointerlockchange", onPointerLockChange);
