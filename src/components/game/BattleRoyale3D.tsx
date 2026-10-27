@@ -4,6 +4,9 @@ import { Crosshair, Play, RotateCcw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { makeSoldier } from "@/components/game/soldierModel";
+import { createRocks, createRuins, createTerrain } from "@/lib/game/environment";
+import { createWater } from "@/lib/game/water";
 import {
   BOT_COUNT,
   LOOT_COUNT,
@@ -33,27 +36,6 @@ const LOOT_COLORS: Record<WeaponId, number> = {
   rifle: 0x38bdf8,
   shotgun: 0xf97316,
 };
-
-function makeSoldier(color: number) {
-  const group = new THREE.Group();
-  const body = new THREE.Mesh(
-    new THREE.CapsuleGeometry(0.4, 0.8, 4, 8),
-    new THREE.MeshLambertMaterial({ color }),
-  );
-  body.position.y = 0.9;
-  const head = new THREE.Mesh(
-    new THREE.SphereGeometry(0.3, 12, 12),
-    new THREE.MeshLambertMaterial({ color: 0xf1c27d }),
-  );
-  head.position.y = 1.7;
-  const gun = new THREE.Mesh(
-    new THREE.BoxGeometry(0.12, 0.12, 1),
-    new THREE.MeshLambertMaterial({ color: 0x1f2937 }),
-  );
-  gun.position.set(0.3, 1.1, 0.5);
-  group.add(body, head, gun);
-  return group;
-}
 
 function HoldButton({ label, onHold }: { label: string; onHold: (active: boolean) => void }) {
   return (
