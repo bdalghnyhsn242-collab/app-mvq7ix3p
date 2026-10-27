@@ -115,6 +115,9 @@ type Hud = {
   crates: number;
   vehicle: string | null;
   speed: number;
+  posX: number;
+  posZ: number;
+  moving: boolean;
   airdrop: boolean;
   swimming: boolean;
   deployPhase: DeployPhase;
@@ -175,6 +178,9 @@ function createInitialHud(status: MatchStatus): Hud {
     crates: LOOT_COUNT,
     vehicle: null,
     speed: 0,
+    posX: 0,
+    posZ: 0,
+    moving: false,
     airdrop: false,
     swimming: false,
     deployPhase: "plane",
@@ -318,6 +324,8 @@ export default function BattleRoyale3D() {
     bones: number;
     clipName: string | null;
     mixerUpdating: boolean;
+    animationMode: string | null;
+    clipNames: string[];
     source: string | null;
     rigged: number;
   } | null>(null);
@@ -715,6 +723,8 @@ export default function BattleRoyale3D() {
         // rig and whether its AnimationMixer is receiving updates.
         clipName: playerMounted ? best.clipName : null,
         mixerUpdating: playerMounted ? best.mixerUpdating : false,
+        animationMode: playerMounted ? best.animationMode : null,
+        clipNames: playerMounted ? best.clipNames : [],
         source:
           loadedSourceFor(bodyKey) ??
           loadedSourceFor("body:male") ??
@@ -766,6 +776,11 @@ export default function BattleRoyale3D() {
     playerFlash.visible = false;
     scene.add(playerFlash);
     let flashTimer = 0;
+    // Live animation/movement diagnostics, refreshed inside the RAF loop.
+    let diagTimer = 0;
+    let playerMoving = false;
+    let playerPosX = 0;
+    let playerPosZ = 0;
     const botMeshes = Array.from({ length: BOT_COUNT }, (_, index) => {
       const variant = index % 3 === 0 ? "ghillie" : index % 3 === 1 ? "desert" : "woodland";
       const botGender: SoldierGender = index % 2 === 0 ? "male" : "female";
