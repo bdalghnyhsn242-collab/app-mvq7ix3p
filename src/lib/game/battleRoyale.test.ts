@@ -211,8 +211,8 @@ describe("battle royale core logic", () => {
   it("swims slower than walking in deep water", () => {
     let foundDeep = false;
     let deepSpeed = Infinity;
-    for (let x = -ISLAND_RADIUS; x <= ISLAND_RADIUS && !foundDeep; x += 4) {
-      for (let z = -ISLAND_RADIUS; z <= ISLAND_RADIUS; z += 4) {
+    for (let x = -ISLAND_RADIUS; x <= ISLAND_RADIUS && !foundDeep; x += 2) {
+      for (let z = -ISLAND_RADIUS; z <= ISLAND_RADIUS; z += 2) {
         if (isSwimming(x, z)) {
           deepSpeed = Math.min(deepSpeed, movementSpeed(x, z));
           foundDeep = true;
