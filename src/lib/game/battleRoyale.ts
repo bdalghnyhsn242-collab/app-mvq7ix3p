@@ -1115,7 +1115,7 @@ export function shoot(state: MatchState): { state: MatchState; hit: boolean; kil
         tracers,
         explosions,
         player: { ...state.player, health: state.player.health - playerDamage },
-        cooldown: PLAYER_TURRET_COOLDOWN,
+        cooldown: PLAYER_TURRET_COOLDOWN * fortressCooldownFactor(state.fortress),
         status: bots.every((bot) => !bot.alive) ? "won" : state.status,
       },
       hit: true,
@@ -1155,7 +1155,7 @@ export function shoot(state: MatchState): { state: MatchState; hit: boolean; kil
   const base = {
     ...state,
     ammo,
-    cooldown: weapon.cooldown,
+    cooldown: weapon.cooldown * fortressCooldownFactor(state.fortress),
     tracers,
     player: { ...state.player, angle: state.player.angle + weapon.recoil },
   };
