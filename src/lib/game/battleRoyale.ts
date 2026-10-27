@@ -586,6 +586,40 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
     ? deployBeacon(state.beacon, player.x, player.z, Math.floor(state.time))
     : state.beacon;
   beacon = stepBeacons(beacon, dt);
+  let gadgets = { ...state.gadgets };
+  let shield = state.shield;
+  if (input.shield && gadgets.shield > 0 && !shield.active) {
+    shield = deployShieldDome(shield, player.x, player.z);
+    gadgets.shield -= 1;
+  }
+  shield = stepShieldDome(shield, dt);
+  let sentry = state.sentry;
+  if (input.sentry) {
+    if (sentry.deployed && canRetrieveSentry(sentry)) {
+      sentry = createSentryState();
+      gadgets.sentry += 1;
+    } else if (!sentry.deployed && gadgets.sentry > 0) {
+      sentry = deploySentry(sentry, player.x, player.z);
+      gadgets.sentry -= 1;
+    }
+  }
+  const sentryStep = stepSentry(sentry, dt, state.bots);
+  sentry = sentryStep.turret;
+  let medevac = state.medevac;
+  if (input.medevac && gadgets.medevac > 0 && !medevac.active) {
+    const downedIndex = state.squad.findIndex((mate) => mate.state === "downed");
+    if (downedIndex >= 0) {
+      medevac = deployMedEvac(
+        medevac,
+        state.squad[downedIndex].x,
+        state.squad[downedIndex].z,
+        downedIndex,
+      );
+      gadgets.medevac -= 1;
+    }
+  }
+  medevac = stepMedEvac(medevac, dt);
+  let fortress = state.fortress;
 
   let vehicles = state.vehicles;
   let playerVehicle = state.playerVehicle;
