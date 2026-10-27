@@ -958,6 +958,22 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
     next.z += (dz / dist) * speed * dt;
     next.angle = Math.atan2(dx, dz);
     clampToIsland(next);
+    next.fireTimer = Math.max(0, (next.fireTimer ?? 0) - dt);
+    const detectRange = BOT_FIRE_RANGE * effects.botSightFactor * (crouching ? 0.6 : 1);
+    if (dist < detectRange && (next.fireTimer ?? 0) <= 0) {
+      next.fireTimer = BOT_FIRE_INTERVAL * (0.8 + Math.random() * 0.5);
+      tracers.push({ x1: next.x, z1: next.z, x2: player.x, z2: player.z, life: TRACER_LIFE });
+      if (tracers.length > 24) {
+        tracers.shift();
+      }
+      const hitChance = Math.max(
+        0.12,
+        0.7 - (dist / BOT_FIRE_RANGE) * 0.45 - (crouching ? 0.15 : 0),
+      );
+      if (Math.random() < hitChance) {
+        applyPlayerDamage(BOT_FIRE_DAMAGE);
+      }
+    }
     if (sentry.deployed && Math.hypot(next.x - sentry.x, next.z - sentry.z) < 2) {
       sentry = damageSentry(sentry, SENTRY_MELEE_DPS * dt);
     }
@@ -1102,6 +1118,13 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
     zone,
     weapon,
     ammo,
+    magazine,
+    owned,
+    playerArmor: Math.max(0, playerArmor),
+    crouching,
+    jumpVy,
+    jumpAir,
+    reloadTimer,
     cooldown,
     loot,
     vehicles,
