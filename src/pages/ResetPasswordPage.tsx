@@ -56,7 +56,7 @@ export default function ResetPasswordPage() {
   }, [navigate]);
 
   if (!AUTH_ENABLED) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/" replace />;
   }
 
   async function onSubmit(values: ResetPasswordFormValues) {
@@ -71,8 +71,8 @@ export default function ResetPasswordPage() {
         return;
       }
 
-      toast.success("Password updated");
-      navigate("/dashboard", { replace: true });
+      toast.success("تم تحديث كلمة المرور");
+      navigate("/", { replace: true });
     } finally {
       setIsLoading(false);
     }
