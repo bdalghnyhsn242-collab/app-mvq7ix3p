@@ -10,7 +10,17 @@ export type Vehicle = {
   tires: boolean[];
   occupied: boolean;
   driverBot: number;
+  turretCooldown: number;
+  turretFlash: number;
+  wreck: boolean;
 };
+
+export const TURRET_RANGE = 42;
+export const TURRET_DAMAGE = 14;
+export const TURRET_INTERVAL = 0.9;
+export const PLAYER_TURRET_RANGE = 48;
+export const PLAYER_TURRET_DAMAGE = 65;
+export const PLAYER_TURRET_COOLDOWN = 0.7;
 
 export const VEHICLE_SPECS: Record<
   VehicleKind,
@@ -35,8 +45,27 @@ export function createVehicles(): Vehicle[] {
       tires: [true, true, true, true],
       occupied: false,
       driverBot: -1,
+      turretCooldown: 0,
+      turretFlash: 0,
+      wreck: false,
     };
   });
+}
+
+export function hasTurret(kind: VehicleKind): boolean {
+  return kind === "pickup";
+}
+
+export function coolTurret(vehicle: Vehicle, dt: number): Vehicle {
+  return {
+    ...vehicle,
+    turretCooldown: Math.max(0, vehicle.turretCooldown - dt),
+    turretFlash: Math.max(0, vehicle.turretFlash - dt),
+  };
+}
+
+export function destroyVehicle(vehicle: Vehicle): Vehicle {
+  return { ...vehicle, health: 0, speed: 0, wreck: true, driverBot: -1, occupied: false };
 }
 
 export function tireGrip(vehicle: Vehicle): number {
