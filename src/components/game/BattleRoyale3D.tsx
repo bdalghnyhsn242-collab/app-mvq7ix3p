@@ -1367,6 +1367,7 @@ export default function BattleRoyale3D() {
         squadMeshes.forEach((squadRig) => {
           squadRig.group.visible = false;
         });
+        playerFlash.visible = false;
         rain.points.visible = false;
         zoneWall.visible = false;
         droneMesh.visible = false;
