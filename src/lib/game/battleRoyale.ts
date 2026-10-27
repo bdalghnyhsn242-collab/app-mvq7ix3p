@@ -333,6 +333,7 @@ export function createMatchState(squadSize: SquadSize = 1): MatchState {
       weapon,
       ammo: weapon === "shotgun" ? 8 : weapon === "dmr" ? 10 : weapon === "lmg" ? 60 : 30,
       taken: false,
+      attachment: i % 3 === 0 ? attachmentForIndex(i) : undefined,
     });
   }
   BUILDING_POSITIONS.forEach((position, i) => {
@@ -343,6 +344,18 @@ export function createMatchState(squadSize: SquadSize = 1): MatchState {
       weapon,
       ammo: weapon === "shotgun" ? 8 : weapon === "dmr" ? 10 : weapon === "lmg" ? 60 : 30,
       taken: false,
+      attachment: attachmentForIndex(i + 4),
+    });
+  });
+  expansionLootSpots().forEach((spot, i) => {
+    const weapon = lootWeaponForIndex(i + 3);
+    loot.push({
+      x: spot.x,
+      z: spot.z,
+      weapon,
+      ammo: weapon === "shotgun" ? 8 : weapon === "dmr" ? 10 : weapon === "lmg" ? 60 : 30,
+      taken: false,
+      attachment: attachmentForIndex(i + 2),
     });
   });
   return {
@@ -356,6 +369,9 @@ export function createMatchState(squadSize: SquadSize = 1): MatchState {
     vehicles: createVehicles(),
     playerVehicle: -1,
     airdrop: createAirdropState(),
+    weather: createWeatherState(),
+    drone: createDroneState(),
+    attachments: {},
     squadSize,
     squad: createSquad(squadSize),
     deployment: createDeployment(),
