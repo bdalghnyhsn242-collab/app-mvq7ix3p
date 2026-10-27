@@ -205,6 +205,34 @@ import { createWeatherState, stepWeather, weatherEffects, type WeatherState } fr
 import { createDroneState, stepDrone, droneSpotBonus, type DroneState } from "./drones";
 import { applyAttachment, attachmentForIndex, type AttachmentId } from "./arsenal";
 import {
+  createRadioTowerState,
+  stepRadioTower,
+  type RadioTowerState,
+} from "./radioTowerSystem";
+import {
+  BEACON_PICKUP_RADIUS,
+  beaconCrateRewards,
+  createBeaconState,
+  deployBeacon,
+  stepBeacons,
+  type BeaconState,
+} from "./beaconDropSystem";
+import {
+  createDustStormState,
+  stepDustStorm,
+  withDustStorm,
+  type DustStormState,
+} from "./weatherSystem";
+import {
+  createRevivalState,
+  registerRevivalKill,
+  respawnSquad,
+  shouldTriggerRevival,
+  stepRevival,
+  triggerRevival,
+  type RevivalState,
+} from "./squadRevivalSystem";
+import {
   expansionLootSpots,
   expansionObstacles,
 } from "./worldExpansion";
@@ -273,6 +301,7 @@ export type MatchInput = {
   enter?: boolean;
   drop?: boolean;
   revive?: boolean;
+  beacon?: boolean;
 };
 export type Tracer = { x1: number; z1: number; x2: number; z2: number; life: number };
 export type Explosion = { x: number; z: number; timer: number };
@@ -289,6 +318,10 @@ export type MatchState = {
   airdrop: AirdropState;
   weather: WeatherState;
   drone: DroneState;
+  radio: RadioTowerState;
+  beacon: BeaconState;
+  dust: DustStormState;
+  revival: RevivalState;
   attachments: Partial<Record<WeaponId, AttachmentId>>;
   squadSize: SquadSize;
   squad: Teammate[];
