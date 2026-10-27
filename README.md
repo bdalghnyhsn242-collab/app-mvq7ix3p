@@ -1,6 +1,6 @@
-# LatchLoop App Base
+# اللعبة — لعبة الثعبان 🐍
 
-Reusable React + Vite application base for small LatchLoop web apps.
+لعبة ثعبان (Snake) عربية تعمل بالكامل في المتصفح، مبنية على قالب LatchLoop الأساسي باستخدام React وVite وTailwind CSS.
 
 ## Stack
 
@@ -20,7 +20,15 @@ cp .env.example .env.local
 npm run dev
 ```
 
-The starter runs in guest mode by default so a new app can be explored before Supabase is configured.
+ثم افتح `http://localhost:8080` في المتصفح. يعمل التطبيق افتراضيًا في وضع الزائر دون الحاجة إلى أي خدمات خارجية.
+
+## كيف تلعب؟
+
+- استخدم أسهم لوحة المفاتيح أو حروف `WASD` لتغيير اتجاه الثعبان.
+- على الجوال: اسحب بإصبعك على اللوحة أو استخدم أزرار الاتجاه أسفل اللعبة.
+- اضغط `مسافة` للإيقاف المؤقت والمتابعة، و`Enter` لبدء جولة جديدة بعد انتهاء الجولة.
+- كل تفاحة = 10 نقاط، وتزداد سرعة اللعبة تدريجيًا كلما جمعت المزيد.
+- ثلاثة مستويات صعوبة: سهل، متوسط، صعب. يُحفظ أعلى رقم قياسي وإعداد الصوت في المتصفح (localStorage).
 
 Turn on Supabase-backed auth when the app needs accounts:
 
@@ -46,6 +54,7 @@ ENCRYPTION_SECRET=
 
 ```text
 src/
+  components/game/      مكوّن اللعبة (لوحة الرسم والتحكم)
   components/ui/        Reusable UI primitives
   components/auth/      Supabase auth form, enabled by feature flag
   components/ai/        AI message display and composer primitives
@@ -54,6 +63,7 @@ src/
   hooks/                Reusable app hooks
   integrations/         Supabase client and generated database types
   lib/                  API helpers and shared utilities
+  lib/game/             منطق اللعبة (دوال نقية مع اختبارات)
   pages/                Starter route pages
   trigger/              Trigger.dev tasks
 supabase/
@@ -65,14 +75,13 @@ docs/
 
 `docs/internal implementation/` contains deeper implementation guides. Update those docs whenever the corresponding primitive changes.
 
-## Extending The Starter
+## الاختبارات
 
-1. Replace `src/pages/HomePage.tsx` with the first real app screen for `/`.
-2. Add any additional routes in `src/App.tsx`.
-3. Put reusable shell-level UI in `src/components/layout/` and app-specific UI near the feature that owns it.
-4. Turn on auth with `VITE_AUTH_ENABLED=true` only when accounts are needed.
-5. Add product tables through Supabase migrations, then regenerate `src/integrations/supabase/types.ts`.
-6. Use `docs/internal implementation/` for deeper notes on auth, Supabase, AI messages, Trigger.dev, and deployment.
+```bash
+npm test
+```
+
+منطق اللعبة مكتوب كدوال نقية في `src/lib/game/snake.ts` مع اختبارات في `src/lib/game/snake.test.ts` تغطي الحركة، والأكل، والتصادم مع الجدران والجسم، وتسريع اللعبة.
 
 ## Routing
 
@@ -85,7 +94,6 @@ If an app needs a dashboard, add it intentionally as a normal route in `src/App.
 - `npm install`
 - `npm run dev`
 - `npm run build`
-- Auth routes load without product-specific dependencies when `VITE_AUTH_ENABLED=true`.
-- Supabase credentials come from environment variables.
-- `ai_messages` helpers compile without task/project modules.
-- `vercel.json` keeps SPA fallback routing.
+- `npm test` يمرّ بنجاح.
+- اللعبة تعمل من المسار `/` مع لوحة مفاتيح ولمس.
+- `vercel.json` يحافظ على توجيه SPA للنشر على Vercel.
