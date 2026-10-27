@@ -957,6 +957,8 @@ export default function BattleRoyale3D() {
           playerY = terrainHeight(current.player.x, current.player.z) + deployment.altitude;
         } else if (isSwimming(current.player.x, current.player.z)) {
           playerY = -0.5;
+        } else {
+          playerY += current.jumpAir;
         }
         playerRig.group.position.set(
           current.player.x,
@@ -964,6 +966,7 @@ export default function BattleRoyale3D() {
           current.player.z,
         );
         playerRig.group.rotation.y = current.player.angle;
+        playerRig.group.scale.y = current.crouching ? 0.72 : 1;
         const pdx = current.player.x - Number(playerRig.group.userData.px ?? current.player.x);
         const pdz = current.player.z - Number(playerRig.group.userData.pz ?? current.player.z);
         playerRig.update(
@@ -1247,14 +1250,18 @@ export default function BattleRoyale3D() {
         sun.position.set(current.player.x + 45, 70, current.player.z + 28);
         sun.target.position.set(current.player.x, 0, current.player.z);
         sun.target.updateMatrixWorld();
-        camera.position.set(
-          current.player.x - Math.sin(current.player.angle) * 22,
-          playerY + (deployment.phase === "landed" ? 13 : 9),
-          current.player.z - Math.cos(current.player.angle) * 22,
+        const camYaw = camYawRef.current;
+        const camPitch = camPitchRef.current;
+        const camDist = deployment.phase === "landed" ? 9 : 15;
+        camTarget.set(
+          current.player.x - Math.sin(camYaw) * Math.cos(camPitch) * camDist,
+          playerY + 2.4 + Math.sin(camPitch) * camDist,
+          current.player.z - Math.cos(camYaw) * Math.cos(camPitch) * camDist,
         );
+        camera.position.lerp(camTarget, Math.min(1, dt * 9));
         camera.lookAt(
           current.player.x,
-          playerY + 1,
+          playerY + 1.4,
           current.player.z,
         );
       } else {
@@ -1287,6 +1294,9 @@ export default function BattleRoyale3D() {
         domeGroup.visible = false;
         sentryMesh.visible = false;
         medevacMesh.visible = false;
+      }
+      if (current && current.status !== "running" && document.pointerLockElement) {
+        document.exitPointerLock();
       }
       forest.update(now / 1000, camera);
       dust.rotation.y = now * 0.004;
