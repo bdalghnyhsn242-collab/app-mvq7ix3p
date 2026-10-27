@@ -515,6 +515,8 @@ export default function BattleRoyale3D() {
         const inspect = Math.sin(now / 2400) * 0.5;
         lobbyMale.rotation.y = inspect;
         lobbyFemale.rotation.y = inspect;
+        animateSoldier(lobbyMale, { time: now / 1000, speed01: 0.12 });
+        animateSoldier(lobbyFemale, { time: now / 1000, speed01: 0.12 });
         lobbyTargets.forEach((mesh, index) => {
           const target = lobby.targets[index];
           if (!target) {
@@ -719,9 +721,36 @@ export default function BattleRoyale3D() {
           );
           mesh.scale.setScalar(1 + progress * 6);
           (mesh.material as THREE.MeshBasicMaterial).opacity = Math.max(0, 1 - progress);
+          const spark = sparkPool[index];
+          if (!spark.active) {
+            spark.active = true;
+            for (let p = 0; p < 26; p += 1) {
+              const a = Math.random() * Math.PI * 2;
+              const el = Math.random() * Math.PI * 0.5;
+              const sp = 4 + Math.random() * 9;
+              spark.positions[p * 3] = explosion.x;
+              spark.positions[p * 3 + 1] = terrainHeight(explosion.x, explosion.z) + 1;
+              spark.positions[p * 3 + 2] = explosion.z;
+              spark.velocities[p * 3] = Math.cos(a) * Math.cos(el) * sp;
+              spark.velocities[p * 3 + 1] = Math.sin(el) * sp;
+              spark.velocities[p * 3 + 2] = Math.sin(a) * Math.cos(el) * sp;
+            }
+            spark.points.visible = true;
+          }
+          for (let p = 0; p < 26; p += 1) {
+            spark.velocities[p * 3 + 1] -= 14 * dt;
+            spark.positions[p * 3] += spark.velocities[p * 3] * dt;
+            spark.positions[p * 3 + 1] += spark.velocities[p * 3 + 1] * dt;
+            spark.positions[p * 3 + 2] += spark.velocities[p * 3 + 2] * dt;
+          }
+          (spark.points.geometry.attributes.position as THREE.BufferAttribute).needsUpdate = true;
+          (spark.points.material as THREE.PointsMaterial).opacity = Math.max(0, 1 - progress);
         });
         for (let i = current.explosions.length; i < blastPool.length; i += 1) {
           blastPool[i].visible = false;
+          const spark = sparkPool[i];
+          spark.active = false;
+          spark.points.visible = false;
         }
         planeMesh.position.set(
           current.airdrop.plane.x,
@@ -769,6 +798,10 @@ export default function BattleRoyale3D() {
         });
         blastPool.forEach((mesh) => {
           mesh.visible = false;
+        });
+        sparkPool.forEach((spark) => {
+          spark.active = false;
+          spark.points.visible = false;
         });
         squadMeshes.forEach((mesh) => {
           mesh.visible = false;
