@@ -1,11 +1,11 @@
-export const ISLAND_RADIUS = 40;
-export const ZONE_START_RADIUS = 36;
-export const ZONE_MIN_RADIUS = 8;
-export const ZONE_SHRINK_RATE = 0.5;
-export const PLAYER_SPEED = 10;
+export const ISLAND_RADIUS = 160;
+export const ZONE_START_RADIUS = 144;
+export const ZONE_MIN_RADIUS = 24;
+export const ZONE_SHRINK_RATE = 1.2;
+export const PLAYER_SPEED = 18;
 export const TURN_SPEED = 2.4;
-export const BOT_SPEED = 5;
-export const BOT_COUNT = 6;
+export const BOT_SPEED = 9;
+export const BOT_COUNT = 14;
 export const ZONE_DAMAGE_PER_SECOND = 8;
 export const CONTACT_DAMAGE_PER_SECOND = 25;
 export const WATER_LEVEL = 0;
@@ -34,10 +34,20 @@ function valueNoise(x: number, z: number): number {
 export function terrainHeight(x: number, z: number): number {
   const dist = Math.hypot(x, z);
   const island = Math.max(0, 1 - dist / ISLAND_RADIUS);
-  const base = island * island * 6;
-  const hills = valueNoise(x * 0.08, z * 0.08) * 4 * island;
-  const detail = valueNoise(x * 0.25, z * 0.25) * 1.2 * island;
-  return base + hills + detail - 1.2;
+  const base = island * island * 10;
+  const hills = valueNoise(x * 0.02, z * 0.02) * 14 * island;
+  const ridge = 1 - Math.abs(valueNoise(x * 0.045, z * 0.045) * 2 - 1);
+  const mountains = ridge * ridge * 22 * island * island;
+  const detail = valueNoise(x * 0.12, z * 0.12) * 2.4 * island;
+  const river = Math.abs(valueNoise(x * 0.015 + 3.7, z * 0.015 - 1.9) - 0.5);
+  const riverbed = river < 0.05 ? -(0.05 - river) * 90 * island * Math.min(1, dist / 30) : 0;
+  return base + hills + mountains + detail + riverbed - 2.4;
+}
+
+export function forestDensity(x: number, z: number): number {
+  const dist = Math.hypot(x, z);
+  const island = Math.max(0, 1 - dist / ISLAND_RADIUS);
+  return valueNoise(x * 0.03 + 7.3, z * 0.03 - 2.1) * island;
 }
 
 export function movementSpeed(x: number, z: number): number {
