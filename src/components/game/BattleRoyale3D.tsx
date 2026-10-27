@@ -30,6 +30,7 @@ import {
 import { BEACON_COUNTDOWN } from "@/lib/game/beaconDropSystem";
 import {
   CHALLENGE_ZONE_CAPTURE_TIME,
+  CHALLENGE_ZONE_RADIUS,
   CHALLENGE_WINDOW,
 } from "@/lib/game/squadRevivalSystem";
 import {
@@ -976,6 +977,37 @@ export default function BattleRoyale3D() {
         );
         droneMesh.rotation.y = -current.drone.orbitAngle;
         droneMesh.rotation.z = Math.sin(now / 200) * 0.05;
+        const warn = towerMesh.getObjectByName("towerWarn");
+        if (warn) {
+          warn.visible = current.radio.cooldown > 0 && Math.sin(now / 150) > 0;
+        }
+        const bDrop = current.beacon.drop;
+        beaconSmoke.visible = Boolean(bDrop);
+        if (bDrop) {
+          beaconSmoke.position.set(
+            bDrop.x,
+            terrainHeight(bDrop.x, bDrop.z) + 13,
+            bDrop.z,
+          );
+        }
+        beaconCrateGroup.visible = Boolean(bDrop?.crate && !bDrop.crate.taken);
+        if (bDrop?.crate && !bDrop.crate.taken) {
+          beaconCrateGroup.position.set(
+            bDrop.crate.x,
+            terrainHeight(bDrop.crate.x, bDrop.crate.z) + bDrop.crate.altitude + 0.75,
+            bDrop.crate.z,
+          );
+          beaconChute.visible = !bDrop.crate.landed;
+        }
+        revivalRing.visible = current.revival.active;
+        if (current.revival.active) {
+          revivalRing.position.set(
+            current.revival.zone.x,
+            terrainHeight(current.revival.zone.x, current.revival.zone.z) + 0.12,
+            current.revival.zone.z,
+          );
+          revivalRing.scale.setScalar(CHALLENGE_ZONE_RADIUS);
+        }
         sun.position.set(current.player.x + 45, 70, current.player.z + 28);
         sun.target.position.set(current.player.x, 0, current.player.z);
         sun.target.updateMatrixWorld();
@@ -1013,6 +1045,9 @@ export default function BattleRoyale3D() {
         rain.points.visible = false;
         zoneWall.visible = false;
         droneMesh.visible = false;
+        beaconSmoke.visible = false;
+        beaconCrateGroup.visible = false;
+        revivalRing.visible = false;
       }
       forest.update(now / 1000, camera);
       dust.rotation.y = now * 0.004;
