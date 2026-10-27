@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  describeCloudError,
   LEADERBOARD_SCORE,
   buildMatchStatsRow,
   buildSquadPerformanceRows,
@@ -23,6 +24,27 @@ const wonSummary: MatchSummary = {
 };
 
 describe("match cloud persistence", () => {
+  it("translates raw network failures into clear Arabic reasons", () => {
+    expect(describeCloudError("TypeError: Failed to fetch")).toContain(
+      "تعذر الوصول لخادم السحابة",
+    );
+    expect(describeCloudError("NetworkError when attempting to fetch")).toContain(
+      "تعذر الوصول لخادم السحابة",
+    );
+  });
+
+  it("explains missing cloud tables instead of raw SQL errors", () => {
+    expect(describeCloudError("relation \"match_stats\" does not exist")).toContain(
+      "جداول السحابة غير مُهيّأة",
+    );
+  });
+
+  it("keeps unconfigured and unknown reasons honest", () => {
+    expect(describeCloudError("not-configured")).toContain("محفوظة على هذا الجهاز فقط");
+    expect(describeCloudError(undefined)).toContain("محفوظة على هذا الجهاز فقط");
+    expect(describeCloudError("some other error")).toBe("some other error");
+  });
+
   it("computes a deterministic leaderboard score", () => {
     const expected =
       12 * LEADERBOARD_SCORE.perKill +
