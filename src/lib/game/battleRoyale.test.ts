@@ -14,9 +14,21 @@ import {
   terrainHeight,
   shoot,
   stepMatch,
+  applyVehicleDestruction,
+  blastDamage,
+  steerAroundObstacles,
+  TRACER_LIFE,
   type MatchState,
 } from "./battleRoyale";
-import { blowTire, createVehicles, stepVehicle } from "./vehicles";
+import {
+  blowTire,
+  createVehicles,
+  damageVehicle,
+  destroyVehicle,
+  hasTurret,
+  stepVehicle,
+  TURRET_DAMAGE,
+} from "./vehicles";
 import { createAirdropState, stepAirdrops } from "./airdrops";
 import { BLEED_OUT_TIME, REVIVE_TIME, createSquad, knockDown, stepSquad } from "./squad";
 
@@ -267,5 +279,99 @@ describe("battle royale core logic", () => {
     const pursuing = stepMatch(entered, 1, { forward: 0, turn: 0 });
     expect(pursuing.vehicles[0].speed).toBeGreaterThan(0);
     expect(pursuing.vehicles[0].x).not.toBe(before);
+  });
+
+  it("fires turret rounds from AI-driven armed vehicles at the player", () => {
+    const vehicles = createVehicles();
+    vehicles[1] = { ...vehicles[1], x: 8, z: 0, driverBot: 0 };
+    const state = withState({
+      bots: [{ x: 6, z: 0, angle: 0, health: 100, alive: true }],
+      vehicles,
+    });
+    const fired = stepMatch(state, 0.1, { forward: 0, turn: 0 });
+    expect(hasTurret(fired.vehicles[1].kind)).toBe(true);
+    expect(fired.vehicles[1].turretCooldown).toBeGreaterThan(0);
+    expect(fired.tracers.length).toBeGreaterThan(0);
+    expect(fired.player.health).toBeLessThan(100);
+    const later = stepMatch(fired, 0.2, { forward: 0, turn: 0 });
+    expect(later.tracers).toHaveLength(0);
+  });
+
+  it("lets the player fire the mounted turret without spending ammo", () => {
+    const vehicles = createVehicles();
+    vehicles[1] = { ...vehicles[1], x: 0, z: 0, occupied: true };
+    const state = withState({
+      bots: [{ x: 0, z: 30, angle: 0, health: 100, alive: true }],
+      vehicles,
+      playerVehicle: 1,
+    });
+    const result = shoot(state);
+    expect(result.hit).toBe(true);
+    expect(result.state.ammo.pistol).toBe(24);
+    expect(result.state.bots[0].health).toBe(35);
+    expect(result.state.vehicles[1].turretCooldown).toBeGreaterThan(0);
+    expect(result.state.tracers.length).toBe(1);
+  });
+
+  it("damages AI vehicles instead of the driver when shooting them", () => {
+    const vehicles = createVehicles();
+    vehicles[0] = { ...vehicles[0], x: 0, z: 10, driverBot: 0 };
+    const state = withState({
+      bots: [{ x: 0, z: 10, angle: 0, health: 100, alive: true }],
+      vehicles,
+    });
+    const result = shoot(state);
+    expect(result.hit).toBe(true);
+    expect(result.state.bots[0].health).toBe(100);
+    expect(result.state.vehicles[0].health).toBeLessThan(220);
+  });
+
+  it("steers AI drivers away from obstacles ahead", () => {
+    const obstacles = [{ x: 0, z: 8, r: 3 }];
+    const avoided = steerAroundObstacles(0, 0, 0, 0, obstacles);
+    expect(avoided).not.toBe(0);
+    const clear = steerAroundObstacles(0, 0, 0, 0, [{ x: 60, z: 60, r: 2 }]);
+    expect(clear).toBe(0);
+  });
+
+  it("explodes destroyed vehicles with shockwave damage and wreck cover", () => {
+    const vehicles = createVehicles();
+    vehicles[0] = { ...vehicles[0], x: 2, z: 0 };
+    const result = applyVehicleDestruction(
+      vehicles,
+      0,
+      { x: 4, z: 0 },
+      [{ x: 6, z: 0, angle: 0, health: 100, alive: true }],
+      [],
+    );
+    expect(result.vehicles[0].wreck).toBe(true);
+    expect(result.vehicles[0].speed).toBe(0);
+    expect(result.explosion.timer).toBeGreaterThan(0);
+    expect(result.bots[0].health).toBeLessThan(100);
+    expect(result.playerDamage).toBeGreaterThan(0);
+    expect(blastDamage(0, 0, 50, 0)).toBe(0);
+    const wrecked = destroyVehicle(createVehicles()[0]);
+    expect(wrecked.health).toBe(0);
+    const blocked = withState({
+      vehicles: [{ ...createVehicles()[0], x: 2, z: 0, health: 0, wreck: true }],
+      playerVehicle: -1,
+    });
+    const entered = stepMatch(blocked, 0.1, { forward: 0, turn: 0, enter: true });
+    expect(entered.playerVehicle).toBe(-1);
+  });
+
+  it("wrecks the player vehicle with a blast when it is destroyed in combat", () => {
+    const vehicles = createVehicles();
+    vehicles[0] = { ...vehicles[0], x: 0, z: 0, occupied: true, health: 5 };
+    const state = withState({
+      bots: [{ x: 1, z: 0, angle: 0, health: 100, alive: true }],
+      vehicles,
+      playerVehicle: 0,
+    });
+    const next = stepMatch(state, 0.5, { forward: 0, turn: 0 });
+    expect(next.vehicles[0].wreck).toBe(true);
+    expect(next.playerVehicle).toBe(-1);
+    expect(next.explosions.length).toBeGreaterThan(0);
+    expect(next.player.health).toBeLessThan(100);
   });
 });
