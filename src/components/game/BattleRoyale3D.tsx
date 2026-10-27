@@ -441,12 +441,20 @@ export default function BattleRoyale3D() {
     lobbyScene.add(new THREE.HemisphereLight(0xcfe2ff, 0x4a5a3a, 1.1));
     const lobbySun = new THREE.DirectionalLight(0xfff1d6, 1.1);
     lobbySun.position.set(10, 30, -10);
+    lobbySun.castShadow = true;
+    lobbySun.shadow.mapSize.set(1024, 1024);
+    lobbySun.shadow.camera.left = -30;
+    lobbySun.shadow.camera.right = 30;
+    lobbySun.shadow.camera.top = 30;
+    lobbySun.shadow.camera.bottom = -30;
     lobbyScene.add(lobbySun);
+    lobbyScene.add(lobbySun.target);
     const lobbyGround = new THREE.Mesh(
       new THREE.CircleGeometry(42, 48),
       new THREE.MeshLambertMaterial({ color: 0x71805c }),
     );
     lobbyGround.rotation.x = -Math.PI / 2;
+    lobbyGround.receiveShadow = true;
     lobbyScene.add(lobbyGround);
     const lobbyCrateMat = new THREE.MeshLambertMaterial({ color: 0x8a6b3e });
     for (const [cx, cz] of [[-8, 6], [8, 6], [-10, -2], [10, -2], [0, -9]] as const) {
