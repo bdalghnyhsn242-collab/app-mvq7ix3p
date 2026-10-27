@@ -1153,6 +1153,11 @@ export default function BattleRoyale3D() {
         playerRig.group.scale.y = current.crouching ? 0.72 : 1;
         const pdx = current.player.x - Number(playerRig.group.userData.px ?? current.player.x);
         const pdz = current.player.z - Number(playerRig.group.userData.pz ?? current.player.z);
+        // Movement diagnostic: real position delta per second, so the HUD
+        // can prove WASD actually changes the player's coordinates.
+        playerMoving = Math.hypot(pdx, pdz) / Math.max(dt, 0.001) > 0.5;
+        playerPosX = current.player.x;
+        playerPosZ = current.player.z;
         playerRig.update(
           {
           time: now / 1000,
@@ -1516,6 +1521,15 @@ export default function BattleRoyale3D() {
       water.update(now / 1000);
       renderer.render(scene, camera);
       hudTimer += dt;
+      // Live diagnostics: reportModelStatus was previously one-shot at
+      // mount time — before any rig update ran — so the HUD froze on
+      // "clip: none / mixer: no" even while clips were playing. Refresh
+      // it twice per second so clipName/mixerUpdating stay truthful.
+      diagTimer += dt;
+      if (diagTimer > 0.5) {
+        diagTimer = 0;
+        reportModelStatus();
+      }
       if (current && hudTimer > 0.1) {
         hudTimer = 0;
         const attachmentId = current.attachments[current.weapon];
@@ -1541,6 +1555,9 @@ export default function BattleRoyale3D() {
             current.playerVehicle >= 0
               ? Math.round(Math.abs(current.vehicles[current.playerVehicle].speed))
               : 0,
+          posX: Math.round(playerPosX * 10) / 10,
+          posZ: Math.round(playerPosZ * 10) / 10,
+          moving: playerMoving,
           airdrop: Boolean(current.airdrop.crate && !current.airdrop.crate.taken),
           swimming: isSwimming(current.player.x, current.player.z),
           deployPhase: current.deployment.phase,
