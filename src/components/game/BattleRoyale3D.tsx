@@ -168,14 +168,18 @@ export default function BattleRoyale3D() {
       }
       const current = state;
       if (current) {
-        playerMesh.position.set(current.player.x, 0, current.player.z);
+        playerMesh.position.set(
+          current.player.x,
+          terrainHeight(current.player.x, current.player.z),
+          current.player.z,
+        );
         playerMesh.rotation.y = current.player.angle;
         playerMesh.visible = current.status !== "lost";
         botMeshes.forEach((mesh, index) => {
           const bot = current.bots[index];
           mesh.visible = Boolean(bot?.alive);
           if (bot) {
-            mesh.position.set(bot.x, 0, bot.z);
+            mesh.position.set(bot.x, terrainHeight(bot.x, bot.z), bot.z);
             mesh.rotation.y = bot.angle;
           }
         });
@@ -183,7 +187,7 @@ export default function BattleRoyale3D() {
           const crate = current.loot[index];
           mesh.visible = Boolean(crate && !crate.taken);
           if (crate && !crate.taken) {
-            mesh.position.set(crate.x, 0.5, crate.z);
+            mesh.position.set(crate.x, terrainHeight(crate.x, crate.z) + 0.5, crate.z);
             mesh.rotation.y = now / 600;
           }
         });
@@ -200,6 +204,7 @@ export default function BattleRoyale3D() {
         camera.position.set(Math.sin(orbit) * 55, 26, Math.cos(orbit) * 55);
         camera.lookAt(0, 0, 0);
       }
+      water.update(now / 1000);
       renderer.render(scene, camera);
       hudTimer += dt;
       if (current && hudTimer > 0.1) {
