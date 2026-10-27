@@ -8,6 +8,10 @@ import { cn } from "@/lib/utils";
 import type { SoldierGender } from "@/components/game/soldierModel";
 import { OperatorRig, lodTierForDistance } from "@/components/game/operatorRig";
 import {
+  getOperatorDiagnostics,
+  installOperatorDiagnosticsProbe,
+} from "@/lib/game/operatorAssets";
+import {
   createCheckpoints,
   createBuildings,
   createMilitaryCamp,
@@ -294,6 +298,7 @@ export default function BattleRoyale3D() {
   });
   const [hud, setHud] = useState<Hud>(() => createInitialHud("idle"));
   const [modelStatus, setModelStatus] = useState<"loading" | "real" | "fallback">("loading");
+  const [modelStatusReason, setModelStatusReason] = useState<string | null>(null);
 
   const start = useCallback((size: SquadSize, operatorGender: OperatorGender) => {
     stateRef.current = createMatchState(size);
@@ -644,10 +649,17 @@ export default function BattleRoyale3D() {
     const playerRigMale = new OperatorRig("woodland", "male");
     const playerRigFemale = new OperatorRig("woodland", "female");
     scene.add(playerRigMale.group, playerRigFemale.group);
+    installOperatorDiagnosticsProbe();
     let maleReal = false;
     let femaleReal = false;
     const reportModelStatus = () => {
-      setModelStatus(maleReal || femaleReal ? "real" : "fallback");
+      if (maleReal || femaleReal) {
+        setModelStatus("real");
+        setModelStatusReason(null);
+      } else {
+        setModelStatus("fallback");
+        setModelStatusReason(getOperatorDiagnostics().lastError);
+      }
     };
     void playerRigMale.upgrade().then((ok) => {
       maleReal = ok;
