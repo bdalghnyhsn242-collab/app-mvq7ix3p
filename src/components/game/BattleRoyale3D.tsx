@@ -587,6 +587,7 @@ export default function BattleRoyale3D() {
         if (shootRef.current) {
           state = shoot(state).state;
           shootRef.current = false;
+          aimTimer = 0.6;
         }
         stateRef.current = state;
       }
@@ -620,6 +621,7 @@ export default function BattleRoyale3D() {
           speed01: Math.min(1, Math.hypot(pdx, pdz) / Math.max(dt, 0.001) / 18),
           swimming: isSwimming(current.player.x, current.player.z),
           driving: current.playerVehicle >= 0,
+          aiming: aimTimer > 0,
           },
           dt,
         );
