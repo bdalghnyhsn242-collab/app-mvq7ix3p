@@ -232,7 +232,6 @@ import {
   type RevivalState,
 } from "./squadRevivalSystem";
 import {
-  DOME_MAX_INTEGRITY,
   domeAbsorb,
   drainDome,
   createShieldDomeState,
