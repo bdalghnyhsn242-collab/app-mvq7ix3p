@@ -252,7 +252,6 @@ export class OperatorRig {
       // Clips exist but not for this state (aim/crawl/swim/drive): pose
       // the skeleton directly so those states still read correctly.
       this.animator?.pause();
-      this.usesBoneDriver = false;
       driveHumanoidBones(this.gltfRoot, motion);
       return;
     }
