@@ -71,9 +71,13 @@ npm run dev
 2. اربط حساب GitHub واختر هذا المستودع (يدعم المستودعات الخاصة مجانًا).
 3. إعدادات البناء: Framework preset = **Vite**، Build command =
    `npm run build`، Build output directory = `dist`.
-4. اضغط **Save and Deploy** — يظهر الرابط فورًا بالشكل
+4. (اختياري — للمصادقة السحابية) من **Settings ← Environment variables**
+   أضف `VITE_SUPABASE_URL` و`VITE_SUPABASE_ANON_KEY` و`VITE_AUTH_ENABLED=true`
+   قبل البناء — متغيرات `VITE_*` تُدمج وقت البناء ولا تُقرأ لاحقًا. بدونها
+   تعمل اللعبة كاملة بوضع الزائر دون سحابة. لا تضع أي مفاتيح في الكود أو Git.
+5. اضغط **Save and Deploy** — يظهر الرابط فورًا بالشكل
    `https://<اسم-المشروع>.pages.dev` ويعاد النشر تلقائيًا مع كل push.
-5. توجيه SPA للمسارات الداخلية جاهز عبر ملف `public/_redirects`
+6. توجيه SPA للمسارات الداخلية جاهز عبر ملف `public/_redirects`
    المضمّن في المستودع (`/* /index.html 200`).
 
 ### بديل مجاني آخر: Vercel
