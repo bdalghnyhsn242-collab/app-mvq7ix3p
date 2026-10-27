@@ -51,12 +51,12 @@ npm run dev
 المستودع يتضمن سير عمل `.github/workflows/pages.yml` يبني الفرع وينشره
 تلقائيًا على GitHub Pages (مجاني للمستودعات العامة):
 
-1. افتح المستودع على GitHub ← **Settings** ← **Pages**.
-2. تحت **Build and deployment** اختر **Source: GitHub Actions** (مرة واحدة فقط).
-3. سير العمل يعمل تلقائيًا عند كل push على `main` أو فرع التطوير
+1. سير العمل يفعّل Pages تلقائيًا بمصدر «GitHub Actions» عبر خطوة
+   `configure-pages` (enablement: true) — لا حاجة لأي إعداد يدوي.
+2. سير العمل يعمل تلقائيًا عند كل push على `main` أو فرع التطوير
    `build-game-app-LLbPBtxtQCx` (أو شغّله يدويًا من تبويب **Actions** ←
    «Deploy game preview to GitHub Pages» ← **Run workflow**).
-4. بعد اكتمال التشغيل يظهر الرابط في صفحة الـworkflow بالشكل:
+3. بعد اكتمال التشغيل يظهر الرابط في صفحة الـworkflow بالشكل:
    `https://<اسم-المستخدم>.github.io/<اسم-المستودع>/`
 
 ملاحظات: البناء يستخدم `--base=/<repo>/` تلقائيًا ليعمل تحت المسار الفرعي،
