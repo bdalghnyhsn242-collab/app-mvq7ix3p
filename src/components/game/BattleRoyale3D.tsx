@@ -17,7 +17,11 @@ import {
   createRuins,
   createSunShafts,
   createTerrain,
+  upgradeBuildingsWithRealModels,
+  upgradeForestWithRealTrees,
+  upgradeRocksWithRealRocks,
 } from "@/lib/game/environment";
+import { upgradeVehicleMeshesWithRealModels } from "@/lib/game/environmentAssets";
 import { createWater } from "@/lib/game/water";
 import { createRain, updateWeatherVisuals } from "@/components/game/weatherFx";
 import { ATTACHMENTS } from "@/lib/game/arsenal";
@@ -412,6 +416,11 @@ export default function BattleRoyale3D() {
       scene.add(chunk);
     }
     scene.add(createSunShafts());
+    // Real CC0 asset upgrades load in the background; the procedural
+    // scene above stays visible until each swap succeeds.
+    void upgradeForestWithRealTrees(forest, 70);
+    void upgradeRocksWithRealRocks(rocks);
+    void upgradeBuildingsWithRealModels(buildings);
 
     const dustCount = 500;
     const dustPositions = new Float32Array(dustCount * 3);
@@ -662,6 +671,7 @@ export default function BattleRoyale3D() {
       scene.add(mesh);
       return mesh;
     });
+    void upgradeVehicleMeshesWithRealModels(vehicleMeshes);
     const tracerPool = Array.from({ length: 16 }, () => {
       const geometry = new THREE.BufferGeometry().setFromPoints([
         new THREE.Vector3(),
