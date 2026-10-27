@@ -286,6 +286,7 @@ export type Loot = {
   ammo: number;
   taken: boolean;
   attachment?: AttachmentId;
+  beacon?: boolean;
 };
 
 export function lootWeaponForIndex(index: number): WeaponId {
