@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { Crosshair, RotateCcw } from "lucide-react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -38,6 +39,7 @@ import {
 } from "@/lib/game/shieldDomeSystem";
 import { SENTRY_MAX_HEALTH } from "@/lib/game/sentryTurretSystem";
 import { FORTRESS_HOLD_TIME } from "@/lib/game/squadFortressSystem";
+import { saveMatchResult, type MatchSummary } from "@/lib/matchCloud";
 import {
   BOT_COUNT,
   LOOT_COUNT,
@@ -245,6 +247,7 @@ export default function BattleRoyale3D() {
   const shieldRef = useRef(false);
   const sentryRef = useRef(false);
   const medevacRef = useRef(false);
+  const cloudSavedRef = useRef(false);
   const [squadSize, setSquadSize] = useState<SquadSize>(1);
   const [mode, setMode] = useState<"lobby" | "match">("lobby");
   const [gender, setGender] = useState<OperatorGender>("male");
@@ -265,6 +268,7 @@ export default function BattleRoyale3D() {
     stateRef.current = createMatchState(size);
     genderRef.current = operatorGender;
     modeRef.current = "match";
+    cloudSavedRef.current = false;
     setMode("match");
     setHud(createInitialHud("running"));
   }, []);
@@ -850,6 +854,30 @@ export default function BattleRoyale3D() {
       sentryRef.current = false;
       medevacRef.current = false;
       const current = state;
+      if (
+        modeRef.current === "match" &&
+        current &&
+        current.status !== "running" &&
+        !cloudSavedRef.current
+      ) {
+        cloudSavedRef.current = true;
+        const summary: MatchSummary = {
+          status: current.status === "won" ? "won" : "lost",
+          durationSeconds: Math.round(current.time),
+          kills: BOT_COUNT - current.bots.filter((bot) => bot.alive).length,
+          healthRemaining: Math.max(0, Math.round(current.player.health)),
+          squadSize: current.squadSize,
+          squadSurvivors: current.squad.filter((mate) => mate.state === "active").length,
+          zoneRadius: Math.round(current.zone.radius),
+        };
+        void saveMatchResult(summary, current.squad).then((result) => {
+          if (result.saved) {
+            toast.success("☁️ حُفظت النتيجة في لوحة المتصدرين السحابية");
+          } else if (result.reason !== "not-configured") {
+            toast.error("تعذر الحفظ السحابي: " + (result.reason ?? ""));
+          }
+        });
+      }
       if (current) {
         const deployment = current.deployment;
         const playerRig = genderRef.current === "female" ? playerRigFemale : playerRigMale;
