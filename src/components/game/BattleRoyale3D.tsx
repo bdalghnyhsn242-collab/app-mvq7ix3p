@@ -1063,6 +1063,19 @@ export default function BattleRoyale3D() {
           <div className="flex gap-2">
             <Badge className="bg-slate-900/80 text-white">أحياء: {hud.alive}</Badge>
             <Badge className="bg-slate-900/80 text-white">المنطقة: {hud.zone}م</Badge>
+            <Badge className="bg-slate-900/80 text-white">
+              {hud.phase === "night" ? "🌙" : hud.phase === "day" ? "☀️" : "🌅"}{" "}
+              {hud.weather === "rain"
+                ? "🌧"
+                : hud.weather === "storm"
+                  ? "⛈"
+                  : hud.weather === "fog"
+                    ? "🌫"
+                    : "☀️"}
+            </Badge>
+            {hud.droneAlert ? (
+              <Badge className="bg-rose-700/90 text-white">🚨 استطلاع! إنك مكشوف</Badge>
+            ) : null}
             {hud.airdrop ? (
               <Badge className="bg-amber-600/90 text-white">📦 إسقاط جوي!</Badge>
             ) : null}
@@ -1073,7 +1086,8 @@ export default function BattleRoyale3D() {
         </div>
         <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center p-3">
           <Badge className="bg-slate-900/80 text-white">
-            {hud.weapon}: {hud.ammo} ذخيرة
+            {hud.weapon}
+            {hud.attachment ? ` + ${hud.attachment}` : ""}: {hud.ammo} ذخيرة
           </Badge>
           <Badge className="mx-2 bg-slate-900/80 text-white">صناديق: {hud.crates}</Badge>
           {hud.vehicle ? (
