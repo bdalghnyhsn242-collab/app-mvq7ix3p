@@ -23,6 +23,7 @@ import {
   switchWeapon,
   damagePlayer,
   fullMagazine,
+  ARMOR_PICKUP_AMOUNT,
   type MatchState,
 } from "./battleRoyale";
 import { TOWER_TERMINAL, TOWER_CAPTURE_TIME } from "./radioTowerSystem";
