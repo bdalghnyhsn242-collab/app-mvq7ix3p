@@ -1,9 +1,10 @@
 import type React from "react";
 import { Link, NavLink, Navigate } from "react-router-dom";
-import { Bot, Home, LogOut, Moon, Sun, UserRound } from "lucide-react";
+import { Home, LogOut, Moon, Sun, UserRound } from "lucide-react";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
 import { AUTH_ENABLED } from "@/config/features";
+import { LastStandLogo } from "@/components/brand/LastStandLogo";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -61,9 +62,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
           <div className="flex h-14 items-center justify-between px-4 sm:px-6 lg:px-8">
             <div className="flex items-center gap-5">
               <Link to="/" className="flex items-center gap-2 font-semibold">
-                <span className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
-                  <Bot className="h-4 w-4" />
-                </span>
+                <LastStandLogo className="h-8 w-8" />
                 <span className="hidden sm:inline">{import.meta.env.VITE_APP_NAME || "الصمود الأخير"}</span>
               </Link>
               <nav className="hidden items-center gap-1 md:flex">
