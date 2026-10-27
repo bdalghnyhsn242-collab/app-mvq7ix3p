@@ -22,6 +22,10 @@ export const FALL_SPEED_CHUTE = 6;
 export const CHUTE_ALTITUDE = 40;
 export const AI_VEHICLE_SEEK_RADIUS = 14;
 export const RUNOVER_DAMAGE_PER_SECOND = 45;
+export const EXPLOSION_RADIUS = 9;
+export const EXPLOSION_DAMAGE = 50;
+export const EXPLOSION_DURATION = 0.8;
+export const TRACER_LIFE = 0.12;
 
 export const BUILDING_POSITIONS = [
   { x: 42, z: -34 },
@@ -83,6 +87,62 @@ export function isSwimming(x: number, z: number): boolean {
   return terrainHeight(x, z) < WATER_LEVEL - SWIM_DEPTH;
 }
 
+export type Obstacle = { x: number; z: number; r: number };
+
+export const OBSTACLES: Obstacle[] = (() => {
+  const list: Obstacle[] = BUILDING_POSITIONS.map((position) => ({
+    x: position.x,
+    z: position.z,
+    r: 7,
+  }));
+  for (let i = 0; i < 48; i += 1) {
+    const angle = hash2(i * 3.1 + 1.7, i * 7.7 - 0.3) * Math.PI * 2;
+    const radius = 12 + hash2(i * 1.3 + 4.2, i * 9.1 + 2.8) * (ISLAND_RADIUS - 24);
+    list.push({
+      x: Math.cos(angle) * radius,
+      z: Math.sin(angle) * radius,
+      r: 1.6 + hash2(i + 0.5, i + 2.5) * 1.6,
+    });
+  }
+  return list;
+})();
+
+export function steerAroundObstacles(
+  x: number,
+  z: number,
+  angle: number,
+  desiredTurn: number,
+  obstacles: Obstacle[],
+): number {
+  const probeX = x + Math.sin(angle) * 7;
+  const probeZ = z + Math.cos(angle) * 7;
+  for (const obstacle of obstacles) {
+    const dx = probeX - obstacle.x;
+    const dz = probeZ - obstacle.z;
+    if (Math.hypot(dx, dz) > obstacle.r + 2.2) {
+      continue;
+    }
+    const lateral = (obstacle.x - x) * Math.cos(angle) - (obstacle.z - z) * Math.sin(angle);
+    const away = lateral >= 0 ? -1 : 1;
+    return Math.max(-1, Math.min(1, desiredTurn + away * 1.5));
+  }
+  return desiredTurn;
+}
+
+export function steerAround(
+  x: number,
+  z: number,
+  angle: number,
+  desiredTurn: number,
+): number {
+  return steerAroundObstacles(x, z, angle, desiredTurn, OBSTACLES);
+}
+
+export function blastDamage(bx: number, bz: number, x: number, z: number): number {
+  const dist = Math.hypot(x - bx, z - bz);
+  return dist < EXPLOSION_RADIUS ? EXPLOSION_DAMAGE * (1 - dist / EXPLOSION_RADIUS) : 0;
+}
+
 export type DeployPhase = "plane" | "falling" | "landed";
 export type Deployment = {
   phase: DeployPhase;
@@ -123,7 +183,21 @@ export function stepDeployment(deployment: Deployment, dt: number): Deployment {
   return next;
 }
 
-import { createVehicles, damageVehicle, stepVehicle, type Vehicle } from "./vehicles";
+import {
+  createVehicles,
+  coolTurret,
+  damageVehicle,
+  destroyVehicle,
+  hasTurret,
+  stepVehicle,
+  TURRET_DAMAGE,
+  TURRET_INTERVAL,
+  TURRET_RANGE,
+  PLAYER_TURRET_COOLDOWN,
+  PLAYER_TURRET_DAMAGE,
+  PLAYER_TURRET_RANGE,
+  type Vehicle,
+} from "./vehicles";
 import { createAirdropState, stepAirdrops, type AirdropState } from "./airdrops";
 import { createSquad, knockDown, stepSquad, type SquadSize, type Teammate } from "./squad";
 
