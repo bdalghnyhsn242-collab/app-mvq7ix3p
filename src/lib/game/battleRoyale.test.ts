@@ -195,7 +195,10 @@ describe("battle royale core logic", () => {
     let state = withState({
       squadSize: 2,
       squad: wiped,
-      bots: [{ x: 0, z: 10, angle: 0, health: 100, alive: true }],
+      bots: [
+        { x: 0, z: 10, angle: 0, health: 100, alive: true },
+        { x: 0, z: 150, angle: 0, health: 100, alive: true },
+      ],
     });
     state = stepMatch(state, 0.1, { forward: 0, turn: 0 });
     expect(state.revival.active).toBe(true);
