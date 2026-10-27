@@ -258,6 +258,8 @@ export type MatchInput = {
   drop?: boolean;
   revive?: boolean;
 };
+export type Tracer = { x1: number; z1: number; x2: number; z2: number; life: number };
+export type Explosion = { x: number; z: number; timer: number };
 export type MatchState = {
   player: Soldier;
   bots: Soldier[];
@@ -272,6 +274,8 @@ export type MatchState = {
   squadSize: SquadSize;
   squad: Teammate[];
   deployment: Deployment;
+  tracers: Tracer[];
+  explosions: Explosion[];
   time: number;
   status: MatchStatus;
 };
@@ -335,8 +339,61 @@ export function createMatchState(squadSize: SquadSize = 1): MatchState {
     squadSize,
     squad: createSquad(squadSize),
     deployment: createDeployment(),
+    tracers: [],
+    explosions: [],
     time: 0,
     status: "running",
+  };
+}
+
+export function applyVehicleDestruction(
+  vehicles: Vehicle[],
+  index: number,
+  player: { x: number; z: number },
+  bots: Soldier[],
+  squad: Teammate[],
+): {
+  vehicles: Vehicle[];
+  bots: Soldier[];
+  squad: Teammate[];
+  playerDamage: number;
+  explosion: Explosion;
+} {
+  const vehicle = vehicles[index];
+  const explosion: Explosion = { x: vehicle.x, z: vehicle.z, timer: EXPLOSION_DURATION };
+  const botsNext = bots.map((bot) => {
+    if (!bot.alive) {
+      return bot;
+    }
+    const damage = blastDamage(vehicle.x, vehicle.z, bot.x, bot.z);
+    if (damage <= 0) {
+      return bot;
+    }
+    const health = bot.health - damage;
+    return { ...bot, health, alive: health > 0 };
+  });
+  const squadNext = squad.map((mate) => {
+    if (mate.state !== "active") {
+      return mate;
+    }
+    const damage = blastDamage(vehicle.x, vehicle.z, mate.x, mate.z);
+    if (damage <= 0) {
+      return mate;
+    }
+    const armorBefore = mate.armor;
+    const next = {
+      ...mate,
+      armor: Math.max(0, armorBefore - damage),
+      health: mate.health - Math.max(0, damage - armorBefore),
+    };
+    return next.health <= 0 ? knockDown(next) : next;
+  });
+  return {
+    vehicles: vehicles.map((v, i) => (i === index ? destroyVehicle(v) : v)),
+    bots: botsNext,
+    squad: squadNext,
+    playerDamage: blastDamage(vehicle.x, vehicle.z, player.x, player.z),
+    explosion,
   };
 }
 
