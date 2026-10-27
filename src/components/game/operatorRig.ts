@@ -92,12 +92,26 @@ export class OperatorRig {
       return true;
     }
     this.upgradeAttempted = true;
-    const body = await loadOperatorGltf(this.variant);
-    if (!body) {
+    let body: Awaited<ReturnType<typeof loadOperatorGltf>> = null;
+    try {
+      body = await loadOperatorGltf(this.variant);
+    } catch (error) {
+      console.warn(
+        "🎮 [LastStand:Rig] خطأ غير متوقع أثناء تحميل جسم المشغّل:",
+        error instanceof Error ? error.message : error,
+      );
       return false;
     }
-    const clipsGltf = body.animations.length > 0 ? body : await loadOperatorClipsGltf();
-    const instance = createOperatorInstance(this.variant, body, clipsGltf);
+    if (!body) {
+      console.warn(
+        `🎮 [LastStand:Rig] تعذر تحميل أي مصدر للمشغّل «${this.variant}» — بقي النموذج الإجرائي (makeSoldier). التفاصيل في رسائل 🎮 [LastStand:Model]`,
+      );
+      return false;
+    }
+    let clipsGltf: Awaited<ReturnType<typeof loadOperatorClipsGltf>> = null;
+    try {
+      clipsGltf = body.animations.length > 0 ? body : await loadOperatorClipsGltf();
+      const instance = createOperatorInstance(this.variant, body, clipsGltf);
     // A real textured humanoid is always preferable to the procedural
     // fallback. When no clip matches its skeleton, the generic bone
     // driver animates it instead of leaving a static T-pose.
@@ -114,8 +128,18 @@ export class OperatorRig {
     }
     this.group.add(instance.root);
     this.procedural.visible = false;
+    console.info(
+      `🎮 [LastStand:Rig] تم تركيب النموذج البشري الحقيقي (${this.variant}) — وضع الحركة: ${this.animationMode}`,
+    );
     void this.attachWeapon();
     return true;
+    } catch (error) {
+      console.warn(
+        "🎮 [LastStand:Rig] فشل تركيب النموذج بعد تحميله (استنساخ/تطبيع/حركات):",
+        error instanceof Error ? error.message : error,
+      );
+      return false;
+    }
   }
 
   private async attachWeapon(): Promise<void> {
