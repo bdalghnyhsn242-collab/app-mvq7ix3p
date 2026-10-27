@@ -9,6 +9,7 @@ export type Vehicle = {
   health: number;
   tires: boolean[];
   occupied: boolean;
+  driverBot: number;
 };
 
 export const VEHICLE_SPECS: Record<
@@ -33,6 +34,7 @@ export function createVehicles(): Vehicle[] {
       health: VEHICLE_SPECS[kind].armor,
       tires: [true, true, true, true],
       occupied: false,
+      driverBot: -1,
     };
   });
 }
