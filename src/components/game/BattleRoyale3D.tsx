@@ -63,6 +63,8 @@ import {
   BOT_LOD_DISTANCE,
   DEPLOY_PLANE_ALTITUDE,
   EXPLOSION_DURATION,
+  PLAYER_SPEED,
+  SPRINT_SPEED_FACTOR,
   isSwimming,
   createMatchState,
   lootWeaponForIndex,
@@ -310,6 +312,8 @@ export default function BattleRoyale3D() {
     hidden: boolean;
     meshes: number;
     bones: number;
+    clipName: string | null;
+    mixerUpdating: boolean;
     source: string | null;
     rigged: number;
   } | null>(null);
@@ -1127,7 +1131,14 @@ export default function BattleRoyale3D() {
         playerRig.update(
           {
           time: now / 1000,
-          speed01: Math.min(1, Math.hypot(pdx, pdz) / Math.max(dt, 0.001) / 18),
+          // Normalized against the SPRINT speed so walking (~0.74) and
+          // sprinting (1.0) map to distinct animation tiers instead of
+          // both saturating at 1.0 (the old /18 divisor).
+          speed01: Math.min(
+            1,
+            Math.hypot(pdx, pdz) / Math.max(dt, 0.001) / (PLAYER_SPEED * SPRINT_SPEED_FACTOR),
+          ),
+          sprinting: sprintRef.current && !current.crouching,
           swimming: isSwimming(current.player.x, current.player.z),
           driving: current.playerVehicle >= 0,
           aiming: aimTimer > 0,
@@ -1139,6 +1150,11 @@ export default function BattleRoyale3D() {
         playerRig.group.userData.px = current.player.x;
         playerRig.group.userData.pz = current.player.z;
         playerRig.group.visible = current.status !== "lost" && deployment.phase !== "plane";
+        // BUG FIX: aimTimer was only decayed in the lobby branch, so after
+        // the first shot `aiming` stayed true forever in match mode. That
+        // permanently parked the rig in the aim bone-pose (arms out, no
+        // clips) instead of returning to Idle/Walk/Run clips.
+        aimTimer = Math.max(0, aimTimer - dt);
         flashTimer = Math.max(0, flashTimer - dt);
         playerFlash.visible = flashTimer > 0 && playerRig.group.visible;
         if (playerFlash.visible) {
