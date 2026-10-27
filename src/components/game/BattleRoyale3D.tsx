@@ -662,6 +662,10 @@ export default function BattleRoyale3D() {
       if (key === "r") {
         reviveRef.current = true;
       }
+      if (modeRef.current === "lobby" && key >= "1" && key <= "6") {
+        const ids: WeaponId[] = ["pistol", "smg", "ar", "dmr", "lmg", "shotgun"];
+        lobbyRef.current = lobbySelectWeapon(lobbyRef.current, ids[Number(key) - 1]);
+      }
       keysRef.current.add(key);
     };
     const onKeyUp = (event: KeyboardEvent) => {
