@@ -35,10 +35,20 @@ type RigCache = {
 const rigCache = new WeakMap<THREE.Object3D, RigCache>();
 
 function sideOf(name: string): Side {
-  if (/left|\.l$|_l$|lft/i.test(name)) {
+  if (
+    /left|lft/i.test(name) ||
+    /[._\s-]l$/i.test(name) ||
+    /\s[l]\s/i.test(name) ||
+    /L$/.test(name)
+  ) {
     return "left";
   }
-  if (/right|\.r$|_r$|rgt/i.test(name)) {
+  if (
+    /right|rgt/i.test(name) ||
+    /[._\s-]r$/i.test(name) ||
+    /\s[r]\s/i.test(name) ||
+    /R$/.test(name)
+  ) {
     return "right";
   }
   return "center";
