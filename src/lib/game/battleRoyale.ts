@@ -27,6 +27,17 @@ export const EXPLOSION_RADIUS = 9;
 export const EXPLOSION_DAMAGE = 50;
 export const EXPLOSION_DURATION = 0.8;
 export const TRACER_LIFE = 0.12;
+export const RELOAD_TIME = 1.6;
+export const JUMP_SPEED = 8.5;
+export const GRAVITY = 24;
+export const CROUCH_SPEED_FACTOR = 0.5;
+export const SPRINT_SPEED_FACTOR = 1.35;
+export const BOT_FIRE_RANGE = 40;
+export const BOT_FIRE_INTERVAL = 1.5;
+export const BOT_FIRE_DAMAGE = 9;
+export const BOT_FIRE_ARC = 0.6;
+export const ARMOR_PICKUP_AMOUNT = 50;
+export const MAX_ARMOR = 100;
 
 export const BUILDING_POSITIONS = [
   { x: 42, z: -34 },
@@ -340,6 +351,8 @@ export type Soldier = {
   health: number;
   alive: boolean;
   stunTimer?: number;
+  armor?: number;
+  fireTimer?: number;
 };
 export type MatchStatus = "idle" | "running" | "won" | "lost";
 export type MatchInput = {
@@ -352,6 +365,11 @@ export type MatchInput = {
   shield?: boolean;
   sentry?: boolean;
   medevac?: boolean;
+  aimAngle?: number;
+  jump?: boolean;
+  crouch?: boolean;
+  sprint?: boolean;
+  reload?: boolean;
 };
 export type Tracer = { x1: number; z1: number; x2: number; z2: number; life: number };
 export type Explosion = { x: number; z: number; timer: number };
@@ -361,6 +379,13 @@ export type MatchState = {
   zone: { x: number; z: number; radius: number };
   weapon: WeaponId;
   ammo: Record<WeaponId, number>;
+  magazine: Record<WeaponId, number>;
+  owned: WeaponId[];
+  playerArmor: number;
+  crouching: boolean;
+  jumpVy: number;
+  jumpAir: number;
+  reloadTimer: number;
   cooldown: number;
   loot: Loot[];
   vehicles: Vehicle[];
