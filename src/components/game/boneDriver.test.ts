@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import * as THREE from "three";
-import { driveHumanoidBones } from "./boneDriver";
+import { captureHumanoidRestPose, driveHumanoidBones } from "./boneDriver";
 
 function makeHumanoid(): THREE.Group {
   const root = new THREE.Group();
@@ -87,5 +87,29 @@ describe("generic humanoid bone driver", () => {
     const box = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1));
     root.add(box);
     expect(driveHumanoidBones(root, { time: 0, speed01: 1 })).toBe(false);
+  });
+
+  it("keeps the rest pose clean when captured before mixer animation", () => {
+    const root = makeHumanoid();
+    expect(captureHumanoidRestPose(root)).toBe(true);
+    const armR = bone(root, "RightArm");
+    const rest = armR.quaternion.clone();
+    // Simulate a mixer having animated the bone before the first driver
+    // call (e.g. the operator sprinted, then aimed).
+    armR.quaternion.multiply(
+      new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), 0.6),
+    );
+    driveHumanoidBones(root, { time: 0, speed01: 0, aiming: true });
+    // The aim pose must be rest + aim delta only — the simulated
+    // animation pose must not leak into the restored rest pose.
+    const angle = armR.quaternion.angleTo(rest);
+    expect(angle).toBeGreaterThan(1.3);
+    expect(angle).toBeLessThan(1.55);
+  });
+
+  it("reports false when capturing a rest pose without humanoid bones", () => {
+    const root = new THREE.Group();
+    root.add(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1)));
+    expect(captureHumanoidRestPose(root)).toBe(false);
   });
 });
