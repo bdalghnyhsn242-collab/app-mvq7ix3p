@@ -23,12 +23,15 @@ describe("CC0 environment asset pipeline", () => {
     const url = environmentAssetUrl("nature", NATURE_FILES.treePine);
     expect(url.local).toBe("/models/env/nature/PineTree_1.glb");
     expect(url.cdn).toBe(
-      "https://cdn.jsdelivr.net/gh/trebeljahr/quaternius-showcase@main/public/glb/nature/PineTree_1.glb",
+      "https://cdn.jsdelivr.net/gh/trebeljahr/quaternius-showcase@main/public/glb/nature_pack/PineTree_1.glb",
     );
     const building = environmentAssetUrl("buildings", BUILDING_FILES.house1);
     expect(building.local).toBe("/models/env/buildings/House1.glb");
+    expect(building.cdn).toBe(
+      "https://cdn.jsdelivr.net/gh/trebeljahr/quaternius-showcase@main/public/glb/buildings_pack_2/House1.glb",
+    );
     const vehicle = environmentAssetUrl("vehicles", VEHICLE_FILES.tank);
-    expect(vehicle.cdn.endsWith("/vehicles/Tank.glb")).toBe(true);
+    expect(vehicle.cdn.endsWith("/tank_pack/Tank.glb")).toBe(true);
   });
 
   it("normalizes model scale and grounds the base at y=0", () => {
