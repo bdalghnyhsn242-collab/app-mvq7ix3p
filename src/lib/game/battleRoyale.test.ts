@@ -12,6 +12,8 @@ import {
   stepMatch,
   type MatchState,
 } from "./battleRoyale";
+import { blowTire, createVehicles, stepVehicle } from "./vehicles";
+import { createAirdropState, stepAirdrops } from "./airdrops";
 
 function withState(overrides: Partial<MatchState>): MatchState {
   return { ...createMatchState(), ...overrides };
@@ -68,7 +70,7 @@ describe("battle royale core logic", () => {
 
   it("cannot shoot without ammo", () => {
     const state = withState({
-      ammo: { pistol: 0, rifle: 0, shotgun: 0 },
+      ammo: { pistol: 0, smg: 0, ar: 0, dmr: 0, lmg: 0, shotgun: 0 },
       bots: [{ x: 0, z: 10, angle: 0, health: 100, alive: true }],
     });
     expect(shoot(state).hit).toBe(false);
@@ -92,12 +94,78 @@ describe("battle royale core logic", () => {
 
   it("picks up a nearby crate and switches weapon", () => {
     const state = withState({
-      loot: [{ x: 1, z: 0, weapon: "rifle", ammo: 30, taken: false }],
+      loot: [{ x: 1, z: 0, weapon: "ar", ammo: 30, taken: false }],
     });
     const next = stepMatch(state, 0.1, { forward: 0, turn: 0 });
     expect(next.loot[0].taken).toBe(true);
-    expect(next.weapon).toBe("rifle");
-    expect(next.ammo.rifle).toBe(30);
+    expect(next.weapon).toBe("ar");
+    expect(next.ammo.ar).toBe(30);
+  });
+
+  it("applies bullet drop falloff at long range", () => {
+    const state = withState({ bots: [{ x: 0, z: 16, angle: 0, health: 100, alive: true }] });
+    const result = shoot(state);
+    expect(result.hit).toBe(true);
+    expect(result.state.bots[0].health).toBeGreaterThan(40);
+    expect(result.state.bots[0].health).toBeLessThan(50);
+  });
+
+  it("kicks the aim with recoil after each shot", () => {
+    const result = shoot(createMatchState());
+    expect(result.state.player.angle).toBeGreaterThan(0);
+  });
+
+  it("drives vehicles with acceleration and speed-dependent turning", () => {
+    const vehicle = createVehicles()[0];
+    const stepped = stepVehicle(vehicle, 1, { forward: 1, turn: 0 });
+    expect(stepped.speed).toBeGreaterThan(0);
+    const turned = stepVehicle({ ...vehicle, speed: 20 }, 1, { forward: 0, turn: 1 });
+    expect(turned.angle).not.toBe(vehicle.angle);
+    const stationary = stepVehicle(vehicle, 1, { forward: 0, turn: 1 });
+    expect(stationary.angle).toBe(vehicle.angle);
+  });
+
+  it("slows vehicles with blown tires", () => {
+    const healthy = stepVehicle(createVehicles()[0], 3, { forward: 1, turn: 0 });
+    const damaged = stepVehicle(blowTire(createVehicles()[0], 0), 3, { forward: 1, turn: 0 });
+    expect(damaged.speed).toBeLessThan(healthy.speed);
+  });
+
+  it("lets the player enter and exit a nearby vehicle", () => {
+    const vehicles = createVehicles();
+    vehicles[0] = { ...vehicles[0], x: 2, z: 0 };
+    const state = withState({ vehicles, playerVehicle: -1 });
+    const entered = stepMatch(state, 0.1, { forward: 0, turn: 0, enter: true });
+    expect(entered.playerVehicle).toBe(0);
+    const exited = stepMatch(entered, 0.1, { forward: 0, turn: 0, enter: true });
+    expect(exited.playerVehicle).toBe(-1);
+  });
+
+  it("descends airdrop crates until they land", () => {
+    const airdrop = createAirdropState();
+    const falling = {
+      ...airdrop,
+      crate: { x: 5, z: 5, altitude: 12, landed: false, weapon: "dmr" as const, ammo: 20, taken: false },
+    };
+    const landed = stepAirdrops(falling, 2);
+    expect(landed.crate?.landed).toBe(true);
+    expect(landed.crate?.altitude).toBe(0);
+  });
+
+  it("grants the exclusive airdrop weapon and armor on pickup", () => {
+    const airdrop = createAirdropState();
+    const state = withState({
+      player: { x: 0, z: 0, angle: 0, health: 60, alive: true },
+      airdrop: {
+        ...airdrop,
+        crate: { x: 1, z: 0, altitude: 0, landed: true, weapon: "dmr", ammo: 10, taken: false },
+      },
+    });
+    const next = stepMatch(state, 0.1, { forward: 0, turn: 0 });
+    expect(next.airdrop.crate?.taken).toBe(true);
+    expect(next.weapon).toBe("dmr");
+    expect(next.ammo.dmr).toBe(10);
+    expect(next.player.health).toBe(85);
   });
 
   it("ends the match as lost when health is depleted", () => {
