@@ -389,7 +389,9 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
           const damaged = damageVehicle(vehicles[playerVehicle], RUNOVER_DAMAGE_PER_SECOND * dt);
           vehicles = vehicles.map((v, i) => (i === playerVehicle ? damaged : v));
           if (damaged.health <= 0) {
+            const wreckIndex = playerVehicle;
             playerVehicle = -1;
+            vehicles = vehicles.map((v, i) => (i === wreckIndex ? { ...v, driverBot: -1 } : v));
             health -= 15;
           }
         } else {
@@ -457,7 +459,7 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
       if (mate.state !== "active") {
         return mate;
       }
-      let next = { ...mate };
+      const next = { ...mate };
       for (const bot of bots) {
         if (!bot.alive || Math.hypot(bot.x - next.x, bot.z - next.z) >= 1.6) {
           continue;
