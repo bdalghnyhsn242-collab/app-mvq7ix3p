@@ -346,12 +346,62 @@ export default function BattleRoyale3D() {
       return crate;
     });
 
+    const lobbyScene = new THREE.Scene();
+    lobbyScene.background = new THREE.Color(0x8fb0cf);
+    lobbyScene.fog = new THREE.Fog(0x8fb0cf, 70, 240);
+    const lobbyCamera = new THREE.PerspectiveCamera(60, 1, 0.1, 800);
+    lobbyScene.add(new THREE.HemisphereLight(0xcfe2ff, 0x4a5a3a, 1.1));
+    const lobbySun = new THREE.DirectionalLight(0xfff1d6, 1.1);
+    lobbySun.position.set(10, 30, -10);
+    lobbyScene.add(lobbySun);
+    const lobbyGround = new THREE.Mesh(
+      new THREE.CircleGeometry(42, 48),
+      new THREE.MeshLambertMaterial({ color: 0x71805c }),
+    );
+    lobbyGround.rotation.x = -Math.PI / 2;
+    lobbyScene.add(lobbyGround);
+    const lobbyCrateMat = new THREE.MeshLambertMaterial({ color: 0x8a6b3e });
+    for (const [cx, cz] of [[-8, 6], [8, 6], [-10, -2], [10, -2], [0, -9]] as const) {
+      const crate = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.4, 1.4), lobbyCrateMat);
+      crate.position.set(cx, 0.7, cz);
+      crate.rotation.y = cx;
+      lobbyScene.add(crate);
+    }
+    const rack = new THREE.Mesh(
+      new THREE.BoxGeometry(4, 0.15, 0.4),
+      new THREE.MeshLambertMaterial({ color: 0x5b4630 }),
+    );
+    rack.position.set(0, 1.1, -8.6);
+    lobbyScene.add(rack);
+    for (let w = 0; w < 4; w += 1) {
+      const gun = new THREE.Mesh(
+        new THREE.BoxGeometry(0.12, 0.5, 0.12),
+        new THREE.MeshLambertMaterial({ color: 0x2b2f33 }),
+      );
+      gun.position.set(-1.5 + w, 1.5, -8.6);
+      lobbyScene.add(gun);
+    }
+    const lobbyTargets = Array.from({ length: TARGET_COUNT }, () => {
+      const mesh = new THREE.Mesh(
+        new THREE.BoxGeometry(1.2, 2.2, 0.3),
+        new THREE.MeshLambertMaterial({ color: 0xd9a13b }),
+      );
+      mesh.position.set(0, 1.1, 16);
+      lobbyScene.add(mesh);
+      return mesh;
+    });
+    const lobbyMale = makeSoldier(0x22c55e, "woodland", "male");
+    const lobbyFemale = makeSoldier(0x22c55e, "woodland", "female");
+    lobbyScene.add(lobbyMale, lobbyFemale);
+
     const resize = () => {
       const width = mount.clientWidth || 640;
       const height = mount.clientHeight || 420;
       renderer.setSize(width, height);
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
+      lobbyCamera.aspect = width / height;
+      lobbyCamera.updateProjectionMatrix();
     };
     resize();
     window.addEventListener("resize", resize);
@@ -359,6 +409,7 @@ export default function BattleRoyale3D() {
     let frame = 0;
     let last = performance.now();
     let hudTimer = 0;
+    let lobbyHudTimer = 0;
     const loop = (now: number) => {
       frame = window.requestAnimationFrame(loop);
       const dt = Math.min((now - last) / 1000, 0.05);
