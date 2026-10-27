@@ -143,6 +143,23 @@ function describeScene(root: THREE.Object3D): string {
   return `${meshes} meshes / ${materials.size} materials / ${bones} bones / ${vertices} vertices / height≈${size.y.toFixed(2)}m`;
 }
 
+function countMeshes(root: THREE.Object3D): number {
+  let meshes = 0;
+  root.traverse((child) => {
+    if ((child as THREE.Mesh).isMesh) {
+      meshes += 1;
+    }
+  });
+  return meshes;
+}
+
+/** The URL that actually produced each cached asset (shown in diagnostics). */
+const loadedSource = new Map<string, string>();
+
+export function loadedSourceFor(key: string): string | null {
+  return loadedSource.get(key) ?? null;
+}
+
 const GLB_MAGIC = [0x67, 0x6c, 0x54, 0x46]; // "glTF"
 
 /**
@@ -213,6 +230,7 @@ async function loadWithTimeout(url: string): Promise<GLTF> {
 async function loadFirstAvailable(
   urls: string[],
   loader: (url: string) => Promise<GLTF>,
+  diagKey?: string,
 ): Promise<GLTF | null> {
   for (const url of urls) {
     try {
@@ -221,6 +239,9 @@ async function loadFirstAvailable(
         "info",
         `نجح المصدر ${url} — المحتوى: ${describeScene(gltf.scene)} / ${gltf.animations.length} مقطع حركة`,
       );
+      if (diagKey) {
+        loadedSource.set(diagKey, url);
+      }
       return gltf;
     } catch {
       // The real error was already logged by loadWithTimeout.
@@ -254,6 +275,7 @@ function cachedOrLoad(
     return Promise.resolve(null);
   }
   const promise = loadFirstAvailable(urls, loader);
+  const promise = loadFirstAvailable(urls, loader, key);
   void promise.then((result) => {
     if (result) {
       failedAt.delete(key);
