@@ -5,6 +5,7 @@ import {
   ISLAND_RADIUS,
   ZONE_START_RADIUS,
   createMatchState,
+  forestDensity,
   movementSpeed,
   terrainHeight,
   shoot,
@@ -42,7 +43,9 @@ describe("battle royale core logic", () => {
   });
 
   it("damages the player outside the safe zone", () => {
-    const state = withState({ player: { x: 39, z: 0, angle: 0, health: 100, alive: true } });
+    const state = withState({
+      player: { x: ISLAND_RADIUS - 2, z: 0, angle: 0, health: 100, alive: true },
+    });
     const next = stepMatch(state, 1, { forward: 0, turn: 0 });
     expect(next.player.health).toBeLessThan(100);
   });
@@ -84,7 +87,7 @@ describe("battle royale core logic", () => {
   it("spawns loot crates on the island", () => {
     const state = createMatchState();
     expect(state.loot).toHaveLength(LOOT_COUNT);
-    expect(state.loot.every((crate) => Math.hypot(crate.x, crate.z) < 40)).toBe(true);
+    expect(state.loot.every((crate) => Math.hypot(crate.x, crate.z) < ISLAND_RADIUS)).toBe(true);
   });
 
   it("picks up a nearby crate and switches weapon", () => {
@@ -98,8 +101,15 @@ describe("battle royale core logic", () => {
   });
 
   it("ends the match as lost when health is depleted", () => {
-    const state = withState({ player: { x: 39, z: 0, angle: 0, health: 1, alive: true } });
+    const state = withState({
+      player: { x: ISLAND_RADIUS - 2, z: 0, angle: 0, health: 1, alive: true },
+    });
     expect(stepMatch(state, 1, { forward: 0, turn: 0 }).status).toBe("lost");
+  });
+
+  it("computes forest density deterministically for biome placement", () => {
+    expect(forestDensity(5, 5)).toBe(forestDensity(5, 5));
+    expect(forestDensity(0, 0)).toBeGreaterThanOrEqual(0);
   });
 
   it("raises terrain toward the island center deterministically", () => {
