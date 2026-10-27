@@ -64,7 +64,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 <span className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
                   <Bot className="h-4 w-4" />
                 </span>
-                <span className="hidden sm:inline">{import.meta.env.VITE_APP_NAME || "اللعبة"}</span>
+                <span className="hidden sm:inline">{import.meta.env.VITE_APP_NAME || "الصمود الأخير"}</span>
               </Link>
               <nav className="hidden items-center gap-1 md:flex">
                 {navItems.map((item) => {
