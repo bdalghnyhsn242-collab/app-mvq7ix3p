@@ -189,6 +189,7 @@ export default function BattleRoyale3D() {
   const enterRef = useRef(false);
   const dropRef = useRef(false);
   const reviveRef = useRef(false);
+  const beaconRef = useRef(false);
   const [squadSize, setSquadSize] = useState<SquadSize>(1);
   const [mode, setMode] = useState<"lobby" | "match">("lobby");
   const [gender, setGender] = useState<OperatorGender>("male");
@@ -734,6 +735,7 @@ export default function BattleRoyale3D() {
         enter: enterRef.current,
         drop: dropRef.current,
         revive: reviveRef.current,
+        beacon: beaconRef.current,
       };
       let state = stateRef.current;
       if (state && state.status === "running") {
@@ -747,6 +749,7 @@ export default function BattleRoyale3D() {
       }
       enterRef.current = false;
       dropRef.current = false;
+      beaconRef.current = false;
       const current = state;
       if (current) {
         const deployment = current.deployment;
@@ -1082,6 +1085,17 @@ export default function BattleRoyale3D() {
           phase: dayPhase(current.weather.time),
           droneAlert: current.drone.spottedTimer > 0,
           attachment: attachmentId ? ATTACHMENTS[attachmentId].name : null,
+          radioCapture: Math.min(1, current.radio.captureProgress / TOWER_CAPTURE_TIME),
+          radioJam: radarRevealActive(current.radio),
+          beaconHeld: current.beacon.held,
+          beaconActive: Boolean(current.beacon.drop),
+          dustStorm: current.dust.active,
+          revivalActive: current.revival.active,
+          revivalProgress: Math.min(
+            1,
+            current.revival.captureProgress / CHALLENGE_ZONE_CAPTURE_TIME,
+          ),
+          revivalTimer: Math.max(0, Math.ceil(current.revival.timer)),
         });
       }
     };
@@ -1115,6 +1129,9 @@ export default function BattleRoyale3D() {
       }
       if (key === "r") {
         reviveRef.current = true;
+      }
+      if (key === "q") {
+        beaconRef.current = true;
       }
       if (modeRef.current === "lobby" && key >= "1" && key <= "6") {
         const ids: WeaponId[] = ["pistol", "smg", "ar", "dmr", "lmg", "shotgun"];
