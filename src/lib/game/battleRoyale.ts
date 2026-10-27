@@ -405,6 +405,7 @@ export type MatchStatus = "idle" | "running" | "won" | "lost";
 export type MatchInput = {
   forward: number;
   turn: number;
+  strafe?: number;
   enter?: boolean;
   drop?: boolean;
   revive?: boolean;
@@ -755,6 +756,12 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
     if (input.forward !== 0) {
       player.x += Math.sin(player.angle) * input.forward * speed * dt;
       player.z += Math.cos(player.angle) * input.forward * speed * dt;
+      clampToIsland(player);
+    }
+    const strafe = input.strafe ?? 0;
+    if (strafe !== 0) {
+      player.x += -Math.cos(player.angle) * strafe * speed * dt;
+      player.z += Math.sin(player.angle) * strafe * speed * dt;
       clampToIsland(player);
     }
     if (jumpAir > 0 || jumpVy > 0) {
