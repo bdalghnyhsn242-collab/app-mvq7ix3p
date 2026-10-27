@@ -17,6 +17,7 @@ import { createWater } from "@/lib/game/water";
 import {
   BOT_COUNT,
   LOOT_COUNT,
+  BUILDING_POSITIONS,
   ZONE_START_RADIUS,
   DEPLOY_PLANE_ALTITUDE,
   isSwimming,
@@ -266,7 +267,7 @@ export default function BattleRoyale3D() {
     const airdropGroup = new THREE.Group();
     airdropGroup.add(airdropCrate, parachute);
     scene.add(airdropGroup);
-    const lootMeshes = Array.from({ length: LOOT_COUNT }, (_, index) => {
+    const lootMeshes = Array.from({ length: LOOT_COUNT + BUILDING_POSITIONS.length }, (_, index) => {
       const crate = new THREE.Mesh(
         new THREE.BoxGeometry(0.8, 0.8, 0.8),
         new THREE.MeshLambertMaterial({ color: LOOT_COLORS[lootWeaponForIndex(index)] }),
