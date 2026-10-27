@@ -4,7 +4,7 @@ import { Crosshair, Play, RotateCcw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { makeSoldier } from "@/components/game/soldierModel";
+import { makeSoldier, type SoldierGender } from "@/components/game/soldierModel";
 import {
   createCheckpoints,
   createBuildings,
@@ -19,6 +19,8 @@ import {
   LOOT_COUNT,
   BUILDING_POSITIONS,
   ZONE_START_RADIUS,
+  BOT_CULL_DISTANCE,
+  BOT_LOD_DISTANCE,
   DEPLOY_PLANE_ALTITUDE,
   isSwimming,
   createMatchState,
@@ -34,6 +36,18 @@ import {
 } from "@/lib/game/battleRoyale";
 import { VEHICLE_SPECS, type VehicleKind } from "@/lib/game/vehicles";
 import { SQUAD_SIZES, type SquadSize, type Teammate } from "@/lib/game/squad";
+import {
+  createLobbyState,
+  stepLobby,
+  lobbyShoot,
+  lobbySelectWeapon,
+  lobbyDeployNow,
+  LOBBY_COUNTDOWN,
+  LOBBY_START_AMMO,
+  TARGET_COUNT,
+  type LobbyState,
+  type OperatorGender,
+} from "@/lib/game/lobby";
 
 type Hud = {
   health: number;
@@ -136,6 +150,19 @@ export default function BattleRoyale3D() {
   const dropRef = useRef(false);
   const reviveRef = useRef(false);
   const [squadSize, setSquadSize] = useState<SquadSize>(1);
+  const [mode, setMode] = useState<"lobby" | "match">("lobby");
+  const [gender, setGender] = useState<OperatorGender>("male");
+  const modeRef = useRef<"lobby" | "match">("lobby");
+  const genderRef = useRef<OperatorGender>("male");
+  const lobbyRef = useRef<LobbyState>(createLobbyState());
+  const [lobbyHud, setLobbyHud] = useState({
+    countdown: LOBBY_COUNTDOWN,
+    hits: 0,
+    shots: 0,
+    weaponId: "pistol" as WeaponId,
+    weapon: WEAPONS.pistol.name,
+    ammo: LOBBY_START_AMMO,
+  });
   const [hud, setHud] = useState<Hud>({
     health: 100,
     alive: BOT_COUNT,
@@ -153,8 +180,11 @@ export default function BattleRoyale3D() {
     status: "idle",
   });
 
-  const start = useCallback((size: SquadSize) => {
+  const start = useCallback((size: SquadSize, operatorGender: OperatorGender) => {
     stateRef.current = createMatchState(size);
+    genderRef.current = operatorGender;
+    modeRef.current = "match";
+    setMode("match");
     setHud({
       health: 100,
       alive: BOT_COUNT,
@@ -172,6 +202,30 @@ export default function BattleRoyale3D() {
       status: "running",
     });
   }, []);
+
+  const startRef = useRef(start);
+  useEffect(() => {
+    startRef.current = start;
+  }, [start]);
+
+  const pickGender = (next: OperatorGender) => {
+    setGender(next);
+    genderRef.current = next;
+    lobbyRef.current = { ...lobbyRef.current, gender: next };
+  };
+
+  const pickSquad = (size: SquadSize) => {
+    setSquadSize(size);
+    lobbyRef.current = { ...lobbyRef.current, squadSize: size };
+  };
+
+  const pickWeapon = (weapon: WeaponId) => {
+    lobbyRef.current = lobbySelectWeapon(lobbyRef.current, weapon);
+  };
+
+  const deployNow = () => {
+    lobbyRef.current = lobbyDeployNow(lobbyRef.current);
+  };
 
   useEffect(() => {
     const mount = mountRef.current;
