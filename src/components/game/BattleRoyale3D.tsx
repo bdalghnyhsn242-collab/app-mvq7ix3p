@@ -1640,7 +1640,7 @@ export default function BattleRoyale3D() {
               ))}
             </div>
             <p className="text-xs text-slate-300">
-              اختبر سلاحك على الأهداف (مسافة أو 1-6 لتبديل السلاح) — إصابات:{" "}
+              اختبر سلاحك على الأهداف (زر الماوس أو 1-6 لتبديل السلاح) — إصابات:{" "}
               {lobbyHud.hits}/{lobbyHud.shots} — ذخيرة: {lobbyHud.ammo}
             </p>
             <Button size="lg" onClick={deployNow}>
@@ -1722,7 +1722,10 @@ export default function BattleRoyale3D() {
         ) : null}
         <Button onClick={() => (shootRef.current = true)}>
           <Crosshair />
-          إطلاق النار (مسافة)
+          إطلاق النار (زر الماوس)
+        </Button>
+        <Button variant="outline" onClick={() => (reloadRef.current = true)}>
+          ⟳ إعادة تلقيم (R)
         </Button>
         <Button variant="outline" onClick={() => (enterRef.current = true)}>
           🚙 ركوب/نزول (E)
