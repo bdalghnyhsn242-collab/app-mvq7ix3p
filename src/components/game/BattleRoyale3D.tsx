@@ -1392,6 +1392,25 @@ export default function BattleRoyale3D() {
             {hud.dustStorm ? (
               <Badge className="bg-amber-700/90 text-white">🌪 عاصفة رملية!</Badge>
             ) : null}
+            {hud.dome !== null ? (
+              <Badge className="bg-sky-800/90 text-white">
+                🛡 القبة: {Math.round(hud.dome * 100)}%
+              </Badge>
+            ) : null}
+            {hud.sentryDeployed ? (
+              <Badge className="bg-cyan-900/90 text-white">
+                🔫 البرج الآلي: {Math.round(hud.sentryHealth)}%
+              </Badge>
+            ) : null}
+            {hud.medevacActive ? (
+              <Badge className="bg-emerald-800/90 text-white">🚁 إخلاء طبي جارٍ!</Badge>
+            ) : null}
+            {hud.fortressBuff ? (
+              <Badge className="bg-violet-800/90 text-white">🏰 حصن الصمود (+30% مقاومة)</Badge>
+            ) : null}
+            {hud.chopperIncoming ? (
+              <Badge className="bg-violet-700/90 text-white">🚁 مروحة الإنقاذ قادمة!</Badge>
+            ) : null}
             {hud.airdrop ? (
               <Badge className="bg-amber-600/90 text-white">📦 إسقاط جوي!</Badge>
             ) : null}
@@ -1523,6 +1542,21 @@ export default function BattleRoyale3D() {
           <Badge className="bg-rose-800/90 text-white">
             🧯 منارة نشطة — الإمداد خلال {BEACON_COUNTDOWN}ث (تنبيه للجميع!)
           </Badge>
+        ) : null}
+        {hud.gadgets.shield > 0 && hud.dome === null ? (
+          <Button className="bg-sky-800 hover:bg-sky-700" onClick={() => (shieldRef.current = true)}>
+            🛡 قبة الدرع (Z) — {hud.gadgets.shield}
+          </Button>
+        ) : null}
+        {hud.gadgets.sentry > 0 || hud.sentryDeployed ? (
+          <Button className="bg-cyan-900 hover:bg-cyan-800" onClick={() => (sentryRef.current = true)}>
+            {hud.sentryDeployed ? "🔫 استرجاع البرج (X)" : `🔫 برج آلي (X) — ${hud.gadgets.sentry}`}
+          </Button>
+        ) : null}
+        {hud.gadgets.medevac > 0 && !hud.medevacActive ? (
+          <Button className="bg-emerald-800 hover:bg-emerald-700" onClick={() => (medevacRef.current = true)}>
+            🚁 إخلاء طبي (C) — {hud.gadgets.medevac}
+          </Button>
         ) : null}
         {hud.squad.some((mate) => mate.state === "downed") ? (
           <HoldButton label="إسعاف (R)" onHold={(active) => (reviveRef.current = active)} />
