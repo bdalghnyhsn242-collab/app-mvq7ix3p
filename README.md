@@ -5,7 +5,7 @@
 ## Stack
 
 - React, TypeScript, Vite, React Router, Tailwind CSS.
-- Three.js لمشهد ثلاثي الأبعاد (الجزيرة، الماء، الجندي، الأعداء، حلقة المنطقة).
+- Three.js لمشهد ثلاثي الأبعاد: تضاريس إجرائية بارتفاعات وضوضاء قيمية، صخور صخرية غير متكررة، أنقاض صناعية مهجورة، ماء ديناميكي بموجات ورغوة (shader مخصص)، وعتاد عسكري مفصّل (سترة، خوذة، حافظات).
 - منطق اللعبة دوال نقية في `src/lib/game/battleRoyale.ts` مع اختبارات Vitest.
 
 ## Getting Started
@@ -33,6 +33,9 @@ npm run dev
 ```text
 src/
   components/game/BattleRoyale3D.tsx   مشهد Three.js وواجهة التحكم
+  components/game/soldierModel.ts      نموذج الجندي بالعتاد التكتيكي
+  lib/game/environment.ts              التضاريس والصخور والأنقاض
+  lib/game/water.ts                    ماء ديناميكي بـ shader مخصص
   lib/game/battleRoyale.ts             منطق اللعبة (أسلحة، ذخيرة، غنائم، دوال نقية)
   lib/game/battleRoyale.test.ts        اختبارات المنطق
   pages/HomePage.tsx                   الصفحة الرئيسية
