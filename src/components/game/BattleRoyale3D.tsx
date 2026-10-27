@@ -362,7 +362,15 @@ export default function BattleRoyale3D() {
     };
     const onCanvasClick = () => {
       if (modeRef.current === "match" && !pointerLockedRef.current) {
-        renderer.domElement.requestPointerLock();
+        // requestPointerLock returns a Promise in modern browsers and can
+        // reject (e.g. right after Escape, or without a user gesture);
+        // swallow it so the click never throws unhandled.
+        const lockRequest = renderer.domElement.requestPointerLock() as
+          | Promise<void>
+          | undefined;
+        if (lockRequest && typeof lockRequest.catch === "function") {
+          lockRequest.catch(() => undefined);
+        }
       }
     };
     renderer.domElement.addEventListener("click", onCanvasClick);
