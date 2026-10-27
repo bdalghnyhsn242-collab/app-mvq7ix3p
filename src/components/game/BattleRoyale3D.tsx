@@ -1225,6 +1225,12 @@ export default function BattleRoyale3D() {
             {hud.droneAlert ? (
               <Badge className="bg-rose-700/90 text-white">🚨 استطلاع! إنك مكشوف</Badge>
             ) : null}
+            {hud.radioJam ? (
+              <Badge className="bg-sky-700/90 text-white">📡 تشويش الرادار نشط</Badge>
+            ) : null}
+            {hud.dustStorm ? (
+              <Badge className="bg-amber-700/90 text-white">🌪 عاصفة رملية!</Badge>
+            ) : null}
             {hud.airdrop ? (
               <Badge className="bg-amber-600/90 text-white">📦 إسقاط جوي!</Badge>
             ) : null}
@@ -1319,6 +1325,16 @@ export default function BattleRoyale3D() {
             ) : null}
           </div>
         ) : null}
+        {mode === "match" && hud.revivalActive ? (
+          <div className="absolute inset-x-8 top-16 z-10 rounded-lg border border-amber-500/60 bg-slate-950/80 p-3 text-center backdrop-blur-sm">
+            <p className="text-sm font-bold text-amber-300">
+              🎖 تحدي القائد: احتل النقطة أو أقصِ عدوًا لإحياء فرقتك! ({hud.revivalTimer}ث)
+            </p>
+            <div className="mx-auto mt-1.5 h-2 w-56 overflow-hidden rounded-full bg-slate-800">
+              <div className="h-full bg-amber-500" style={{ width: `${hud.revivalProgress * 100}%` }} />
+            </div>
+          </div>
+        ) : null}
       </div>
 
       <div className="flex flex-wrap items-center justify-center gap-4">
@@ -1334,6 +1350,19 @@ export default function BattleRoyale3D() {
         <Button variant="outline" onClick={() => (enterRef.current = true)}>
           🚙 ركوب/نزول (E)
         </Button>
+        {hud.beaconHeld > 0 && !hud.beaconActive ? (
+          <Button
+            className="bg-rose-700 hover:bg-rose-600"
+            onClick={() => (beaconRef.current = true)}
+          >
+            🧯 استدعاء إمدادات (Q) — {hud.beaconHeld}
+          </Button>
+        ) : null}
+        {hud.beaconActive ? (
+          <Badge className="bg-rose-800/90 text-white">
+            🧯 منارة نشطة — الإمداد خلال {BEACON_COUNTDOWN}ث (تنبيه للجميع!)
+          </Badge>
+        ) : null}
         {hud.squad.some((mate) => mate.state === "downed") ? (
           <HoldButton label="إسعاف (R)" onHold={(active) => (reviveRef.current = active)} />
         ) : null}
