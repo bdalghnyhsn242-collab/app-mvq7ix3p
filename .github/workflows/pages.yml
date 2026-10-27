@@ -26,6 +26,12 @@ jobs:
           node-version: 20
       - name: Install dependencies
         run: npm install
+      # Enables Pages with the "GitHub Actions" build source automatically,
+      # so deploy-pages does not fail with "Get Pages site failed" on repos
+      # where Pages was never configured manually.
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
       - name: Build (subpath base for GitHub Pages)
         run: npm run build -- --base=/${{ github.event.repository.name }}/
       - name: SPA fallback for deep links
