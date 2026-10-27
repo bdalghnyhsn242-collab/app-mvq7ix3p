@@ -159,6 +159,33 @@ export function createRuins(): THREE.Group {
   return group;
 }
 
+export function createSunShafts(): THREE.Group {
+  const group = new THREE.Group();
+  const random = seededRandom(31337);
+  const material = new THREE.MeshBasicMaterial({
+    color: 0xfff3d0,
+    transparent: true,
+    opacity: 0.05,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+  });
+  for (let i = 0; i < 12; i += 1) {
+    const x = (random() * 2 - 1) * 120;
+    const z = (random() * 2 - 1) * 120;
+    const h = terrainHeight(x, z);
+    if (h < 1) {
+      continue;
+    }
+    const shaft = new THREE.Mesh(new THREE.ConeGeometry(2.2, 26, 6, 1, true), material);
+    shaft.position.set(x, h + 13, z);
+    shaft.rotation.z = 0.35;
+    shaft.rotation.x = 0.2;
+    group.add(shaft);
+  }
+  return group;
+}
+
 export function createCheckpoints(): THREE.Group {
   const group = new THREE.Group();
   const random = seededRandom(777);
