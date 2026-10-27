@@ -33,6 +33,7 @@ import {
   CHALLENGE_ZONE_RADIUS,
   CHALLENGE_WINDOW,
 } from "@/lib/game/squadRevivalSystem";
+import { DOME_RADIUS } from "@/lib/game/shieldDomeSystem";
 import {
   BOT_COUNT,
   LOOT_COUNT,
@@ -470,6 +471,86 @@ export default function BattleRoyale3D() {
     revivalRing.rotation.x = -Math.PI / 2;
     revivalRing.visible = false;
     scene.add(revivalRing);
+
+    const domeMesh = new THREE.Mesh(
+      new THREE.SphereGeometry(1, 28, 14, 0, Math.PI * 2, 0, Math.PI / 2),
+      new THREE.MeshBasicMaterial({
+        color: 0x38bdf8,
+        transparent: true,
+        opacity: 0.16,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+      }),
+    );
+    const domeWire = new THREE.Mesh(
+      new THREE.SphereGeometry(1, 14, 7, 0, Math.PI * 2, 0, Math.PI / 2),
+      new THREE.MeshBasicMaterial({
+        color: 0x7dd3fc,
+        wireframe: true,
+        transparent: true,
+        opacity: 0.35,
+        depthWrite: false,
+      }),
+    );
+    const domeGroup = new THREE.Group();
+    domeGroup.add(domeMesh, domeWire);
+    domeGroup.visible = false;
+    scene.add(domeGroup);
+
+    const sentryMesh = new THREE.Group();
+    const sentryMetal = new THREE.MeshLambertMaterial({ color: 0x3b4148 });
+    for (const [lx, lz] of [[-0.4, -0.3], [0.4, -0.3], [0, 0.45]] as const) {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.9, 0.08), sentryMetal);
+      leg.position.set(lx, 0.45, lz);
+      leg.rotation.z = lx * 0.5;
+      sentryMesh.add(leg);
+    }
+    const sentryHead = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 0.6), sentryMetal);
+    sentryHead.position.y = 1;
+    const sentryBarrel = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.5, 6), sentryMetal);
+    sentryBarrel.rotation.x = Math.PI / 2;
+    sentryBarrel.position.set(0, 1, 0.4);
+    const sentryFlash = new THREE.Mesh(
+      new THREE.SphereGeometry(0.12, 6, 6),
+      new THREE.MeshBasicMaterial({ color: 0x7df9ff }),
+    );
+    sentryFlash.position.set(0, 1, 0.68);
+    sentryFlash.name = "sentryFlash";
+    sentryFlash.visible = false;
+    sentryMesh.add(sentryHead, sentryBarrel, sentryFlash);
+    sentryMesh.visible = false;
+    scene.add(sentryMesh);
+
+    const medevacMesh = new THREE.Group();
+    const medBody = new THREE.Mesh(
+      new THREE.BoxGeometry(0.8, 0.35, 0.8),
+      new THREE.MeshLambertMaterial({ color: 0xf1f5f9 }),
+    );
+    const crossA = new THREE.Mesh(
+      new THREE.BoxGeometry(0.5, 0.06, 0.16),
+      new THREE.MeshBasicMaterial({ color: 0xef4444 }),
+    );
+    crossA.position.y = 0.21;
+    const crossB = new THREE.Mesh(
+      new THREE.BoxGeometry(0.16, 0.06, 0.5),
+      new THREE.MeshBasicMaterial({ color: 0xef4444 }),
+    );
+    crossB.position.y = 0.21;
+    const medRotorMat = new THREE.MeshLambertMaterial({
+      color: 0x111111,
+      transparent: true,
+      opacity: 0.5,
+    });
+    const medRotors: THREE.Mesh[] = [];
+    for (const [rx, rz] of [[-0.55, -0.55], [0.55, -0.55], [-0.55, 0.55], [0.55, 0.55]] as const) {
+      const rotor = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.03, 10), medRotorMat);
+      rotor.position.set(rx, 0.2, rz);
+      medRotors.push(rotor);
+      medevacMesh.add(rotor);
+    }
+    medevacMesh.add(medBody, crossA, crossB);
+    medevacMesh.visible = false;
+    scene.add(medevacMesh);
 
     const playerRigMale = new OperatorRig("woodland", "male");
     const playerRigFemale = new OperatorRig("woodland", "female");
