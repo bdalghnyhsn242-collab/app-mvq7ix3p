@@ -97,6 +97,13 @@ type Hud = {
   revivalActive: boolean;
   revivalProgress: number;
   revivalTimer: number;
+  dome: number | null;
+  sentryDeployed: boolean;
+  sentryHealth: number;
+  medevacActive: boolean;
+  fortressBuff: boolean;
+  chopperIncoming: boolean;
+  gadgets: { shield: number; sentry: number; medevac: number };
 };
 
 const LOOT_COLORS: Record<WeaponId, number> = {
@@ -191,6 +198,9 @@ export default function BattleRoyale3D() {
   const dropRef = useRef(false);
   const reviveRef = useRef(false);
   const beaconRef = useRef(false);
+  const shieldRef = useRef(false);
+  const sentryRef = useRef(false);
+  const medevacRef = useRef(false);
   const [squadSize, setSquadSize] = useState<SquadSize>(1);
   const [mode, setMode] = useState<"lobby" | "match">("lobby");
   const [gender, setGender] = useState<OperatorGender>("male");
@@ -232,6 +242,13 @@ export default function BattleRoyale3D() {
     revivalActive: false,
     revivalProgress: 0,
     revivalTimer: 0,
+    dome: null,
+    sentryDeployed: false,
+    sentryHealth: 0,
+    medevacActive: false,
+    fortressBuff: false,
+    chopperIncoming: false,
+    gadgets: { shield: 0, sentry: 0, medevac: 0 },
   });
 
   const start = useCallback((size: SquadSize, operatorGender: OperatorGender) => {
@@ -817,6 +834,9 @@ export default function BattleRoyale3D() {
         drop: dropRef.current,
         revive: reviveRef.current,
         beacon: beaconRef.current,
+        shield: shieldRef.current,
+        sentry: sentryRef.current,
+        medevac: medevacRef.current,
       };
       let state = stateRef.current;
       if (state && state.status === "running") {
@@ -831,6 +851,9 @@ export default function BattleRoyale3D() {
       enterRef.current = false;
       dropRef.current = false;
       beaconRef.current = false;
+      shieldRef.current = false;
+      sentryRef.current = false;
+      medevacRef.current = false;
       const current = state;
       if (current) {
         const deployment = current.deployment;
@@ -1216,6 +1239,15 @@ export default function BattleRoyale3D() {
             current.revival.captureProgress / CHALLENGE_ZONE_CAPTURE_TIME,
           ),
           revivalTimer: Math.max(0, Math.ceil(current.revival.timer)),
+          dome: current.shield.active
+            ? Math.max(0, current.shield.integrity / 120)
+            : null,
+          sentryDeployed: current.sentry.deployed,
+          sentryHealth: current.sentry.health,
+          medevacActive: current.medevac.active,
+          fortressBuff: current.fortress.active && !current.fortress.chopperIncoming,
+          chopperIncoming: current.fortress.chopperIncoming,
+          gadgets: { ...current.gadgets },
         });
       }
     };
@@ -1252,6 +1284,15 @@ export default function BattleRoyale3D() {
       }
       if (key === "q") {
         beaconRef.current = true;
+      }
+      if (key === "z") {
+        shieldRef.current = true;
+      }
+      if (key === "x") {
+        sentryRef.current = true;
+      }
+      if (key === "c") {
+        medevacRef.current = true;
       }
       if (modeRef.current === "lobby" && key >= "1" && key <= "6") {
         const ids: WeaponId[] = ["pistol", "smg", "ar", "dmr", "lmg", "shotgun"];
