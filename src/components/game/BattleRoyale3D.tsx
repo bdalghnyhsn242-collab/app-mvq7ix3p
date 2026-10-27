@@ -22,7 +22,6 @@ import {
   DEPLOY_PLANE_ALTITUDE,
   isSwimming,
   createMatchState,
-  landedDeployment,
   lootWeaponForIndex,
   terrainHeight,
   WEAPONS,
