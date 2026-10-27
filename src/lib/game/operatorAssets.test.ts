@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import * as THREE from "three";
 import {
   attachWeaponToHand,
+  facingYawForSource,
   clipTracksMatchSkeleton,
   createOperatorInstance,
   mapOperatorClips,
+  operatorBodySources,
 } from "./operatorAssets";
 
 function boneNamed(name: string): THREE.Bone {
@@ -82,5 +84,32 @@ describe("CC0 asset pipeline guards", () => {
     const root = new THREE.Group();
     root.add(boneNamed("Hips"));
     expect(attachWeaponToHand(root, new THREE.Group())).toBe(false);
+  });
+
+  it("prefers the real textured soldier for the male body", () => {
+    const sources = operatorBodySources("male");
+    expect(sources[0]).toBe("/models/operator-male.glb");
+    const soldierIndex = sources.findIndex((url) => url.includes("Soldier.glb"));
+    const adventurerIndex = sources.findIndex((url) => url.includes("Adventurer.glb"));
+    expect(soldierIndex).toBeGreaterThan(-1);
+    expect(adventurerIndex).toBeGreaterThan(soldierIndex);
+  });
+
+  it("keeps the stylized character first for the female body", () => {
+    const sources = operatorBodySources("female");
+    expect(sources.some((url) => url.includes("Soldier.glb"))).toBe(false);
+    expect(sources.some((url) => url.includes("Adventurer.glb"))).toBe(true);
+  });
+
+  it("flips -Z-facing packs to the game forward", () => {
+    expect(
+      facingYawForSource(
+        "https://cdn.jsdelivr.net/gh/mrdoob/three.js@r169/examples/models/gltf/Soldier.glb",
+      ),
+    ).toBe(Math.PI);
+    expect(
+      facingYawForSource("https://example.com/Adventurer.glb"),
+    ).toBe(0);
+    expect(facingYawForSource(null)).toBe(0);
   });
 });
