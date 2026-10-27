@@ -6,9 +6,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { SoldierGender } from "@/components/game/soldierModel";
-import { OperatorRig, lodTierForDistance } from "@/components/game/operatorRig";
+import {
+  OperatorRig,
+  lodTierForDistance,
+  riggedOperatorCount,
+} from "@/components/game/operatorRig";
 import {
   getOperatorDiagnostics,
+  loadedSourceFor,
   installOperatorDiagnosticsProbe,
 } from "@/lib/game/operatorAssets";
 import {
@@ -299,6 +304,15 @@ export default function BattleRoyale3D() {
   const [hud, setHud] = useState<Hud>(() => createInitialHud("idle"));
   const [modelStatus, setModelStatus] = useState<"loading" | "real" | "fallback">("loading");
   const [modelStatusReason, setModelStatusReason] = useState<string | null>(null);
+  const [modelDiag, setModelDiag] = useState<{
+    loaded: boolean;
+    added: boolean;
+    hidden: boolean;
+    meshes: number;
+    bones: number;
+    source: string | null;
+    rigged: number;
+  } | null>(null);
 
   const start = useCallback((size: SquadSize, operatorGender: OperatorGender) => {
     stateRef.current = createMatchState(size);
@@ -653,6 +667,22 @@ export default function BattleRoyale3D() {
     let maleReal = false;
     let femaleReal = false;
     const reportModelStatus = () => {
+      const male = playerRigMale.status;
+      const female = playerRigFemale.status;
+      const best = male.loaded ? male : female;
+      const bodyKey = genderRef.current === "female" ? "body:female" : "body:male";
+      setModelDiag({
+        loaded: male.loaded || female.loaded,
+        added: best.added,
+        hidden: best.proceduralHidden,
+        meshes: best.meshes,
+        bones: best.bones,
+        source:
+          loadedSourceFor(bodyKey) ??
+          loadedSourceFor("body:male") ??
+          loadedSourceFor("body:female"),
+        rigged: riggedOperatorCount(),
+      });
       if (maleReal || femaleReal) {
         setModelStatus("real");
         setModelStatusReason(null);
