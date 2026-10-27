@@ -879,9 +879,10 @@ export default function BattleRoyale3D() {
         forward:
           (keys.has("w") || keys.has("arrowup") ? 1 : 0) -
           (keys.has("s") || keys.has("arrowdown") ? 1 : 0),
-        turn:
-          (keys.has("a") || keys.has("arrowleft") ? 1 : 0) -
-          (keys.has("d") || keys.has("arrowright") ? 1 : 0),
+        turn: 0,
+        strafe:
+          (keys.has("d") || keys.has("arrowright") ? 1 : 0) -
+          (keys.has("a") || keys.has("arrowleft") ? 1 : 0),
         enter: enterRef.current,
         drop: dropRef.current,
         revive: reviveRef.current,
@@ -889,6 +890,10 @@ export default function BattleRoyale3D() {
         shield: shieldRef.current,
         sentry: sentryRef.current,
         medevac: medevacRef.current,
+        aimAngle: camYawRef.current,
+        jump: jumpRef.current,
+        crouch: crouchRef.current,
+        sprint: sprintRef.current,
       };
       let state = stateRef.current;
       if (state && state.status === "running") {
@@ -898,10 +903,19 @@ export default function BattleRoyale3D() {
           shootRef.current = false;
           aimTimer = 0.6;
         }
+        if (reloadRef.current) {
+          state = reloadWeapon(state);
+        }
+        if (switchRef.current) {
+          state = switchWeapon(state, switchRef.current);
+          switchRef.current = null;
+        }
         stateRef.current = state;
       }
       enterRef.current = false;
       dropRef.current = false;
+      jumpRef.current = false;
+      reloadRef.current = false;
       beaconRef.current = false;
       shieldRef.current = false;
       sentryRef.current = false;
