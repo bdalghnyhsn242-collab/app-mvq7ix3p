@@ -64,6 +64,12 @@ const SOLDIER_CDN_URL =
 /** Official three.js site mirror of the same file (CORS-enabled). */
 const SOLDIER_MIRROR_URL = "https://threejs.org/examples/models/gltf/Soldier.glb";
 
+/** Additional public GitHub CDNs used when jsdelivr/raw are unreachable. */
+const SOLDIER_EXTRA_MIRRORS = [
+  "https://cdn.statically.io/gh/mrdoob/three.js/r169/examples/models/gltf/Soldier.glb",
+  "https://raw.githack.com/mrdoob/three.js/r169/examples/models/gltf/Soldier.glb",
+];
+
 export const SOLDIER_CDN_SOURCES: Record<OperatorVariant, string | null> = {
   male: SOLDIER_CDN_URL,
   female: null,
@@ -375,6 +381,7 @@ export function operatorBodySources(variant: OperatorVariant): string[] {
   const soldier = SOLDIER_CDN_SOURCES[variant];
   if (soldier) {
     urls.push(...withRawFallback(soldier));
+    urls.push(...SOLDIER_EXTRA_MIRRORS);
     urls.push(SOLDIER_MIRROR_URL);
   }
   const character = CHARACTER_CDN_SOURCES[variant];
