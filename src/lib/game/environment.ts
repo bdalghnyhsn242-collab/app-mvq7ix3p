@@ -3,25 +3,33 @@ import { ISLAND_RADIUS, terrainHeight } from "./battleRoyale";
 
 export function createTerrain(): THREE.Mesh {
   const size = ISLAND_RADIUS * 2.6;
-  const geometry = new THREE.PlaneGeometry(size, size, 110, 110);
+  const geometry = new THREE.PlaneGeometry(size, size, 150, 150);
   geometry.rotateX(-Math.PI / 2);
   const position = geometry.attributes.position as THREE.BufferAttribute;
   const colors = new Float32Array(position.count * 3);
   const sand = new THREE.Color(0xd9c08a);
   const grass = new THREE.Color(0x4d8f4d);
   const rock = new THREE.Color(0x8a8378);
+  const mud = new THREE.Color(0x6b5a3e);
+  const snow = new THREE.Color(0xf2f5f7);
   const color = new THREE.Color();
   for (let i = 0; i < position.count; i += 1) {
     const x = position.getX(i);
     const z = position.getZ(i);
     const h = terrainHeight(x, z);
     position.setY(i, h);
-    if (h < 0.3) {
+    const dist = Math.hypot(x, z);
+    if (h < 0.15 && dist < ISLAND_RADIUS - 2) {
+      color.copy(mud);
+    } else if (h < 0.6) {
       color.copy(sand);
-    } else if (h < 4.2) {
-      color.copy(grass).lerp(sand, Math.max(0, (0.3 - h) / 0.3 + 0.15));
+    } else if (h < 9) {
+      color.copy(grass).lerp(sand, Math.max(0, (0.6 - h) / 0.6 + 0.1));
     } else {
-      color.copy(rock).lerp(grass, Math.max(0, (6.5 - h) / 2.3));
+      color.copy(rock).lerp(grass, Math.max(0, (14 - h) / 5));
+      if (h > 26) {
+        color.lerp(snow, Math.min(1, (h - 26) / 8));
+      }
     }
     colors[i * 3] = color.r;
     colors[i * 3 + 1] = color.g;
@@ -41,7 +49,7 @@ function seededRandom(seed: number) {
   };
 }
 
-export function createRocks(count = 26): THREE.Group {
+export function createRocks(count = 90): THREE.Group {
   const group = new THREE.Group();
   const random = seededRandom(1337);
   for (let i = 0; i < count; i += 1) {
