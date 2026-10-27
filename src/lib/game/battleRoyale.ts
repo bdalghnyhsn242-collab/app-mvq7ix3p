@@ -108,7 +108,7 @@ export function createMatchState(): MatchState {
   const bots: Soldier[] = [];
   for (let i = 0; i < BOT_COUNT; i += 1) {
     const angle = (i / BOT_COUNT) * Math.PI * 2;
-    const radius = 18 + (i % 3) * 6;
+    const radius = 72 + (i % 3) * 24;
     bots.push({
       x: Math.cos(angle) * radius,
       z: Math.sin(angle) * radius,
@@ -120,7 +120,7 @@ export function createMatchState(): MatchState {
   const loot: Loot[] = [];
   for (let i = 0; i < LOOT_COUNT; i += 1) {
     const angle = (i / LOOT_COUNT) * Math.PI * 2 + 0.4;
-    const radius = 8 + (i % 4) * 7;
+    const radius = 32 + (i % 4) * 28;
     const weapon = lootWeaponForIndex(i);
     loot.push({
       x: Math.cos(angle) * radius,
