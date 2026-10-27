@@ -489,9 +489,11 @@ export default function BattleRoyale3D() {
       lobbyScene.add(mesh);
       return mesh;
     });
-    const lobbyMale = makeSoldier(0x22c55e, "woodland", "male");
-    const lobbyFemale = makeSoldier(0x22c55e, "woodland", "female");
-    lobbyScene.add(lobbyMale, lobbyFemale);
+    const lobbyMaleRig = new OperatorRig("woodland", "male");
+    const lobbyFemaleRig = new OperatorRig("woodland", "female");
+    lobbyScene.add(lobbyMaleRig.group, lobbyFemaleRig.group);
+    void lobbyMaleRig.upgrade();
+    void lobbyFemaleRig.upgrade();
 
     const resize = () => {
       const width = mount.clientWidth || 640;
@@ -521,13 +523,13 @@ export default function BattleRoyale3D() {
         }
         lobbyRef.current = lobby;
         const showFemale = lobby.gender === "female";
-        lobbyMale.visible = !showFemale;
-        lobbyFemale.visible = showFemale;
+        lobbyMaleRig.group.visible = !showFemale;
+        lobbyFemaleRig.group.visible = showFemale;
         const inspect = Math.sin(now / 2400) * 0.5;
-        lobbyMale.rotation.y = inspect;
-        lobbyFemale.rotation.y = inspect;
-        animateSoldier(lobbyMale, { time: now / 1000, speed01: 0.12 });
-        animateSoldier(lobbyFemale, { time: now / 1000, speed01: 0.12 });
+        lobbyMaleRig.group.rotation.y = inspect;
+        lobbyFemaleRig.group.rotation.y = inspect;
+        lobbyMaleRig.update({ time: now / 1000, speed01: 0.12 }, dt);
+        lobbyFemaleRig.update({ time: now / 1000, speed01: 0.12 }, dt);
         lobbyTargets.forEach((mesh, index) => {
           const target = lobby.targets[index];
           if (!target) {
