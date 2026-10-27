@@ -594,6 +594,8 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
     return { ...crate, taken: true };
   });
   beacon = { ...beacon, held: beaconHeld };
+
+  let health = player.health;
   if (beacon.drop?.crate && beacon.drop.crate.landed && !beacon.drop.crate.taken) {
     const crate = beacon.drop.crate;
     if (Math.hypot(crate.x - player.x, crate.z - player.z) < BEACON_PICKUP_RADIUS) {
@@ -609,8 +611,6 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
       };
     }
   }
-
-  let health = player.health;
   const squadHits: Record<number, number> = {};
   const blasts: { x: number; z: number }[] = [];
   const wreckVehicle = (index: number) => {
