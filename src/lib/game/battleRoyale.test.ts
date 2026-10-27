@@ -18,6 +18,11 @@ import {
   blastDamage,
   steerAroundObstacles,
   EXPANSION_LOOT_COUNT,
+  RELOAD_TIME,
+  reloadWeapon,
+  switchWeapon,
+  damagePlayer,
+  fullMagazine,
   type MatchState,
 } from "./battleRoyale";
 import { TOWER_TERMINAL, TOWER_CAPTURE_TIME } from "./radioTowerSystem";
@@ -88,7 +93,8 @@ describe("battle royale core logic", () => {
     expect(result.hit).toBe(true);
     expect(result.state.bots[0].health).toBe(50);
     expect(result.state.bots[0].alive).toBe(true);
-    expect(result.state.ammo.pistol).toBe(23);
+    expect(result.state.magazine.pistol).toBe(11);
+    expect(result.state.ammo.pistol).toBe(24);
   });
 
   it("kills a bot with a second shot and wins", () => {
@@ -98,12 +104,15 @@ describe("battle royale core logic", () => {
     expect(second.state.status).toBe("won");
   });
 
-  it("cannot shoot without ammo", () => {
+  it("auto-reloads when firing an empty magazine", () => {
     const state = withState({
       ammo: { pistol: 0, smg: 0, ar: 0, dmr: 0, lmg: 0, shotgun: 0 },
+      magazine: { pistol: 0, smg: 0, ar: 0, dmr: 0, lmg: 0, shotgun: 0 },
       bots: [{ x: 0, z: 10, angle: 0, health: 100, alive: true }],
     });
-    expect(shoot(state).hit).toBe(false);
+    const result = shoot(state);
+    expect(result.hit).toBe(false);
+    expect(result.state.reloadTimer).toBe(RELOAD_TIME);
   });
 
   it("cannot shoot during cooldown", () => {
