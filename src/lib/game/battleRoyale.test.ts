@@ -46,18 +46,18 @@ describe("battle royale core logic", () => {
   });
 
   it("moves the player forward along its facing direction", () => {
-    const state = stepMatch(createMatchState(), 1, { forward: 1, turn: 0 });
+    const state = stepMatch(withState({}), 1, { forward: 1, turn: 0 });
     expect(state.player.z).toBeGreaterThan(0);
     expect(state.player.x).toBeCloseTo(0);
   });
 
   it("turns the player", () => {
-    const state = stepMatch(createMatchState(), 1, { forward: 0, turn: 1 });
+    const state = stepMatch(withState({}), 1, { forward: 0, turn: 1 });
     expect(state.player.angle).toBeGreaterThan(0);
   });
 
   it("shrinks the safe zone over time", () => {
-    const state = stepMatch(createMatchState(), 10, { forward: 0, turn: 0 });
+    const state = stepMatch(withState({}), 10, { forward: 0, turn: 0 });
     expect(state.zone.radius).toBeLessThan(ZONE_START_RADIUS);
   });
 
@@ -208,9 +208,19 @@ describe("battle royale core logic", () => {
   });
 
   it("swims slower than walking in deep water", () => {
-    expect(isSwimming(0, 0)).toBe(false);
-    expect(movementSpeed(ISLAND_RADIUS - 1, 0)).toBeGreaterThan(0);
+    let foundDeep = false;
   });
+    for (let x = -ISLAND_RADIUS; x <= ISLAND_RADIUS && !foundDeep; x += 4) {
+      for (let z = -ISLAND_RADIUS; z <= ISLAND_RADIUS; z += 4) {
+        if (isSwimming(x, z)) {
+          deepSpeed = Math.min(deepSpeed, movementSpeed(x, z));
+          foundDeep = true;
+          break;
+        }
+      }
+    }
+    expect(foundDeep).toBe(true);
+    expect(deepSpeed).toBeLessThan(PLAYER_SPEED);
 
   it("knocks down teammates instead of killing them", () => {
     const squad = createSquad(2);
