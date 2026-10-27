@@ -771,7 +771,9 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
           tracers.shift();
         }
         if (mateIndex >= 0) {
-          squadHits[mateIndex] = (squadHits[mateIndex] ?? 0) + TURRET_DAMAGE;
+          const mateDome = domeAbsorb(shield, state.squad[mateIndex].x, state.squad[mateIndex].z, TURRET_DAMAGE);
+          shield = drainDome(shield, mateDome.absorbed);
+          squadHits[mateIndex] = (squadHits[mateIndex] ?? 0) + mateDome.leaked;
         } else if (playerVehicle >= 0) {
           const damaged = damageVehicle(vehicles[playerVehicle], TURRET_DAMAGE);
           vehicles = vehicles.map((v, i) => (i === playerVehicle ? damaged : v));
@@ -780,7 +782,7 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
             playerVehicle = -1;
           }
         } else {
-          health -= TURRET_DAMAGE;
+          applyPlayerDamage(TURRET_DAMAGE);
         }
       }
       vehicles = vehicles.map((v, i) => (i === drivenIndex ? driven : v));
@@ -797,7 +799,7 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
             playerVehicle = -1;
           }
         } else {
-          health -= RUNOVER_DAMAGE_PER_SECOND * dt;
+          applyPlayerDamage(RUNOVER_DAMAGE_PER_SECOND * dt);
         }
       }
       return next;
@@ -817,13 +819,26 @@ export function stepMatch(state: MatchState, dt: number, input: MatchInput): Mat
     const dz = player.z - next.z;
     const dist = Math.hypot(dx, dz) || 1;
     const speed =
-      movementSpeed(next.x, next.z) * (BOT_SPEED / PLAYER_SPEED) * effects.speedFactor * droneBonus;
+      movementSpeed(next.x, next.z) *
+      (BOT_SPEED / PLAYER_SPEED) *
+      effects.speedFactor *
+      droneBonus *
+      ((next.stunTimer ?? 0) > 0 ? SENTRY_STUN_SLOW : 1);
+    next.stunTimer = Math.max(0, (next.stunTimer ?? 0) - dt);
     next.x += (dx / dist) * speed * dt;
     next.z += (dz / dist) * speed * dt;
     next.angle = Math.atan2(dx, dz);
     clampToIsland(next);
+    if (sentry.deployed && Math.hypot(next.x - sentry.x, next.z - sentry.z) < 2) {
+      sentry = damageSentry(sentry, SENTRY_MELEE_DPS * dt);
+    }
     return next;
   });
+  for (const stunnedIndex of sentryStep.stunnedBotIndexes) {
+    if (bots[stunnedIndex]?.alive) {
+      bots[stunnedIndex] = { ...bots[stunnedIndex], stunTimer: SENTRY_STUN_TIME };
+    }
+  }
   bots = bots.map((bot) => {
     if (!bot.alive) {
       return bot;
