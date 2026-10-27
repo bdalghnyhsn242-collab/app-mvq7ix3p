@@ -189,11 +189,43 @@ export default function BattleRoyale3D() {
 
     const playerMesh = makeSoldier(0x22c55e);
     scene.add(playerMesh);
-    const botMeshes = Array.from({ length: BOT_COUNT }, () => {
-      const bot = makeSoldier(0xef4444);
+    const botMeshes = Array.from({ length: BOT_COUNT }, (_, index) => {
+      const variant = index % 3 === 0 ? "ghillie" : index % 3 === 1 ? "desert" : "woodland";
+      const bot = makeSoldier(0xb4543b, variant);
       scene.add(bot);
       return bot;
     });
+    const vehicleMeshes = Array.from({ length: 3 }, (_, index) => {
+      const kinds: VehicleKind[] = ["uaz", "pickup", "buggy"];
+      const mesh = makeVehicleMesh(kinds[index]);
+      scene.add(mesh);
+      return mesh;
+    });
+
+    const planeMaterial = new THREE.MeshLambertMaterial({ color: 0x5b6b78 });
+    const planeMesh = new THREE.Group();
+    const fuselage = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 12, 10), planeMaterial);
+    fuselage.rotation.x = Math.PI / 2;
+    const wing = new THREE.Mesh(new THREE.BoxGeometry(16, 0.25, 2.4), planeMaterial);
+    const tail = new THREE.Mesh(new THREE.BoxGeometry(5, 0.2, 1.2), planeMaterial);
+    tail.position.set(0, 1.2, 5.4);
+    const fin = new THREE.Mesh(new THREE.BoxGeometry(0.2, 2, 1.4), planeMaterial);
+    fin.position.set(0, 1.4, 5.4);
+    planeMesh.add(fuselage, wing, tail, fin);
+    scene.add(planeMesh);
+
+    const airdropCrate = new THREE.Mesh(
+      new THREE.BoxGeometry(1.4, 1.4, 1.4),
+      new THREE.MeshLambertMaterial({ color: 0xf59e0b }),
+    );
+    const parachute = new THREE.Mesh(
+      new THREE.ConeGeometry(2.4, 1.8, 8, 1, true),
+      new THREE.MeshLambertMaterial({ color: 0xe2e8f0, side: THREE.DoubleSide }),
+    );
+    parachute.position.y = 3;
+    const airdropGroup = new THREE.Group();
+    airdropGroup.add(airdropCrate, parachute);
+    scene.add(airdropGroup);
     const lootMeshes = Array.from({ length: LOOT_COUNT }, (_, index) => {
       const crate = new THREE.Mesh(
         new THREE.BoxGeometry(0.8, 0.8, 0.8),
