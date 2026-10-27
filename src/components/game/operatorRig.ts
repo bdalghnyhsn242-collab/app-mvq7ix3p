@@ -22,6 +22,24 @@ import {
 
 export type LodTier = 0 | 1 | 2;
 
+/** How many OperatorRig instances currently display a real GLB humanoid. */
+let riggedOperatorTotal = 0;
+
+export function riggedOperatorCount(): number {
+  return riggedOperatorTotal;
+}
+
+export type OperatorRigStatus = {
+  /** A GLB body was loaded and cloned for this rig. */
+  loaded: boolean;
+  /** The GLB root is actually a child of this rig's scene group. */
+  addedToScene: boolean;
+  /** The procedural makeSoldier fallback is hidden. */
+  proceduralHidden: boolean;
+  meshes: number;
+  bones: number;
+};
+
 export function operatorVariantFor(camo: string, gender: SoldierGender): OperatorVariant {
   if (camo === "ghillie") {
     return "ghillie";
@@ -68,6 +86,7 @@ export class OperatorRig {
   private weaponAttached = false;
   private tick = 0;
   private lastMotion: SoldierMotion | null = null;
+  private upgradeInFlight: Promise<boolean> | null = null;
 
   constructor(camo: "woodland" | "desert" | "ghillie", gender: SoldierGender = "male") {
     this.variant = operatorVariantFor(camo, gender);
@@ -87,10 +106,46 @@ export class OperatorRig {
     return this.gltfRoot ? "bone-driver" : "procedural";
   }
 
+  /** Ground-truth visual state of this rig (drives the honest HUD badge). */
+  get status(): OperatorRigStatus {
+    let meshes = 0;
+    let bones = 0;
+    if (this.gltfRoot) {
+      this.gltfRoot.traverse((child) => {
+        if ((child as THREE.Bone).isBone) {
+          bones += 1;
+        }
+        if ((child as THREE.Mesh).isMesh) {
+          meshes += 1;
+        }
+      });
+    }
+    return {
+      loaded: this.gltfRoot !== null,
+      addedToScene: this.gltfRoot !== null && this.gltfRoot.parent === this.group,
+      proceduralHidden: !this.procedural.visible,
+      meshes,
+      bones,
+    };
+  }
+
   async upgrade(): Promise<boolean> {
     if (this.gltfRoot) {
       return true;
     }
+    // Concurrent callers (initial attempt + retry timer) must share one
+    // run, otherwise two clones of the same GLB get added to the group.
+    if (this.upgradeInFlight) {
+      return this.upgradeInFlight;
+    }
+    const run = this.doUpgrade();
+    this.upgradeInFlight = run;
+    return run.finally(() => {
+      this.upgradeInFlight = null;
+    });
+  }
+
+  private async doUpgrade(): Promise<boolean> {
     this.upgradeAttempted = true;
     let body: Awaited<ReturnType<typeof loadOperatorGltf>> = null;
     try {
